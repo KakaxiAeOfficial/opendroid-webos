@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">OpenDroid WebOS</string>
+    <string name="accessibility_desc">Allows Web OS to remotely control device taps and swipes.</string>
+</resources>

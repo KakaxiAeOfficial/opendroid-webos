@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenDroid Web OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { overflow: hidden; background: url('https://images.unsplash.com/photo-1604328698692-f76ea9498e76?q=80&w=2070&auto=format&fit=crop') no-repeat center center fixed; background-size: cover; }
+        .window { position: absolute; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; min-width: 320px; min-height: 220px; }
+        .title-bar { cursor: grab; user-select: none; }
+        .title-bar:active { cursor: grabbing; }
+        .desktop-icon { cursor: pointer; transition: transform 0.1s; }
+        .desktop-icon:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="h-screen w-screen text-gray-800 font-sans">
+
+    <!-- Taskbar -->
+    <div class="fixed top-0 left-0 right-0 h-9 bg-gray-900/90 backdrop-blur text-white flex justify-between items-center px-4 z-50 shadow-md text-sm">
+        <div class="flex items-center gap-4">
+            <span class="font-bold tracking-wide flex items-center gap-2">📱 OpenDroid WebOS</span>
+            <span id="ws-status-taskbar" class="text-red-400 text-xs">● Disconnected</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="siren-btn" onclick="toggleSiren()" class="hover:text-red-400 transition-colors font-medium">🔔 Ring Phone</button>
+            <div class="flex items-center gap-1 font-mono">
+                <span id="battery-icon">🔋</span>
+                <span id="battery-text">--%</span>
+            </div>
+            <span id="clock" class="font-mono">00:00</span>
+        </div>
+    </div>
+
+    <!-- Desktop Icons Container -->
+    <div class="p-4 mt-10 grid grid-cols-1 gap-6 w-24">
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('screen-window')">
+            <div class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">📱</div>
+            <span class="text-xs font-semibold text-center">Screen</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('file-window')">
+            <div class="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">📁</div>
+            <span class="text-xs font-semibold text-center">Files</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('camera-window')">
+            <div class="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">📷</div>
+            <span class="text-xs font-semibold text-center">Camera</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('sms-window')">
+            <div class="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">💬</div>
+            <span class="text-xs font-semibold text-center">Messages</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('contacts-window')">
+            <div class="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">📞</div>
+            <span class="text-xs font-semibold text-center">Dialer</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('map-window')">
+            <div class="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">📍</div>
+            <span class="text-xs font-semibold text-center">Find Phone</span>
+        </div>
+    </div>
+
+    <!-- Window 1: Live Screen Mirroring -->
+    <div id="screen-window" class="window hidden" style="width: 360px; height: 680px; top: 50px; left: 140px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <span class="font-semibold text-sm">Live Screen Control</span>
+            <button onclick="wm.closeWindow('screen-window')" class="text-red-400 hover:text-red-500">✖</button>
+        </div>
+        <div class="flex-1 relative bg-black flex flex-col">
+            <video id="screen-video" class="flex-1 w-full" style="object-fit: fill; cursor: crosshair;" autoplay playsinline></video>
+            <div class="bg-gray-900 h-12 flex justify-around items-center border-t border-gray-700">
+                <button onclick="sendGlobalAction('BACK')" class="text-white text-xl hover:text-gray-300 px-4">◀</button>
+                <button onclick="sendGlobalAction('HOME')" class="text-white text-xl hover:text-gray-300 px-4">⚪</button>
+                <button onclick="sendGlobalAction('RECENTS')" class="text-white text-xl hover:text-gray-300 px-4">⏹</button>
+            </div>
+            <div id="video-overlay" class="absolute inset-0 flex items-center justify-center text-white bg-black bg-opacity-60">
+                <button onclick="startWebRTC()" class="bg-blue-600 px-4 py-2 rounded shadow hover:bg-blue-700 font-semibold">Connect Stream</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Window 2: File Explorer -->
+    <div id="file-window" class="window hidden" style="width: 500px; height: 420px; top: 70px; left: 520px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <span class="font-semibold text-sm">File Explorer</span>
+            <button onclick="wm.closeWindow('file-window')" class="text-red-400 hover:text-red-500">✖</button>
+        </div>
+        <div class="flex-1 flex flex-col p-4 bg-gray-50">
+            <div id="drop-zone" class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-500 mb-3 bg-white">
+                Drag & Drop files here or <button onclick="document.getElementById('file-input').click()" class="text-blue-500 underline">browse</button>
+                <input type="file" id="file-input" class="hidden" onchange="uploadFile(this.files[0])">
+            </div>
+            <div class="flex-1 overflow-y-auto bg-white border rounded shadow-inner">
+                <ul id="file-list" class="divide-y divide-gray-200">
+                    <li class="p-3 text-center text-gray-400 text-sm">Loading files...</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Window 3: Remote Camera -->
+    <div id="camera-window" class="window hidden" style="width: 400px; height: 550px; top: 90px; left: 380px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <span class="font-semibold text-sm">Remote Camera & Mic</span>
+            <button onclick="wm.closeWindow('camera-window')" class="text-red-400 hover:text-red-500">✖</button>
+        </div>
+        <div class="flex-1 relative bg-black flex flex-col">
+            <video id="camera-video" class="flex-1 w-full object-contain" autoplay playsinline></video>
+            <div class="bg-gray-900 p-3 flex flex-col gap-3 border-t border-gray-700">
+                <div class="flex justify-between">
+                    <button onclick="ws.send(JSON.stringify({action: 'START_CAMERA', facing: 'back'}))" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Start Camera</button>
+                    <button onclick="ws.send(JSON.stringify({action: 'SWITCH_CAMERA'}))" class="bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">🔄 Switch</button>
+                    <button onclick="ws.send(JSON.stringify({action: 'TOGGLE_FLASHLIGHT'}))" class="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700">💡 Flash</button>
+                </div>
+                <div class="flex items-center gap-2 text-white text-sm">
+                    <span>🔊 Audio Vol:</span>
+                    <input type="range" id="mic-volume" min="0" max="1" step="0.1" value="1" class="flex-1" onchange="document.getElementById('camera-video').volume = this.value">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Window 4: Messages -->
+    <div id="sms-window" class="window hidden" style="width: 380px; height: 500px; top: 110px; left: 300px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <span class="font-semibold text-sm">SMS Messages</span>
+            <button onclick="wm.closeWindow('sms-window')" class="text-red-400 hover:text-red-500">✖</button>
+        </div>
+        <div class="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+            <div id="sms-list" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2"></div>
+            <div class="bg-white p-3 border-t flex flex-col gap-2">
+                <input type="text" id="sms-to" placeholder="Phone Number" class="border rounded px-2 py-1 text-sm">
+                <div class="flex gap-2">
+                    <input type="text" id="sms-body" placeholder="Message..." class="border rounded px-2 py-1 text-sm flex-1">
+                    <button onclick="sendSms()" class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Window 5: Contacts & Dialer -->
+    <div id="contacts-window" class="window hidden" style="width: 340px; height: 480px; top: 120px; left: 340px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <span class="font-semibold text-sm">Contacts & Dialer</span>
+            <button onclick="wm.closeWindow('contacts-window')" class="text-red-400 hover:text-red-500">✖</button>
+        </div>
+        <div class="flex-1 flex flex-col bg-white overflow-hidden">
+            <div class="p-3 bg-gray-100 border-b flex gap-2">
+                <input type="text" id="dial-number" placeholder="Enter number..." class="border rounded px-2 py-1 text-lg flex-1 font-mono">
+                <button onclick="makeCall()" class="bg-green-500 text-white px-4 py-1 rounded hover:bg-green-600">📞</button>
+            </div>
+            <div id="contacts-list" class="flex-1 overflow-y-auto divide-y"></div>
+        </div>
+    </div>
+
+    <!-- Window 6: Find Phone (GPS Map) -->
+    <div id="map-window" class="window hidden" style="width: 520px; height: 420px; top: 130px; left: 420px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <span class="font-semibold text-sm">Live GPS Location</span>
+            <button onclick="wm.closeWindow('map-window')" class="text-red-400 hover:text-red-500">✖</button>
+        </div>
+        <div id="map-container" class="flex-1 bg-gray-200 relative">
+            <div id="map" class="absolute inset-0"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-12 right-4 w-80 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // --- Window Manager ---
+        class WindowManager {
+            constructor() {
+                this.zIndex = 10;
+                this.windows = document.querySelectorAll('.window');
+                this.windows.forEach(win => {
+                    const titleBar = win.querySelector('.title-bar');
+                    win.addEventListener('mousedown', () => this.focus(win));
+                    let isDragging = false, startX, startY, initialX, initialY;
+                    titleBar.addEventListener('mousedown', (e) => {
+                        isDragging = true;
+                        startX = e.clientX; startY = e.clientY;
+                        initialX = win.offsetLeft; initialY = win.offsetTop;
+                        this.focus(win);
+                    });
+                    document.addEventListener('mousemove', (e) => {
+                        if (!isDragging) return;
+                        win.style.left = `${initialX + (e.clientX - startX)}px`;
+                        win.style.top = `${initialY + (e.clientY - startY)}px`;
+                    });
+                    document.addEventListener('mouseup', () => isDragging = false);
+                });
+            }
+            focus(win) { win.style.zIndex = ++this.zIndex; }
+            openWindow(id) { 
+                const win = document.getElementById(id);
+                win.classList.remove('hidden');
+                this.focus(win);
+                if(id === 'file-window') loadFiles();
+                if(id === 'sms-window') loadSms();
+                if(id === 'contacts-window') loadContacts();
+                if(id === 'map-window') loadMap();
+            }
+            closeWindow(id) { document.getElementById(id).classList.add('hidden'); }
+        }
+        const wm = new WindowManager();
+
+        // --- Clock ---
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }, 1000);
+
+        // --- WebSocket Connection ---
+        const ws = new WebSocket(`ws://${location.host}/ws`);
+        const statusEl = document.getElementById('ws-status-taskbar');
+
+        ws.onopen = () => {
+            statusEl.textContent = '● Connected';
+            statusEl.className = 'text-green-400 text-xs';
+            setInterval(() => ws.send(JSON.stringify({type: 'ping', timestamp: Date.now()})), 3000);
+        };
+        ws.onclose = () => {
+            statusEl.textContent = '● Disconnected';
+            statusEl.className = 'text-red-400 text-xs';
+        };
+
+        // --- Siren ---
+        let isSirenRinging = false;
+        function toggleSiren() {
+            isSirenRinging = !isSirenRinging;
+            const btn = document.getElementById('siren-btn');
+            if (isSirenRinging) {
+                ws.send(JSON.stringify({action: 'RING_SIREN'}));
+                btn.classList.add('text-red-500', 'animate-pulse');
+                btn.textContent = '🔕 Stop Siren';
+            } else {
+                ws.send(JSON.stringify({action: 'STOP_SIREN'}));
+                btn.classList.remove('text-red-500', 'animate-pulse');
+                btn.textContent = '🔔 Ring Phone';
+            }
+        }
+
+        // --- WebRTC ---
+        let pc;
+        const screenVideo = document.getElementById('screen-video');
+        const cameraVideo = document.getElementById('camera-video');
+
+        async function startWebRTC() {
+            document.getElementById('video-overlay').classList.add('hidden');
+            pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            pc.addTransceiver('video', { direction: 'recvonly' });
+            pc.addTransceiver('audio', { direction: 'recvonly' });
+
+            pc.ontrack = (event) => {
+                if (event.streams && event.streams[0]) {
+                    const stream = event.streams[0];
+                    if (screenVideo.srcObject !== stream) screenVideo.srcObject = stream;
+                    if (cameraVideo.srcObject !== stream) cameraVideo.srcObject = stream;
+                    screenVideo.muted = true;
+                    cameraVideo.muted = false;
+                }
+            };
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    ws.send(JSON.stringify({
+                        type: 'candidate',
+                        sdpMLineIndex: event.candidate.sdpMLineIndex,
+                        sdpMid: event.candidate.sdpMid,
+                        candidate: event.candidate.candidate
+                    }));
+                }
+            };
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            ws.send(JSON.stringify({ type: 'offer', sdp: offer.sdp }));
+        }
+
+        ws.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'BATTERY') {
+                document.getElementById('battery-text').textContent = `${data.percent}%`;
+                document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
+            } else if (data.type === 'NOTIFICATION') {
+                showNotification(data);
+            } else if (data.type === 'answer' && pc) {
+                await pc.setRemoteDescription(new RTCSessionDescription(data));
+            } else if (data.type === 'candidate' && pc) {
+                await pc.addIceCandidate(new RTCIceCandidate(data));
+            }
+        };
+
+        // --- Remote Touch Injection ---
+        let isDraggingVideo = false, startNormX = 0, startNormY = 0;
+        screenVideo.addEventListener('mousedown', (e) => {
+            isDraggingVideo = true;
+            const rect = screenVideo.getBoundingClientRect();
+            startNormX = (e.clientX - rect.left) / rect.width;
+            startNormY = (e.clientY - rect.top) / rect.height;
+        });
+
+        screenVideo.addEventListener('mouseup', (e) => {
+            if (!isDraggingVideo) return;
+            isDraggingVideo = false;
+            const rect = screenVideo.getBoundingClientRect();
+            const endNormX = (e.clientX - rect.left) / rect.width;
+            const endNormY = (e.clientY - rect.top) / rect.height;
+            const distance = Math.hypot(endNormX - startNormX, endNormY - startNormY);
+            if (distance < 0.02) {
+                ws.send(JSON.stringify({ action: 'INPUT_TAP', x: endNormX, y: endNormY }));
+            } else {
+                ws.send(JSON.stringify({ action: 'INPUT_SWIPE', startX: startNormX, startY: startNormY, endX: endNormX, endY: endNormY }));
+            }
+        });
+
+        function sendGlobalAction(actionType) {
+            ws.send(JSON.stringify({ action: 'GLOBAL_ACTION', actionType: actionType }));
+        }
+
+        // --- Notifications ---
+        function showNotification(notif) {
+            const toast = document.createElement('div');
+            toast.className = 'bg-white/95 backdrop-blur rounded-lg shadow-xl p-3 border-l-4 border-blue-500 pointer-events-auto transform transition-all translate-x-full';
+            let html = `
+                <div class="flex justify-between items-start">
+                    <div class="font-bold text-xs text-blue-600">${notif.app}</div>
+                    <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600 text-xs">✖</button>
+                </div>
+                <div class="text-sm font-semibold text-gray-800 mt-1">${notif.title}</div>
+                <div class="text-xs text-gray-600 mt-1 line-clamp-2">${notif.text}</div>
+            `;
+            if (notif.canReply) {
+                html += `
+                    <div class="mt-3 flex gap-2">
+                        <input type="text" id="reply-${notif.id}" class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs" placeholder="Quick reply...">
+                        <button onclick="sendReply('${notif.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs">Send</button>
+                    </div>
+                `;
+            }
+            toast.innerHTML = html;
+            document.getElementById('toast-container').appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
+        }
+
+        function sendReply(id) {
+            const input = document.getElementById(`reply-${id}`);
+            if (input && input.value.trim() !== '') {
+                ws.send(JSON.stringify({ action: 'QUICK_REPLY', key: id, text: input.value.trim() }));
+                input.nextElementSibling.textContent = 'Sent ✓';
+                setTimeout(() => input.parentElement.parentElement.remove(), 1200);
+            }
+        }
+
+        // --- File Manager ---
+        async function loadFiles() {
+            const res = await fetch('/api/files');
+            const files = await res.json();
+            const list = document.getElementById('file-list');
+            list.innerHTML = files.length === 0 ? '<li class="p-3 text-center text-gray-400 text-sm">No files</li>' : '';
+            files.forEach(f => {
+                list.innerHTML += `<li class="p-3 flex justify-between items-center hover:bg-gray-50">
+                    <div class="flex items-center gap-3"><span>${f.isDirectory ? '📁' : '📄'}</span><span class="text-sm font-medium">${f.name}</span></div>
+                    <span class="text-xs text-gray-500">${(f.size / 1024).toFixed(1)} KB</span>
+                </li>`;
+            });
+        }
+
+        async function uploadFile(file) {
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            await fetch('/upload', { method: 'POST', body: formData });
+            loadFiles();
+        }
+
+        // --- SMS ---
+        async function loadSms() {
+            const res = await fetch('/api/sms');
+            const sms = await res.json();
+            const list = document.getElementById('sms-list');
+            list.innerHTML = '';
+            sms.forEach(msg => {
+                const isInbox = msg.type === 'inbox';
+                list.innerHTML += `<div class="p-2 rounded-lg max-w-[85%] ${isInbox ? 'bg-white self-start border' : 'bg-green-100 self-end'}">
+                    <div class="text-xs font-bold text-gray-600 mb-1">${msg.address}</div>
+                    <div class="text-sm text-gray-800">${msg.body}</div>
+                </div>`;
+            });
+        }
+
+        async function sendSms() {
+            const to = document.getElementById('sms-to').value;
+            const body = document.getElementById('sms-body').value;
+            if(!to || !body) return;
+            await fetch('/api/sms/send', { method: 'POST', body: JSON.stringify({to: to, message: body}) });
+            document.getElementById('sms-body').value = '';
+            setTimeout(loadSms, 1000);
+        }
+
+        // --- Contacts & Call ---
+        async function loadContacts() {
+            const res = await fetch('/api/contacts');
+            const contacts = await res.json();
+            const list = document.getElementById('contacts-list');
+            list.innerHTML = '';
+            contacts.forEach(c => {
+                list.innerHTML += `<div class="p-3 hover:bg-gray-50 cursor-pointer flex justify-between" onclick="document.getElementById('dial-number').value = '${c.number}'">
+                    <span class="font-medium text-gray-800">${c.name}</span><span class="text-sm text-gray-500 font-mono">${c.number}</span>
+                </div>`;
+            });
+        }
+        function makeCall() {
+            const num = document.getElementById('dial-number').value;
+            if(num) ws.send(JSON.stringify({action: 'MAKE_CALL', number: num}));
+        }
+
+        // --- GPS Map ---
+        let mapInstance = null, mapMarker = null;
+        async function loadMap() {
+            const res = await fetch('/api/location');
+            const loc = await res.json();
+            if(loc.error) return;
+            if(!mapInstance) {
+                mapInstance = L.map('map').setView([loc.lat, loc.lng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapInstance);
+                mapMarker = L.marker([loc.lat, loc.lng]).addTo(mapInstance).bindPopup('Phone Location').openPopup();
+            } else {
+                mapInstance.setView([loc.lat, loc.lng], 16);
+                mapMarker.setLatLng([loc.lat, loc.lng]);
+            }
+            setTimeout(() => mapInstance.invalidateSize(), 150);
+        }
+    </script>
+</body>
+</html>
