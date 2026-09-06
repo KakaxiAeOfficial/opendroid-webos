@@ -40,7 +40,6 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import javax.net.ssl.SSLSocketFactory
 
 class LocalFileServerService : Service() {
 
@@ -56,6 +55,8 @@ class LocalFileServerService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "FileServerChannel"
         var currentPairingCode: String = "123456"
+        var isCloudConnected: Boolean = false
+        var onCloudStatusChanged: ((Boolean) -> Unit)? = null
     }
 
     private val batteryReceiver = object : BroadcastReceiver() {
@@ -77,9 +78,11 @@ class LocalFileServerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.getStringExtra("PAIRING_CODE")?.let {
-            if (it.isNotEmpty() && it != currentPairingCode) {
+            if (it.isNotEmpty()) {
                 currentPairingCode = it
-                reconnectMqtt()
+                if (mqttClient?.isConnected == true) {
+                    subscribeToCode(it)
+                }
             }
         }
         startForegroundService()
@@ -104,58 +107,65 @@ class LocalFileServerService : Service() {
 
     private fun initCloudBridge() {
         serviceScope.launch {
-            try {
-                // SSL encrypted port 8883 (Not blocked by 5G telecom firewalls)
-                val brokerUrl = "ssl://broker.hivemq.com:8883"
-                val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
-                mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
+            val brokers = listOf("tcp://broker.hivemq.com:1883", "tcp://broker.emqx.io:1883")
+            for (brokerUrl in brokers) {
+                try {
+                    val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
+                    mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
-                val options = MqttConnectOptions().apply {
-                    isCleanSession = true
-                    connectionTimeout = 30
-                    keepAliveInterval = 30
-                    isAutomaticReconnect = true
-                    socketFactory = SSLSocketFactory.getDefault()
-                }
-
-                mqttClient?.setCallback(object : MqttCallbackExtended {
-                    override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        Log.d("CloudBridge", "Connected via SSL to Cloud Broker. Code: $currentPairingCode")
-                        mqttClient?.subscribe("opendroid/$currentPairingCode/phone", 1)
-                        broadcastBatteryStatus()
+                    val options = MqttConnectOptions().apply {
+                        isCleanSession = true
+                        connectionTimeout = 15
+                        keepAliveInterval = 30
+                        isAutomaticReconnect = true
                     }
 
-                    override fun connectionLost(cause: Throwable?) {
-                        Log.w("CloudBridge", "Connection lost", cause)
-                    }
-
-                    override fun messageArrived(topic: String?, message: MqttMessage?) {
-                        message?.let {
-                            val text = String(it.payload)
-                            handleIncomingJson(JSONObject(text))
+                    mqttClient?.setCallback(object : MqttCallbackExtended {
+                        override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                            Log.d("CloudBridge", "Connected to Broker: $serverURI with Code: $currentPairingCode")
+                            isCloudConnected = true
+                            onCloudStatusChanged?.invoke(true)
+                            subscribeToCode(currentPairingCode)
                         }
+
+                        override fun connectionLost(cause: Throwable?) {
+                            Log.w("CloudBridge", "Connection lost", cause)
+                            isCloudConnected = false
+                            onCloudStatusChanged?.invoke(false)
+                        }
+
+                        override fun messageArrived(topic: String?, message: MqttMessage?) {
+                            message?.let {
+                                val text = String(it.payload)
+                                handleIncomingJson(JSONObject(text))
+                            }
+                        }
+
+                        override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                    })
+
+                    mqttClient?.connect(options)
+                    if (mqttClient?.isConnected == true) {
+                        break // Connected successfully
                     }
-
-                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-                })
-
-                mqttClient?.connect(options)
-            } catch (e: Exception) {
-                Log.e("CloudBridge", "MQTT Connect Error", e)
+                } catch (e: Exception) {
+                    Log.e("CloudBridge", "Failed to connect to $brokerUrl", e)
+                }
             }
         }
     }
 
-    private fun reconnectMqtt() {
-        serviceScope.launch {
-            try {
-                if (mqttClient?.isConnected == true) {
-                    mqttClient?.subscribe("opendroid/$currentPairingCode/phone", 1)
-                    broadcastBatteryStatus()
-                }
-            } catch (e: Exception) {
-                Log.e("CloudBridge", "Resubscribe Error", e)
-            }
+    private fun subscribeToCode(code: String) {
+        try {
+            mqttClient?.subscribe("opendroid/$code/phone", 1)
+            broadcastMessage(JSONObject().apply {
+                put("type", "HANDSHAKE_ACK")
+                put("code", code)
+                put("device", Build.MODEL)
+            }.toString())
+            broadcastBatteryStatus()
+        } catch (e: Exception) {
+            Log.e("CloudBridge", "Subscribe error", e)
         }
     }
 

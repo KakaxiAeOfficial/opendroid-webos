@@ -52,7 +52,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. Persistent 6-Digit Code (Stays the same across restarts)
         val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
         var code = prefs.getString("pairing_code", null)
         if (code == null) {
@@ -64,7 +63,6 @@ class MainActivity : ComponentActivity() {
         nsdManager = NsdDiscoveryManager(this)
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        // 2. Request Permissions
         requestPermissionsLauncher.launch(
             arrayOf(
                 android.Manifest.permission.CAMERA,
@@ -78,7 +76,6 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        // 3. Start Foreground Service with Pairing Code
         val fileServiceIntent = Intent(this, LocalFileServerService::class.java).apply {
             putExtra("PAIRING_CODE", code)
         }
@@ -90,9 +87,18 @@ class MainActivity : ComponentActivity() {
 
         nsdManager.registerService()
 
-        val localIp = getRealLocalIpAddress()
-
         setContent {
+            var cloudOnline by remember { mutableStateOf(LocalFileServerService.isCloudConnected) }
+
+            DisposableEffect(Unit) {
+                LocalFileServerService.onCloudStatusChanged = { isOnline ->
+                    cloudOnline = isOnline
+                }
+                onDispose {
+                    LocalFileServerService.onCloudStatusChanged = null
+                }
+            }
+
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -112,7 +118,24 @@ class MainActivity : ComponentActivity() {
                             color = MaterialTheme.colorScheme.primary
                         )
                         
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Live Cloud Status Indicator
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (cloudOnline) Color(0xFFE8F5E9) else Color(0xFFFFF3E0),
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        ) {
+                            Text(
+                                text = if (cloudOnline) "🟢 Cloud: Connected & Online (5G)" else "🟡 Cloud: Connecting to Cloud...",
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (cloudOnline) Color(0xFF2E7D32) else Color(0xFFE65100)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -136,14 +159,6 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Text(
-                            text = "Local Wi-Fi IP: $localIp:8888",
-                            fontSize = 13.sp,
-                            color = Color.Gray
-                        )
-
                         Spacer(modifier = Modifier.height(30.dp))
 
                         Button(
@@ -160,22 +175,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun getRealLocalIpAddress(): String {
-        try {
-            val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
-            for (intf in interfaces) {
-                val addrs = Collections.list(intf.inetAddresses)
-                for (addr in addrs) {
-                    if (!addr.isLoopbackAddress && addr is Inet4Address) {
-                        val host = addr.hostAddress ?: ""
-                        if (!host.startsWith("127.")) return host
-                    }
-                }
-            }
-        } catch (e: Exception) { e.printStackTrace() }
-        return "Offline"
     }
 
     override fun onDestroy() {

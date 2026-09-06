@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Free MQTT over WSS -->
+    <!-- Multi-Broker MQTT over WSS -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         body { overflow: hidden; background: url('https://images.unsplash.com/photo-1604328698692-f76ea9498e76?q=80&w=2070&auto=format&fit=crop') no-repeat center center fixed; background-size: cover; }
@@ -26,7 +26,7 @@
             <div class="w-14 h-14 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 shadow-lg">📱</div>
             <h2 class="text-xl font-bold text-gray-900">Connect to Device</h2>
             <p class="text-xs text-gray-500 mt-1 mb-4">Enter the 6-digit code shown on your phone screen:</p>
-            <input type="text" id="pairing-code-input" placeholder="e.g. 284446" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
+            <input type="text" id="pairing-code-input" placeholder="e.g. 629724" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
             <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition-all">Connect 5G Stream</button>
             <div class="mt-3">
                 <button onclick="connectLocal()" class="text-xs text-gray-400 hover:text-gray-600 underline">Or connect via Local Wi-Fi</button>
@@ -38,7 +38,7 @@
     <div class="fixed top-0 left-0 right-0 h-9 bg-gray-900/90 backdrop-blur text-white flex justify-between items-center px-4 z-50 shadow-md text-sm">
         <div class="flex items-center gap-4">
             <span class="font-bold tracking-wide flex items-center gap-2">📱 OpenDroid WebOS</span>
-            <span id="ws-status-taskbar" class="text-yellow-400 text-xs">● Waiting for connection</span>
+            <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
         </div>
         <div class="flex items-center gap-4">
             <button id="siren-btn" onclick="toggleSiren()" class="hover:text-red-400 transition-colors font-medium">🔔 Ring Phone</button>
@@ -163,32 +163,35 @@
     <div id="toast-container" class="fixed top-12 right-4 w-80 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
-        // --- 1. Cloud & Local Dual-Engine with Handshake ---
         let currentPairingCode = '';
         let mqttClient = null;
         let localWs = null;
         let isCloudMode = true;
+        let handshakeInterval = null;
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
             if (code.length !== 6) {
-                alert('Please enter the 6-digit code from phone');
+                alert('Please enter the 6-digit code from your phone');
                 return;
             }
             currentPairingCode = code;
             document.getElementById('pair-modal').classList.add('hidden');
-            document.getElementById('ws-status-taskbar').textContent = '● Connecting 5G...';
+            document.getElementById('ws-status-taskbar').textContent = '● Connecting to Broker...';
 
+            // Connect over WSS
             mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
             
             mqttClient.on('connect', () => {
-                document.getElementById('ws-status-taskbar').textContent = '● Searching Phone...';
-                document.getElementById('ws-status-taskbar').className = 'text-yellow-400 text-xs';
+                document.getElementById('ws-status-taskbar').textContent = '● Pinging Phone...';
+                document.getElementById('ws-status-taskbar').className = 'text-yellow-400 text-xs font-semibold';
                 
-                // Subscribe to Phone's outgoing channel
                 mqttClient.subscribe(`opendroid/${currentPairingCode}/pc`, { qos: 1 });
 
-                // Send Handshake Ping to verify phone is online
+                // Repeat Handshake Ping every 1.5s until phone answers
+                handshakeInterval = setInterval(() => {
+                    sendCommand({ action: 'HANDSHAKE', code: currentPairingCode });
+                }, 1500);
                 sendCommand({ action: 'HANDSHAKE', code: currentPairingCode });
             });
 
@@ -206,7 +209,7 @@
             localWs = new WebSocket(`ws://${location.host}/ws`);
             localWs.onopen = () => {
                 document.getElementById('ws-status-taskbar').textContent = '● Connected (Local Wi-Fi)';
-                document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs';
+                document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs font-semibold';
                 sendCommand({ action: 'HANDSHAKE' });
             };
             localWs.onmessage = (e) => handleIncomingData(JSON.parse(e.data));
@@ -221,11 +224,14 @@
             }
         }
 
-        // --- 2. Incoming Data Handler ---
         function handleIncomingData(data) {
             if (data.type === 'HANDSHAKE_ACK' || data.type === 'BATTERY') {
+                if (handshakeInterval) {
+                    clearInterval(handshakeInterval);
+                    handshakeInterval = null;
+                }
                 document.getElementById('ws-status-taskbar').textContent = '● Connected (5G Phone Active)';
-                document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs';
+                document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs font-semibold';
                 
                 if (data.percent !== undefined) {
                     document.getElementById('battery-text').textContent = `${data.percent}%`;
@@ -246,7 +252,7 @@
             }
         }
 
-        // --- 3. WebRTC 5G Pipeline with Free TURN Relay ---
+        // --- WebRTC with Free STUN & TURN Relay ---
         let pc;
         const screenVideo = document.getElementById('screen-video');
         const cameraVideo = document.getElementById('camera-video');
@@ -254,7 +260,6 @@
         async function startWebRTC() {
             document.getElementById('video-overlay').classList.add('hidden');
             
-            // STUN + Free OpenRelay TURN for 5G Carrier NAT Traversal
             pc = new RTCPeerConnection({
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -307,7 +312,7 @@
             sendCommand({ type: 'offer', sdp: offer.sdp });
         }
 
-        // --- 4. Window Manager ---
+        // --- Window Manager ---
         class WindowManager {
             constructor() {
                 this.zIndex = 10;
@@ -343,7 +348,6 @@
         }
         const wm = new WindowManager();
 
-        // --- 5. Clock & Siren ---
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -364,7 +368,7 @@
             }
         }
 
-        // --- 6. Remote Touch & Drag ---
+        // --- Touch Input ---
         let isDraggingVideo = false, startNormX = 0, startNormY = 0;
         screenVideo.addEventListener('mousedown', (e) => {
             isDraggingVideo = true;
@@ -391,7 +395,6 @@
             sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
         }
 
-        // --- 7. Notification Toasts ---
         function showNotification(notif) {
             const toast = document.createElement('div');
             toast.className = 'bg-white/95 backdrop-blur rounded-lg shadow-xl p-3 border-l-4 border-blue-500 pointer-events-auto transform transition-all translate-x-full';
@@ -425,7 +428,6 @@
             }
         }
 
-        // --- 8. SMS, Contacts & Location Renderers ---
         function renderSms(sms) {
             const list = document.getElementById('sms-list');
             list.innerHTML = '';
