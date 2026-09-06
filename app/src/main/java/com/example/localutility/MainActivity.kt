@@ -9,7 +9,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -53,15 +52,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Generate persistent 6-digit pairing code for this session
-        if (LocalFileServerService.currentPairingCode == "123456") {
-            LocalFileServerService.currentPairingCode = (Random.nextInt(900000) + 100000).toString()
+        // 1. Persistent 6-Digit Code (Stays the same across restarts)
+        val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
+        var code = prefs.getString("pairing_code", null)
+        if (code == null) {
+            code = (Random.nextInt(900000) + 100000).toString()
+            prefs.edit().putString("pairing_code", code).apply()
         }
+        LocalFileServerService.currentPairingCode = code
 
         nsdManager = NsdDiscoveryManager(this)
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        // Request Permissions
+        // 2. Request Permissions
         requestPermissionsLauncher.launch(
             arrayOf(
                 android.Manifest.permission.CAMERA,
@@ -75,8 +78,10 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        // Start Foreground Service
-        val fileServiceIntent = Intent(this, LocalFileServerService::class.java)
+        // 3. Start Foreground Service with Pairing Code
+        val fileServiceIntent = Intent(this, LocalFileServerService::class.java).apply {
+            putExtra("PAIRING_CODE", code)
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(fileServiceIntent)
         } else {
@@ -85,7 +90,6 @@ class MainActivity : ComponentActivity() {
 
         nsdManager.registerService()
 
-        val pairingCode = LocalFileServerService.currentPairingCode
         val localIp = getRealLocalIpAddress()
 
         setContent {
@@ -110,20 +114,19 @@ class MainActivity : ComponentActivity() {
                         
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // 5G Remote Mode Card
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                         ) {
                             Column(
-                                modifier = Modifier.padding(16.dp),
+                                modifier = Modifier.padding(20.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text("5G / Anywhere Remote Code:", fontSize = 14.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = pairingCode,
-                                    fontSize = 36.sp,
+                                    text = code,
+                                    fontSize = 40.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     fontFamily = FontFamily.Monospace,
                                     color = MaterialTheme.colorScheme.primary
