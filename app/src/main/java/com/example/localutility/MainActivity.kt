@@ -4,21 +4,27 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
-import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
-import android.text.format.Formatter
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.net.Inet4Address
+import java.net.NetworkInterface
+import java.util.Collections
+import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
 
@@ -47,10 +53,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Generate persistent 6-digit pairing code for this session
+        if (LocalFileServerService.currentPairingCode == "123456") {
+            LocalFileServerService.currentPairingCode = (Random.nextInt(900000) + 100000).toString()
+        }
+
         nsdManager = NsdDiscoveryManager(this)
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        // 1. Request Runtime Permissions
+        // Request Permissions
         requestPermissionsLauncher.launch(
             arrayOf(
                 android.Manifest.permission.CAMERA,
@@ -64,7 +75,7 @@ class MainActivity : ComponentActivity() {
             )
         )
 
-        // 2. Start Foreground Server Service
+        // Start Foreground Service
         val fileServiceIntent = Intent(this, LocalFileServerService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(fileServiceIntent)
@@ -72,10 +83,10 @@ class MainActivity : ComponentActivity() {
             startService(fileServiceIntent)
         }
 
-        // 3. Register mDNS Discovery
         nsdManager.registerService()
 
-        val ipAddress = getIpAddress()
+        val pairingCode = LocalFileServerService.currentPairingCode
+        val localIp = getRealLocalIpAddress()
 
         setContent {
             MaterialTheme {
@@ -92,29 +103,55 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Text(
                             text = "OpenDroid WebOS",
-                            fontSize = 26.sp,
+                            fontSize = 28.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // 5G Remote Mode Card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("5G / Anywhere Remote Code:", fontSize = 14.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = pairingCode,
+                                    fontSize = 36.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Enter this code on your Web Controller", fontSize = 12.sp, color = Color.Gray)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
                         Text(
-                            text = "Server running at:",
-                            fontSize = 16.sp
+                            text = "Local Wi-Fi IP: $localIp:8888",
+                            fontSize = 13.sp,
+                            color = Color.Gray
                         )
-                        Text(
-                            text = "http://$ipAddress:8888/",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
+
                         Spacer(modifier = Modifier.height(30.dp))
+
                         Button(
                             onClick = {
                                 val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
                                 screenCaptureLauncher.launch(captureIntent)
                             },
-                            modifier = Modifier.fillMaxWidth(0.8f)
+                            modifier = Modifier.fillMaxWidth(0.85f),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Start Screen Share")
+                            Text("Start Screen Share", fontSize = 16.sp)
                         }
                     }
                 }
@@ -122,13 +159,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun getIpAddress(): String {
-        return try {
-            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            Formatter.formatIpAddress(wifiManager.connectionInfo.ipAddress)
-        } catch (e: Exception) {
-            "192.168.x.x"
-        }
+    private fun getRealLocalIpAddress(): String {
+        try {
+            val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
+            for (intf in interfaces) {
+                val addrs = Collections.list(intf.inetAddresses)
+                for (addr in addrs) {
+                    if (!addr.isLoopbackAddress && addr is Inet4Address) {
+                        val host = addr.hostAddress ?: ""
+                        if (!host.startsWith("127.")) return host
+                    }
+                }
+            }
+        } catch (e: Exception) { e.printStackTrace() }
+        return "Offline"
     }
 
     override fun onDestroy() {

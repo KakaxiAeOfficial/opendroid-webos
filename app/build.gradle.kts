@@ -49,13 +49,16 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    // Ktor Server (Embedded CIO & WebSockets)
+    // Ktor Server (Local Wi-Fi Mode)
     val ktorVersion = "2.3.12"
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-server-cio:$ktorVersion")
     implementation("io.ktor:ktor-server-websockets:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
 
-    // WebRTC
+    // WebRTC Streaming
     implementation("io.getstream:stream-webrtc-android:1.1.1")
+
+    // Free Cloud Signaling (5G / Remote Mode)
+    implementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5")
 }

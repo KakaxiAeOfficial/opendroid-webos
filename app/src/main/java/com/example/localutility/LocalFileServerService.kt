@@ -16,6 +16,7 @@ import android.media.RingtoneManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import io.ktor.http.ContentType
 import io.ktor.http.content.PartData
@@ -34,6 +35,8 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import org.eclipse.paho.client.mqttv3.*
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -45,11 +48,13 @@ class LocalFileServerService : Service() {
     private lateinit var baseDir: File
     private var currentRingtone: Ringtone? = null
     private val wsMessageChannel = Channel<String>(Channel.UNLIMITED)
+    private var mqttClient: MqttClient? = null
 
     companion object {
         private const val PORT = 8888
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "FileServerChannel"
+        var currentPairingCode = "123456"
     }
 
     private val batteryReceiver = object : BroadcastReceiver() {
@@ -64,7 +69,7 @@ class LocalFileServerService : Service() {
                     put("percent", pct)
                     put("charging", isCharging)
                 }
-                wsMessageChannel.trySend(json.toString())
+                broadcastMessage(json.toString())
             }
         }
     }
@@ -74,6 +79,7 @@ class LocalFileServerService : Service() {
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        initCloudBridge()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -84,8 +90,8 @@ class LocalFileServerService : Service() {
 
     private fun startForegroundService() {
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("OpenDroid Local Server")
-            .setContentText("Running on port $PORT")
+            .setContentTitle("OpenDroid Active (5G & Local)")
+            .setContentText("Pairing Code: $currentPairingCode")
             .setSmallIcon(android.R.drawable.ic_menu_share)
             .setOngoing(true)
             .build()
@@ -94,6 +100,129 @@ class LocalFileServerService : Service() {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
             startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    // --- 5G Free Cloud Bridge (MQTT over WebSocket) ---
+    private fun initCloudBridge() {
+        serviceScope.launch {
+            try {
+                val brokerUrl = "tcp://broker.hivemq.com:1883"
+                val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
+                mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
+
+                val options = MqttConnectOptions().apply {
+                    isCleanSession = true
+                    connectionTimeout = 30
+                    keepAliveInterval = 60
+                    isAutomaticReconnect = true
+                }
+
+                mqttClient?.setCallback(object : MqttCallbackExtended {
+                    override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                        Log.d("CloudBridge", "Connected to Cloud Broker")
+                        mqttClient?.subscribe("opendroid/$currentPairingCode/phone", 1)
+                    }
+
+                    override fun connectionLost(cause: Throwable?) {
+                        Log.w("CloudBridge", "Connection lost, will reconnect automatically", cause)
+                    }
+
+                    override fun messageArrived(topic: String?, message: MqttMessage?) {
+                        message?.let {
+                            val text = String(it.payload)
+                            handleIncomingJson(JSONObject(text))
+                        }
+                    }
+
+                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                })
+
+                mqttClient?.connect(options)
+            } catch (e: Exception) {
+                Log.e("CloudBridge", "MQTT Connect Error", e)
+            }
+        }
+    }
+
+    private fun broadcastMessage(msg: String) {
+        wsMessageChannel.trySend(msg)
+        try {
+            if (mqttClient?.isConnected == true) {
+                val mqttMsg = MqttMessage(msg.toByteArray()).apply { qos = 1 }
+                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+            }
+        } catch (e: Exception) {
+            Log.e("CloudBridge", "Publish Error", e)
+        }
+    }
+
+    private fun handleIncomingJson(json: JSONObject) {
+        val webRtcManager = WebRtcManager.getInstance(applicationContext)
+        val teleManager = TelephonyAndLocationManager(applicationContext)
+
+        when (json.optString("type")) {
+            "offer" -> webRtcManager.handleRemoteOffer(json.getString("sdp"))
+            "candidate" -> webRtcManager.handleRemoteIceCandidate(
+                json.getString("sdpMid"), json.getInt("sdpMLineIndex"), json.getString("candidate")
+            )
+            "ping" -> broadcastMessage("{\"type\":\"pong\",\"timestamp\":${json.optLong("timestamp")}}")
+        }
+
+        when (json.optString("action")) {
+            "INPUT_TAP" -> {
+                RemoteInputService.instance?.dispatchTap(
+                    json.getDouble("x").toFloat(),
+                    json.getDouble("y").toFloat()
+                )
+            }
+            "INPUT_SWIPE" -> {
+                RemoteInputService.instance?.dispatchSwipe(
+                    json.getDouble("startX").toFloat(),
+                    json.getDouble("startY").toFloat(),
+                    json.getDouble("endX").toFloat(),
+                    json.getDouble("endY").toFloat()
+                )
+            }
+            "GLOBAL_ACTION" -> {
+                RemoteInputService.instance?.executeGlobalAction(json.getString("actionType"))
+            }
+            "START_CAMERA" -> {
+                val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
+                    putExtra("facing", json.optString("facing", "back"))
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
+                else startService(intent)
+            }
+            "SWITCH_CAMERA" -> webRtcManager.switchCamera()
+            "TOGGLE_FLASHLIGHT" -> CameraStreamService.instance?.toggleFlashlight()
+            "QUICK_REPLY" -> {
+                NotificationMirrorService.instance?.sendQuickReply(
+                    json.getString("key"),
+                    json.getString("text")
+                )
+            }
+            "RING_SIREN" -> {
+                val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                audioManager.setStreamVolume(AudioManager.STREAM_ALARM, audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
+                val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                currentRingtone = RingtoneManager.getRingtone(applicationContext, uri).apply {
+                    audioAttributes = AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build()
+                    play()
+                }
+            }
+            "STOP_SIREN" -> currentRingtone?.stop()
+            "MAKE_CALL" -> teleManager.makeCall(json.getString("number"))
+            "FETCH_LOCATION" -> broadcastMessage(teleManager.getLocation().put("type", "LOCATION").toString())
+            "FETCH_SMS" -> broadcastMessage(JSONObject().put("type", "SMS_LIST").put("data", teleManager.getRecentSms()).toString())
+            "FETCH_CONTACTS" -> broadcastMessage(JSONObject().put("type", "CONTACTS_LIST").put("data", teleManager.getContacts()).toString())
+            "SEND_SMS" -> {
+                val success = teleManager.sendSms(json.getString("to"), json.getString("message"))
+                broadcastMessage("{\"type\":\"SMS_SENT\",\"success\":$success}")
+            }
         }
     }
 
@@ -145,28 +274,10 @@ class LocalFileServerService : Service() {
                 call.respondText("{\"status\":\"success\"}", ContentType.Application.Json)
             }
 
-            get("/api/sms") {
-                call.respondText(teleManager.getRecentSms().toString(), ContentType.Application.Json)
-            }
-
-            post("/api/sms/send") {
-                val json = JSONObject(call.receiveText())
-                val success = teleManager.sendSms(json.optString("to"), json.optString("message"))
-                call.respondText("{\"success\": $success}", ContentType.Application.Json)
-            }
-
-            get("/api/contacts") {
-                call.respondText(teleManager.getContacts().toString(), ContentType.Application.Json)
-            }
-
-            get("/api/location") {
-                call.respondText(teleManager.getLocation().toString(), ContentType.Application.Json)
-            }
-
             webSocket("/ws") {
                 val webRtcManager = WebRtcManager.getInstance(applicationContext)
-                webRtcManager.onSendMessage = { wsMessageChannel.trySend(it) }
-                NotificationMirrorService.instance?.onNotificationPosted = { wsMessageChannel.trySend(it.toString()) }
+                webRtcManager.onSendMessage = { broadcastMessage(it) }
+                NotificationMirrorService.instance?.onNotificationPosted = { broadcastMessage(it.toString()) }
 
                 val senderJob = launch {
                     for (msg in wsMessageChannel) {
@@ -176,65 +287,7 @@ class LocalFileServerService : Service() {
 
                 for (frame in incoming) {
                     if (frame is Frame.Text) {
-                        val text = frame.readText()
-                        val json = JSONObject(text)
-
-                        when (json.optString("type")) {
-                            "offer" -> webRtcManager.handleRemoteOffer(json.getString("sdp"))
-                            "candidate" -> webRtcManager.handleRemoteIceCandidate(
-                                json.getString("sdpMid"), json.getInt("sdpMLineIndex"), json.getString("candidate")
-                            )
-                            "ping" -> send(Frame.Text("{\"type\":\"pong\",\"timestamp\":${json.optLong("timestamp")}}"))
-                        }
-
-                        when (json.optString("action")) {
-                            "INPUT_TAP" -> {
-                                RemoteInputService.instance?.dispatchTap(
-                                    json.getDouble("x").toFloat(),
-                                    json.getDouble("y").toFloat()
-                                )
-                            }
-                            "INPUT_SWIPE" -> {
-                                RemoteInputService.instance?.dispatchSwipe(
-                                    json.getDouble("startX").toFloat(),
-                                    json.getDouble("startY").toFloat(),
-                                    json.getDouble("endX").toFloat(),
-                                    json.getDouble("endY").toFloat()
-                                )
-                            }
-                            "GLOBAL_ACTION" -> {
-                                RemoteInputService.instance?.executeGlobalAction(json.getString("actionType"))
-                            }
-                            "START_CAMERA" -> {
-                                val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
-                                    putExtra("facing", json.optString("facing", "back"))
-                                }
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-                                else startService(intent)
-                            }
-                            "SWITCH_CAMERA" -> webRtcManager.switchCamera()
-                            "TOGGLE_FLASHLIGHT" -> CameraStreamService.instance?.toggleFlashlight()
-                            "QUICK_REPLY" -> {
-                                NotificationMirrorService.instance?.sendQuickReply(
-                                    json.getString("key"),
-                                    json.getString("text")
-                                )
-                            }
-                            "RING_SIREN" -> {
-                                val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-                                audioManager.setStreamVolume(AudioManager.STREAM_ALARM, audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
-                                val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                                currentRingtone = RingtoneManager.getRingtone(applicationContext, uri).apply {
-                                    audioAttributes = AudioAttributes.Builder()
-                                        .setUsage(AudioAttributes.USAGE_ALARM)
-                                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                                        .build()
-                                    play()
-                                }
-                            }
-                            "STOP_SIREN" -> currentRingtone?.stop()
-                            "MAKE_CALL" -> teleManager.makeCall(json.getString("number"))
-                        }
+                        handleIncomingJson(JSONObject(frame.readText()))
                     }
                 }
                 senderJob.cancel()
@@ -254,6 +307,7 @@ class LocalFileServerService : Service() {
         unregisterReceiver(batteryReceiver)
         currentRingtone?.stop()
         server?.stop(1000, 2000)
+        try { mqttClient?.disconnect() } catch (e: Exception) {}
         serviceScope.cancel()
     }
 
