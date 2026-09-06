@@ -107,50 +107,46 @@ class LocalFileServerService : Service() {
 
     private fun initCloudBridge() {
         serviceScope.launch {
-            val brokers = listOf("tcp://broker.hivemq.com:1883", "tcp://broker.emqx.io:1883")
-            for (brokerUrl in brokers) {
-                try {
-                    val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
-                    mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
+            try {
+                // Fixed directly to EMQX Public Broker (No mismatch possible)
+                val brokerUrl = "tcp://broker.emqx.io:1883"
+                val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
+                mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
-                    val options = MqttConnectOptions().apply {
-                        isCleanSession = true
-                        connectionTimeout = 15
-                        keepAliveInterval = 30
-                        isAutomaticReconnect = true
-                    }
-
-                    mqttClient?.setCallback(object : MqttCallbackExtended {
-                        override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                            Log.d("CloudBridge", "Connected to Broker: $serverURI with Code: $currentPairingCode")
-                            isCloudConnected = true
-                            onCloudStatusChanged?.invoke(true)
-                            subscribeToCode(currentPairingCode)
-                        }
-
-                        override fun connectionLost(cause: Throwable?) {
-                            Log.w("CloudBridge", "Connection lost", cause)
-                            isCloudConnected = false
-                            onCloudStatusChanged?.invoke(false)
-                        }
-
-                        override fun messageArrived(topic: String?, message: MqttMessage?) {
-                            message?.let {
-                                val text = String(it.payload)
-                                handleIncomingJson(JSONObject(text))
-                            }
-                        }
-
-                        override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-                    })
-
-                    mqttClient?.connect(options)
-                    if (mqttClient?.isConnected == true) {
-                        break // Connected successfully
-                    }
-                } catch (e: Exception) {
-                    Log.e("CloudBridge", "Failed to connect to $brokerUrl", e)
+                val options = MqttConnectOptions().apply {
+                    isCleanSession = true
+                    connectionTimeout = 15
+                    keepAliveInterval = 30
+                    isAutomaticReconnect = true
                 }
+
+                mqttClient?.setCallback(object : MqttCallbackExtended {
+                    override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                        Log.d("CloudBridge", "Connected to EMQX Broker with Code: $currentPairingCode")
+                        isCloudConnected = true
+                        onCloudStatusChanged?.invoke(true)
+                        subscribeToCode(currentPairingCode)
+                    }
+
+                    override fun connectionLost(cause: Throwable?) {
+                        Log.w("CloudBridge", "Connection lost", cause)
+                        isCloudConnected = false
+                        onCloudStatusChanged?.invoke(false)
+                    }
+
+                    override fun messageArrived(topic: String?, message: MqttMessage?) {
+                        message?.let {
+                            val text = String(it.payload)
+                            handleIncomingJson(JSONObject(text))
+                        }
+                    }
+
+                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                })
+
+                mqttClient?.connect(options)
+            } catch (e: Exception) {
+                Log.e("CloudBridge", "EMQX Connect Error", e)
             }
         }
     }
@@ -158,15 +154,25 @@ class LocalFileServerService : Service() {
     private fun subscribeToCode(code: String) {
         try {
             mqttClient?.subscribe("opendroid/$code/phone", 1)
-            broadcastMessage(JSONObject().apply {
-                put("type", "HANDSHAKE_ACK")
-                put("code", code)
-                put("device", Build.MODEL)
-            }.toString())
-            broadcastBatteryStatus()
+            sendFullSyncData()
         } catch (e: Exception) {
             Log.e("CloudBridge", "Subscribe error", e)
         }
+    }
+
+    private fun sendFullSyncData() {
+        val teleManager = TelephonyAndLocationManager(applicationContext)
+        broadcastMessage(JSONObject().apply {
+            put("type", "HANDSHAKE_ACK")
+            put("code", currentPairingCode)
+            put("device", Build.MODEL)
+        }.toString())
+        broadcastBatteryStatus()
+        try {
+            broadcastMessage(teleManager.getLocation().put("type", "LOCATION").toString())
+            broadcastMessage(JSONObject().put("type", "SMS_LIST").put("data", teleManager.getRecentSms()).toString())
+            broadcastMessage(JSONObject().put("type", "CONTACTS_LIST").put("data", teleManager.getContacts()).toString())
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     private fun broadcastBatteryStatus() {
@@ -218,12 +224,7 @@ class LocalFileServerService : Service() {
 
         when (json.optString("action")) {
             "HANDSHAKE" -> {
-                broadcastMessage(JSONObject().apply {
-                    put("type", "HANDSHAKE_ACK")
-                    put("code", currentPairingCode)
-                    put("device", Build.MODEL)
-                }.toString())
-                broadcastBatteryStatus()
+                sendFullSyncData()
             }
             "INPUT_TAP" -> {
                 RemoteInputService.instance?.dispatchTap(

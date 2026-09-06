@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Multi-Broker MQTT over WSS -->
+    <!-- EMQX WebSocket Client -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         body { overflow: hidden; background: url('https://images.unsplash.com/photo-1604328698692-f76ea9498e76?q=80&w=2070&auto=format&fit=crop') no-repeat center center fixed; background-size: cover; }
@@ -26,7 +26,7 @@
             <div class="w-14 h-14 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 shadow-lg">📱</div>
             <h2 class="text-xl font-bold text-gray-900">Connect to Device</h2>
             <p class="text-xs text-gray-500 mt-1 mb-4">Enter the 6-digit code shown on your phone screen:</p>
-            <input type="text" id="pairing-code-input" placeholder="e.g. 629724" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
+            <input type="text" id="pairing-code-input" placeholder="e.g. 303118" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
             <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition-all">Connect 5G Stream</button>
             <div class="mt-3">
                 <button onclick="connectLocal()" class="text-xs text-gray-400 hover:text-gray-600 underline">Or connect via Local Wi-Fi</button>
@@ -177,10 +177,10 @@
             }
             currentPairingCode = code;
             document.getElementById('pair-modal').classList.add('hidden');
-            document.getElementById('ws-status-taskbar').textContent = '● Connecting to Broker...';
+            document.getElementById('ws-status-taskbar').textContent = '● Connecting to EMQX Broker...';
 
-            // Connect over WSS
-            mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+            // Connect over WSS to exact same EMQX Cloud Broker
+            mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
             
             mqttClient.on('connect', () => {
                 document.getElementById('ws-status-taskbar').textContent = '● Pinging Phone...';
@@ -189,6 +189,7 @@
                 mqttClient.subscribe(`opendroid/${currentPairingCode}/pc`, { qos: 1 });
 
                 // Repeat Handshake Ping every 1.5s until phone answers
+                if (handshakeInterval) clearInterval(handshakeInterval);
                 handshakeInterval = setInterval(() => {
                     sendCommand({ action: 'HANDSHAKE', code: currentPairingCode });
                 }, 1500);
@@ -368,7 +369,7 @@
             }
         }
 
-        // --- Touch Input ---
+        // --- Touch Control ---
         let isDraggingVideo = false, startNormX = 0, startNormY = 0;
         screenVideo.addEventListener('mousedown', (e) => {
             isDraggingVideo = true;
@@ -431,6 +432,10 @@
         function renderSms(sms) {
             const list = document.getElementById('sms-list');
             list.innerHTML = '';
+            if (!sms || sms.length === 0) {
+                list.innerHTML = '<div class="p-3 text-center text-gray-400 text-sm">No messages found</div>';
+                return;
+            }
             sms.forEach(msg => {
                 const isInbox = msg.type === 'inbox';
                 list.innerHTML += `<div class="p-2 rounded-lg max-w-[85%] ${isInbox ? 'bg-white self-start border' : 'bg-green-100 self-end'}">
@@ -439,6 +444,7 @@
                 </div>`;
             });
         }
+
         function sendSms() {
             const to = document.getElementById('sms-to').value;
             const body = document.getElementById('sms-body').value;
@@ -451,12 +457,17 @@
         function renderContacts(contacts) {
             const list = document.getElementById('contacts-list');
             list.innerHTML = '';
+            if (!contacts || contacts.length === 0) {
+                list.innerHTML = '<div class="p-3 text-center text-gray-400 text-sm">No contacts found</div>';
+                return;
+            }
             contacts.forEach(c => {
                 list.innerHTML += `<div class="p-3 hover:bg-gray-50 cursor-pointer flex justify-between" onclick="document.getElementById('dial-number').value = '${c.number}'">
                     <span class="font-medium text-gray-800">${c.name}</span><span class="text-sm text-gray-500 font-mono">${c.number}</span>
                 </div>`;
             });
         }
+
         function makeCall() {
             const num = document.getElementById('dial-number').value;
             if(num) sendCommand({ action: 'MAKE_CALL', number: num });
