@@ -40,6 +40,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import javax.net.ssl.SSLSocketFactory
 
 class LocalFileServerService : Service() {
 
@@ -54,28 +55,20 @@ class LocalFileServerService : Service() {
         private const val PORT = 8888
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "FileServerChannel"
-        var currentPairingCode = "123456"
+        var currentPairingCode: String = "123456"
     }
 
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-            val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-            val isCharging = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1) == BatteryManager.BATTERY_STATUS_CHARGING
-            if (level != -1 && scale != -1) {
-                val pct = (level * 100 / scale.toFloat()).toInt()
-                val json = JSONObject().apply {
-                    put("type", "BATTERY")
-                    put("percent", pct)
-                    put("charging", isCharging)
-                }
-                broadcastMessage(json.toString())
-            }
+            broadcastBatteryStatus()
         }
     }
 
     override fun onCreate() {
         super.onCreate()
+        val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
+        currentPairingCode = prefs.getString("pairing_code", currentPairingCode) ?: currentPairingCode
+
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -83,6 +76,12 @@ class LocalFileServerService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent?.getStringExtra("PAIRING_CODE")?.let {
+            if (it.isNotEmpty() && it != currentPairingCode) {
+                currentPairingCode = it
+                reconnectMqtt()
+            }
+        }
         startForegroundService()
         startServer()
         return START_STICKY
@@ -90,7 +89,7 @@ class LocalFileServerService : Service() {
 
     private fun startForegroundService() {
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("OpenDroid Active (5G & Local)")
+            .setContentTitle("OpenDroid 5G Active")
             .setContentText("Pairing Code: $currentPairingCode")
             .setSmallIcon(android.R.drawable.ic_menu_share)
             .setOngoing(true)
@@ -103,29 +102,31 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // --- 5G Free Cloud Bridge (MQTT over WebSocket) ---
     private fun initCloudBridge() {
         serviceScope.launch {
             try {
-                val brokerUrl = "tcp://broker.hivemq.com:1883"
+                // SSL encrypted port 8883 (Not blocked by 5G telecom firewalls)
+                val brokerUrl = "ssl://broker.hivemq.com:8883"
                 val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
                 mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
                 val options = MqttConnectOptions().apply {
                     isCleanSession = true
                     connectionTimeout = 30
-                    keepAliveInterval = 60
+                    keepAliveInterval = 30
                     isAutomaticReconnect = true
+                    socketFactory = SSLSocketFactory.getDefault()
                 }
 
                 mqttClient?.setCallback(object : MqttCallbackExtended {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        Log.d("CloudBridge", "Connected to Cloud Broker")
+                        Log.d("CloudBridge", "Connected via SSL to Cloud Broker. Code: $currentPairingCode")
                         mqttClient?.subscribe("opendroid/$currentPairingCode/phone", 1)
+                        broadcastBatteryStatus()
                     }
 
                     override fun connectionLost(cause: Throwable?) {
-                        Log.w("CloudBridge", "Connection lost, will reconnect automatically", cause)
+                        Log.w("CloudBridge", "Connection lost", cause)
                     }
 
                     override fun messageArrived(topic: String?, message: MqttMessage?) {
@@ -145,15 +146,48 @@ class LocalFileServerService : Service() {
         }
     }
 
+    private fun reconnectMqtt() {
+        serviceScope.launch {
+            try {
+                if (mqttClient?.isConnected == true) {
+                    mqttClient?.subscribe("opendroid/$currentPairingCode/phone", 1)
+                    broadcastBatteryStatus()
+                }
+            } catch (e: Exception) {
+                Log.e("CloudBridge", "Resubscribe Error", e)
+            }
+        }
+    }
+
+    private fun broadcastBatteryStatus() {
+        try {
+            val batteryStatus: Intent? = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val level = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+            val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+            val isCharging = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) == BatteryManager.BATTERY_STATUS_CHARGING
+            if (level != -1 && scale != -1) {
+                val pct = (level * 100 / scale.toFloat()).toInt()
+                val json = JSONObject().apply {
+                    put("type", "BATTERY")
+                    put("percent", pct)
+                    put("charging", isCharging)
+                }
+                broadcastMessage(json.toString())
+            }
+        } catch (e: Exception) { e.printStackTrace() }
+    }
+
     private fun broadcastMessage(msg: String) {
         wsMessageChannel.trySend(msg)
-        try {
-            if (mqttClient?.isConnected == true) {
-                val mqttMsg = MqttMessage(msg.toByteArray()).apply { qos = 1 }
-                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+        serviceScope.launch {
+            try {
+                if (mqttClient?.isConnected == true) {
+                    val mqttMsg = MqttMessage(msg.toByteArray()).apply { qos = 1 }
+                    mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+                }
+            } catch (e: Exception) {
+                Log.e("CloudBridge", "Publish Error", e)
             }
-        } catch (e: Exception) {
-            Log.e("CloudBridge", "Publish Error", e)
         }
     }
 
@@ -166,10 +200,21 @@ class LocalFileServerService : Service() {
             "candidate" -> webRtcManager.handleRemoteIceCandidate(
                 json.getString("sdpMid"), json.getInt("sdpMLineIndex"), json.getString("candidate")
             )
-            "ping" -> broadcastMessage("{\"type\":\"pong\",\"timestamp\":${json.optLong("timestamp")}}")
+            "ping" -> {
+                broadcastMessage("{\"type\":\"pong\",\"timestamp\":${json.optLong("timestamp")}}")
+                broadcastBatteryStatus()
+            }
         }
 
         when (json.optString("action")) {
+            "HANDSHAKE" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "HANDSHAKE_ACK")
+                    put("code", currentPairingCode)
+                    put("device", Build.MODEL)
+                }.toString())
+                broadcastBatteryStatus()
+            }
             "INPUT_TAP" -> {
                 RemoteInputService.instance?.dispatchTap(
                     json.getDouble("x").toFloat(),

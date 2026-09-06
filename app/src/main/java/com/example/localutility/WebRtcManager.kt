@@ -60,11 +60,28 @@ class WebRtcManager private constructor(private val context: Context) {
     }
 
     private fun createPeerConnection() {
+        // High-Performance Free STUN and TURN Servers for 5G Bypass
         val iceServers = listOf(
-            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer()
+            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
+            PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
+            PeerConnection.IceServer.builder("stun:openrelay.metered.ca:80").createIceServer(),
+            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:80")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer(),
+            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer(),
+            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443?transport=tcp")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer()
         )
+
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+            continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
         }
 
         peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
@@ -78,7 +95,9 @@ class WebRtcManager private constructor(private val context: Context) {
                 onSendMessage?.invoke(json.toString())
             }
             override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
-            override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {}
+            override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
+                Log.d("WebRTC", "IceConnectionState changed to: $state")
+            }
             override fun onIceConnectionReceivingChange(receiving: Boolean) {}
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
             override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) {}
@@ -118,7 +137,7 @@ class WebRtcManager private constructor(private val context: Context) {
             currentVideoCapturer?.initialize(surfaceTextureHelper, context, videoSource!!.capturerObserver)
             currentVideoCapturer?.startCapture(1280, 720, 30)
 
-            val newTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv${System.currentTimeMillis()}", videoSource)
+            val newTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
 
             val sender = peerConnection?.senders?.find { it.track()?.kind() == "video" }
             if (sender != null) {
