@@ -205,7 +205,7 @@
         </div>
     </div>
 
-    <!-- Window: Call Logs (Updated to 200 calls) -->
+    <!-- Window: Call Logs -->
     <div id="call-logs-window" class="window hidden" style="width: 420px; height: 480px; top: 120px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -222,6 +222,49 @@
             <div id="call-logs-list" class="flex-1 overflow-y-auto divide-y text-xs">
                 <div class="p-4 text-center text-gray-400 text-xs">Loading call logs...</div>
             </div>
+        </div>
+    </div>
+
+    <!-- Window: Apps (Installed Apps List - New) -->
+    <div id="apps-window" class="window hidden" style="width: 420px; height: 500px; top: 130px; left: 390px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📱</span>
+                <span class="font-semibold text-xs">Installed Applications</span>
+            </div>
+            <button onclick="wm.closeWindow('apps-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+        </div>
+        <div class="flex-1 bg-white overflow-hidden flex flex-col">
+            <div class="p-2.5 bg-gray-50 border-b flex items-center gap-2">
+                <input type="text" id="apps-search" oninput="filterApps(this.value)" placeholder="Search apps..." class="flex-1 border rounded-lg px-2.5 py-1 text-xs focus:ring-1 focus:ring-blue-500">
+                <button onclick="sendCommand({action: 'FETCH_APPS'})" class="text-xs text-blue-600 hover:underline">🔄 Refresh</button>
+            </div>
+            <div id="apps-list" class="flex-1 overflow-y-auto divide-y text-xs">
+                <div class="p-4 text-center text-gray-400 text-xs">Loading applications...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Window: Clipboard Sync (Upgraded) -->
+    <div id="clipboard-window" class="window hidden" style="width: 380px; height: 300px; top: 150px; left: 410px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📋</span>
+                <span class="font-semibold text-xs">Clipboard Sync</span>
+            </div>
+            <button onclick="wm.closeWindow('clipboard-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+        </div>
+        <div class="flex-1 p-3 bg-gray-50 flex flex-col gap-2">
+            <div class="flex justify-between items-center text-[11px] text-gray-500">
+                <span>Phone Clipboard Text:</span>
+                <button onclick="sendCommand({action: 'FETCH_CLIPBOARD'})" class="text-blue-600 hover:underline">📥 Read from Phone</button>
+            </div>
+            <textarea id="clipboard-input" placeholder="Type text here to copy to phone..." class="flex-1 border rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-blue-500 resize-none font-mono"></textarea>
+            <div class="flex gap-2">
+                <button onclick="syncClipboard()" class="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-1.5 rounded-lg text-xs shadow">📤 Send to Phone</button>
+                <button onclick="copyToPcClipboard()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold px-3 py-1.5 rounded-lg text-xs">Copy to PC</button>
+            </div>
+            <div id="clipboard-status" class="text-[10px] text-gray-400 text-center"></div>
         </div>
     </div>
 
@@ -263,18 +306,6 @@
         </div>
     </div>
 
-    <!-- Window: Clipboard Sync -->
-    <div id="clipboard-window" class="window hidden" style="width: 360px; height: 260px; top: 160px; left: 420px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <span class="font-semibold text-xs">📋 Clipboard Sync</span>
-            <button onclick="wm.closeWindow('clipboard-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
-        </div>
-        <div class="flex-1 p-3 bg-gray-50 flex flex-col gap-2">
-            <textarea id="clipboard-input" placeholder="Type or paste text here to copy to phone..." class="flex-1 border rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-500"></textarea>
-            <button onclick="syncClipboard()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 rounded-lg text-xs">Copy to Phone</button>
-        </div>
-    </div>
-
     <!-- Window: Find Phone (GPS Map) -->
     <div id="map-window" class="window hidden" style="width: 520px; height: 420px; top: 130px; left: 420px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -293,6 +324,7 @@
         let isCloudMode = true;
         let handshakeInterval = null;
         let latestLocation = null;
+        let allInstalledApps = [];
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -377,6 +409,15 @@
                 renderStorage(data.data);
             } else if (data.type === 'CALL_LOGS_LIST') {
                 renderCallLogs(data.data);
+            } else if (data.type === 'APPS_LIST') {
+                allInstalledApps = data.data || [];
+                renderApps(allInstalledApps);
+            } else if (data.type === 'CLIPBOARD_DATA') {
+                document.getElementById('clipboard-input').value = data.text || '';
+                document.getElementById('clipboard-status').textContent = 'Fetched from phone just now';
+            } else if (data.type === 'CLIPBOARD_SET_ACK') {
+                document.getElementById('clipboard-status').textContent = 'Copied to phone clipboard successfully!';
+                setTimeout(() => { document.getElementById('clipboard-status').textContent = ''; }, 3000);
             }
         }
 
@@ -413,6 +454,8 @@
                 if(id === 'contacts-window') sendCommand({action: 'FETCH_CONTACTS'});
                 if(id === 'info-window') sendCommand({action: 'FETCH_STORAGE'});
                 if(id === 'call-logs-window') sendCommand({action: 'FETCH_CALL_LOGS'});
+                if(id === 'apps-window') sendCommand({action: 'FETCH_APPS'});
+                if(id === 'clipboard-window') sendCommand({action: 'FETCH_CLIPBOARD'});
                 if(id === 'map-window') {
                     sendCommand({action: 'FETCH_LOCATION'});
                     if (latestLocation) renderMap(latestLocation);
@@ -482,6 +525,53 @@
             });
         }
 
+        function renderApps(apps) {
+            const list = document.getElementById('apps-list');
+            list.innerHTML = '';
+            if (!apps || apps.length === 0) {
+                list.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">No applications found</div>';
+                return;
+            }
+            apps.forEach(app => {
+                list.innerHTML += `
+                    <div class="p-3 hover:bg-gray-50 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">📱</div>
+                            <div>
+                                <div class="font-semibold text-gray-800 text-xs">${app.name}</div>
+                                <div class="text-[10px] text-gray-400 font-mono">${app.package}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function filterApps(query) {
+            const q = query.toLowerCase();
+            const filtered = allInstalledApps.filter(app => 
+                app.name.toLowerCase().includes(q) || app.package.toLowerCase().includes(q)
+            );
+            renderApps(filtered);
+        }
+
+        function syncClipboard() {
+            const text = document.getElementById('clipboard-input').value;
+            if (text) {
+                sendCommand({ action: 'SET_CLIPBOARD', text: text });
+            }
+        }
+
+        function copyToPcClipboard() {
+            const text = document.getElementById('clipboard-input').value;
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    document.getElementById('clipboard-status').textContent = 'Copied to PC clipboard!';
+                    setTimeout(() => { document.getElementById('clipboard-status').textContent = ''; }, 2000);
+                });
+            }
+        }
+
         function renderSms(sms) {
             const list = document.getElementById('sms-list');
             list.innerHTML = '';
@@ -525,13 +615,6 @@
         function makeCall() {
             const num = document.getElementById('dial-number').value;
             if(num) sendCommand({ action: 'MAKE_CALL', number: num });
-        }
-
-        function syncClipboard() {
-            const text = document.getElementById('clipboard-input').value;
-            if (text) {
-                alert('Copied to phone buffer!');
-            }
         }
 
         let mapInstance = null, mapMarker = null;

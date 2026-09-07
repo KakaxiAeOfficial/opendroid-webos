@@ -1,6 +1,8 @@
 package com.example.localutility
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.location.Location
@@ -9,6 +11,8 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.os.StatFs
 import android.provider.CallLog
 import android.provider.ContactsContract
@@ -80,7 +84,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 2. Call Logs Query (Set to 200 Calls) ---
+    // --- 2. Call Logs Query (200 Calls Safe) ---
     fun getCallLogs(): JSONArray {
         val array = JSONArray()
         try {
@@ -105,7 +109,6 @@ class TelephonyAndLocationManager(private val context: Context) {
                 val durIdx = it.getColumnIndex(CallLog.Calls.DURATION)
 
                 var count = 0
-                // Limit set to 200 calls
                 while (it.moveToNext() && count < 200) {
                     val typeInt = if (typeIdx >= 0) it.getInt(typeIdx) else CallLog.Calls.INCOMING_TYPE
                     val typeStr = when (typeInt) {
@@ -131,7 +134,59 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 3. SMS Queries ---
+    // --- 3. Installed Apps Query ---
+    fun getInstalledApps(): JSONArray {
+        val array = JSONArray()
+        try {
+            val pm = context.packageManager
+            val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val apps = pm.queryIntentActivities(mainIntent, 0)
+            apps.sortWith { a, b ->
+                a.loadLabel(pm).toString().compareTo(b.loadLabel(pm).toString(), ignoreCase = true)
+            }
+
+            for (app in apps) {
+                val appName = app.loadLabel(pm).toString()
+                val pkgName = app.activityInfo.packageName
+                val obj = JSONObject().apply {
+                    put("name", appName)
+                    put("package", pkgName)
+                }
+                array.put(obj)
+            }
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error getting installed apps", e)
+        }
+        return array
+    }
+
+    // --- 4. Clipboard Operations ---
+    fun setClipboardText(text: String) {
+        Handler(Looper.getMainLooper()).post {
+            try {
+                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("OpenDroid", text))
+            } catch (e: Exception) {
+                Log.e("OpenDroid", "Error setting clipboard", e)
+            }
+        }
+    }
+
+    fun getClipboardText(): String {
+        return try {
+            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = cm.primaryClip
+            if (clip != null && clip.itemCount > 0) {
+                clip.getItemAt(0).text?.toString() ?: ""
+            } else ""
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    // --- 5. SMS Queries ---
     fun getRecentSms(): JSONArray {
         val array = JSONArray()
         try {
@@ -177,7 +232,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 4. Contacts Query ---
+    // --- 6. Contacts Query ---
     fun getContacts(): JSONArray {
         val array = JSONArray()
         try {
@@ -201,7 +256,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 5. GPS Location ---
+    // --- 7. GPS Location ---
     @SuppressLint("MissingPermission")
     fun getLocation(): JSONObject {
         val obj = JSONObject()
@@ -225,7 +280,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 6. Make Phone Call ---
+    // --- 8. Make Phone Call ---
     @SuppressLint("MissingPermission")
     fun makeCall(number: String) {
         try {

@@ -290,6 +290,18 @@ class LocalFileServerService : Service() {
                 val success = teleManager.sendSms(json.getString("to"), json.getString("message"))
                 broadcastMessage("{\"type\":\"SMS_SENT\",\"success\":$success}")
             }
+            // --- Phase C Actions: Apps & Clipboard ---
+            "FETCH_APPS" -> {
+                broadcastMessage(JSONObject().put("type", "APPS_LIST").put("data", teleManager.getInstalledApps()).toString())
+            }
+            "SET_CLIPBOARD" -> {
+                val text = json.optString("text", "")
+                teleManager.setClipboardText(text)
+                broadcastMessage(JSONObject().put("type", "CLIPBOARD_SET_ACK").put("status", "success").toString())
+            }
+            "FETCH_CLIPBOARD" -> {
+                broadcastMessage(JSONObject().put("type", "CLIPBOARD_DATA").put("text", teleManager.getClipboardText()).toString())
+            }
         }
     }
 

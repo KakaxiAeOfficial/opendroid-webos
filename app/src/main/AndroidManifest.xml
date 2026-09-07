@@ -29,6 +29,14 @@
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- Package Visibility Queries for Installed Apps (Android 11+) -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:label="OpenDroid WebOS"
