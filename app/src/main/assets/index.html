@@ -26,7 +26,7 @@
             <div class="w-14 h-14 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 shadow-lg">📱</div>
             <h2 class="text-xl font-bold text-gray-900">Connect to Device</h2>
             <p class="text-xs text-gray-500 mt-1 mb-4">Enter the 6-digit code shown on your phone screen:</p>
-            <input type="text" id="pairing-code-input" placeholder="e.g. 303118" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
+            <input type="text" id="pairing-code-input" placeholder="e.g. 811093" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
             <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition-all">Connect 5G Stream</button>
             <div class="mt-3">
                 <button onclick="connectLocal()" class="text-xs text-gray-400 hover:text-gray-600 underline">Or connect via Local Wi-Fi</button>
@@ -81,7 +81,7 @@
             <button onclick="wm.closeWindow('screen-window')" class="text-red-400 hover:text-red-500">✖</button>
         </div>
         <div class="flex-1 relative bg-black flex flex-col">
-            <video id="screen-video" class="flex-1 w-full" style="object-fit: fill; cursor: crosshair;" autoplay playsinline></video>
+            <video id="screen-video" class="flex-1 w-full" style="object-fit: fill; cursor: crosshair;" autoplay playsinline muted></video>
             <div class="bg-gray-900 h-12 flex justify-around items-center border-t border-gray-700">
                 <button onclick="sendGlobalAction('BACK')" class="text-white text-xl hover:text-gray-300 px-4">◀</button>
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-xl hover:text-gray-300 px-4">⚪</button>
@@ -103,7 +103,7 @@
             <video id="camera-video" class="flex-1 w-full object-contain" autoplay playsinline></video>
             <div class="bg-gray-900 p-3 flex flex-col gap-3 border-t border-gray-700">
                 <div class="flex justify-between">
-                    <button onclick="sendCommand({action: 'START_CAMERA', facing: 'back'})" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Start Camera</button>
+                    <button onclick="startCameraStream('back')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Start Camera</button>
                     <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">🔄 Switch</button>
                     <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700">💡 Flash</button>
                 </div>
@@ -168,6 +168,7 @@
         let localWs = null;
         let isCloudMode = true;
         let handshakeInterval = null;
+        let latestLocation = null;
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -179,7 +180,6 @@
             document.getElementById('pair-modal').classList.add('hidden');
             document.getElementById('ws-status-taskbar').textContent = '● Connecting to EMQX Broker...';
 
-            // Connect over WSS to exact same EMQX Cloud Broker
             mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
             
             mqttClient.on('connect', () => {
@@ -188,7 +188,6 @@
                 
                 mqttClient.subscribe(`opendroid/${currentPairingCode}/pc`, { qos: 1 });
 
-                // Repeat Handshake Ping every 1.5s until phone answers
                 if (handshakeInterval) clearInterval(handshakeInterval);
                 handshakeInterval = setInterval(() => {
                     sendCommand({ action: 'HANDSHAKE', code: currentPairingCode });
@@ -249,18 +248,21 @@
             } else if (data.type === 'CONTACTS_LIST') {
                 renderContacts(data.data);
             } else if (data.type === 'LOCATION') {
+                latestLocation = data;
                 renderMap(data);
             }
         }
 
-        // --- WebRTC with Free STUN & TURN Relay ---
-        let pc;
+        // --- WebRTC with STUN & Free TURN Relay ---
+        let pc = null;
         const screenVideo = document.getElementById('screen-video');
         const cameraVideo = document.getElementById('camera-video');
 
-        async function startWebRTC() {
-            document.getElementById('video-overlay').classList.add('hidden');
-            
+        async function initPeerConnection() {
+            if (pc) {
+                try { pc.close(); } catch(e) {}
+            }
+
             pc = new RTCPeerConnection({
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -290,10 +292,14 @@
             pc.ontrack = (event) => {
                 if (event.streams && event.streams[0]) {
                     const stream = event.streams[0];
-                    if (screenVideo.srcObject !== stream) screenVideo.srcObject = stream;
-                    if (cameraVideo.srcObject !== stream) cameraVideo.srcObject = stream;
-                    screenVideo.muted = true;
-                    cameraVideo.muted = false;
+                    if (screenVideo.srcObject !== stream) {
+                        screenVideo.srcObject = stream;
+                        screenVideo.play().catch(e => console.log('Autoplay handled', e));
+                    }
+                    if (cameraVideo.srcObject !== stream) {
+                        cameraVideo.srcObject = stream;
+                        cameraVideo.play().catch(e => console.log('Autoplay handled', e));
+                    }
                 }
             };
 
@@ -307,10 +313,22 @@
                     });
                 }
             };
+        }
+
+        async function startWebRTC() {
+            document.getElementById('video-overlay').classList.add('hidden');
+            await initPeerConnection();
 
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             sendCommand({ type: 'offer', sdp: offer.sdp });
+        }
+
+        async function startCameraStream(facing) {
+            sendCommand({ action: 'START_CAMERA', facing: facing });
+            if (!pc || pc.connectionState === 'closed') {
+                await startWebRTC();
+            }
         }
 
         // --- Window Manager ---
@@ -343,7 +361,10 @@
                 this.focus(win);
                 if(id === 'sms-window') sendCommand({action: 'FETCH_SMS'});
                 if(id === 'contacts-window') sendCommand({action: 'FETCH_CONTACTS'});
-                if(id === 'map-window') sendCommand({action: 'FETCH_LOCATION'});
+                if(id === 'map-window') {
+                    sendCommand({action: 'FETCH_LOCATION'});
+                    if (latestLocation) renderMap(latestLocation);
+                }
             }
             closeWindow(id) { document.getElementById(id).classList.add('hidden'); }
         }
@@ -475,16 +496,17 @@
 
         let mapInstance = null, mapMarker = null;
         function renderMap(loc) {
-            if(loc.error) return;
-            if(!mapInstance) {
+            if (!loc || loc.error || !loc.lat) {
+                document.getElementById('map-container').innerHTML = `<div class="p-4 text-center text-gray-600 mt-20">📍 Fetching GPS Location from Phone...</div>`;
+                return;
+            }
+            document.getElementById('map-container').innerHTML = `<div id="map" class="absolute inset-0"></div>`;
+            setTimeout(() => {
                 mapInstance = L.map('map').setView([loc.lat, loc.lng], 16);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapInstance);
-                mapMarker = L.marker([loc.lat, loc.lng]).addTo(mapInstance).bindPopup('Phone Location').openPopup();
-            } else {
-                mapInstance.setView([loc.lat, loc.lng], 16);
-                mapMarker.setLatLng([loc.lat, loc.lng]);
-            }
-            setTimeout(() => mapInstance.invalidateSize(), 150);
+                mapMarker = L.marker([loc.lat, loc.lng]).addTo(mapInstance).bindPopup('Phone Live Location').openPopup();
+                mapInstance.invalidateSize();
+            }, 100);
         }
     </script>
 </body>
