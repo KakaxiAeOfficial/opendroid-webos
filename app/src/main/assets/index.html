@@ -166,6 +166,60 @@
         </div>
     </div>
 
+    <!-- Window: Screen Mirroring (Phase E) -->
+    <div id="screen-window" class="window hidden" style="width: 360px; height: 680px; top: 60px; left: 330px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📱</span>
+                <span class="font-semibold text-xs">Screen Mirroring</span>
+            </div>
+            <button onclick="wm.closeWindow('screen-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+        </div>
+        <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
+            <!-- Screen Video Element -->
+            <video id="screen-video" class="flex-1 w-full h-full" style="object-fit: fill; cursor: crosshair;" autoplay playsinline muted></video>
+            
+            <!-- Android Navigation Bar -->
+            <div class="bg-gray-900 h-11 flex justify-around items-center border-t border-gray-700 z-10">
+                <button onclick="sendGlobalAction('BACK')" class="text-white text-lg hover:text-gray-300 px-4">◀</button>
+                <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
+                <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
+            </div>
+
+            <!-- Video Connect Overlay -->
+            <div id="screen-overlay" class="absolute inset-0 flex items-center justify-center text-white bg-black/70 z-20">
+                <button onclick="startWebRTC()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg transition-all">Start Live Screen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Window: Remote Camera (Phase E) -->
+    <div id="camera-window" class="window hidden" style="width: 420px; height: 560px; top: 70px; left: 360px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📷</span>
+                <span class="font-semibold text-xs">Remote Camera & Mic</span>
+            </div>
+            <button onclick="wm.closeWindow('camera-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+        </div>
+        <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
+            <video id="camera-video" class="flex-1 w-full object-contain" autoplay playsinline muted></video>
+            
+            <!-- Camera Hardware Controls -->
+            <div class="bg-gray-900 p-3 flex flex-col gap-2.5 border-t border-gray-700 z-10 text-xs">
+                <div class="flex justify-between items-center gap-2">
+                    <button onclick="startCameraStream('back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow">Start Camera</button>
+                    <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3 py-1.5 rounded-lg">🔄 Switch</button>
+                    <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3 py-1.5 rounded-lg">💡 Flash</button>
+                </div>
+                <div class="flex items-center gap-2 text-white text-[11px]">
+                    <span>🔊 Mic Volume:</span>
+                    <input type="range" id="mic-volume" min="0" max="1" step="0.1" value="0" class="flex-1" onchange="adjustAudioVolume(this.value)">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Window: Messages -->
     <div id="sms-window" class="window hidden" style="width: 440px; height: 520px; top: 80px; left: 320px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -245,7 +299,7 @@
         </div>
     </div>
 
-    <!-- Window: Files Explorer (Phase D) -->
+    <!-- Window: Files Explorer -->
     <div id="file-window" class="window hidden" style="width: 520px; height: 500px; top: 110px; left: 370px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -255,20 +309,18 @@
             <button onclick="wm.closeWindow('file-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
         </div>
         <div class="flex-1 bg-white overflow-hidden flex flex-col">
-            <!-- Navigation Toolbar -->
             <div class="p-2.5 bg-gray-50 border-b flex items-center gap-2 text-xs">
                 <button onclick="navigateUp()" class="px-2 py-1 bg-white border rounded hover:bg-gray-100 font-bold text-gray-700 shadow-sm">⬆ Up</button>
                 <div id="current-dir-path" class="flex-1 font-mono text-[11px] text-gray-600 truncate px-2 py-1 bg-white border rounded shadow-inner">/storage/emulated/0</div>
                 <button onclick="sendCommand({action: 'FETCH_DIR', path: currentDirPath})" class="text-blue-600 hover:underline text-xs">🔄 Refresh</button>
             </div>
-            <!-- Files & Folders List -->
             <div id="dir-files-list" class="flex-1 overflow-y-auto divide-y text-xs">
                 <div class="p-4 text-center text-gray-400 text-xs">Loading directory...</div>
             </div>
         </div>
     </div>
 
-    <!-- Window: Photos Gallery (Phase D) -->
+    <!-- Window: Photos Gallery -->
     <div id="photos-window" class="window hidden" style="width: 540px; height: 500px; top: 120px; left: 400px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -467,7 +519,136 @@
                 renderDirectory(data.data);
             } else if (data.type === 'PHOTOS_LIST') {
                 renderPhotos(data.data);
+            } else if (data.type === 'answer' && pc) {
+                console.log("Applying SDP Answer from phone...");
+                pc.setRemoteDescription(new RTCSessionDescription(data))
+                  .then(() => console.log("WebRTC P2P Video Connected!"))
+                  .catch(e => console.error("setRemoteDescription error:", e));
+            } else if (data.type === 'candidate' && pc) {
+                pc.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error("addIceCandidate error:", e));
             }
+        }
+
+        // --- WebRTC Video Engine (Screen & Camera) ---
+        let pc = null;
+        let incomingStream = new MediaStream();
+        const screenVideo = document.getElementById('screen-video');
+        const cameraVideo = document.getElementById('camera-video');
+
+        screenVideo.srcObject = incomingStream;
+        cameraVideo.srcObject = incomingStream;
+
+        async function initPeerConnection() {
+            if (pc) {
+                try { pc.close(); } catch(e) {}
+            }
+
+            incomingStream = new MediaStream();
+            screenVideo.srcObject = incomingStream;
+            cameraVideo.srcObject = incomingStream;
+
+            pc = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:openrelay.metered.ca:80' },
+                    {
+                        urls: 'turn:openrelay.metered.ca:80',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:443',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    },
+                    {
+                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
+                ]
+            });
+
+            pc.addTransceiver('video', { direction: 'recvonly' });
+            pc.addTransceiver('audio', { direction: 'recvonly' });
+
+            pc.ontrack = (event) => {
+                console.log("WebRTC ontrack received:", event.track.kind);
+                incomingStream.addTrack(event.track);
+
+                screenVideo.muted = true;
+                cameraVideo.muted = true;
+
+                screenVideo.play().catch(e => console.log("Screen video play:", e));
+                cameraVideo.play().catch(e => console.log("Camera video play:", e));
+            };
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    sendCommand({
+                        type: 'candidate',
+                        sdpMLineIndex: event.candidate.sdpMLineIndex,
+                        sdpMid: event.candidate.sdpMid,
+                        candidate: event.candidate.candidate
+                    });
+                }
+            };
+        }
+
+        async function startWebRTC() {
+            document.getElementById('screen-overlay').classList.add('hidden');
+            await initPeerConnection();
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            console.log("Sending WebRTC Offer to Phone...");
+            sendCommand({ type: 'offer', sdp: offer.sdp });
+        }
+
+        async function startCameraStream(facing) {
+            console.log("Requesting camera stream:", facing);
+            sendCommand({ action: 'START_CAMERA', facing: facing });
+            setTimeout(async () => {
+                await startWebRTC();
+            }, 400);
+        }
+
+        function adjustAudioVolume(val) {
+            cameraVideo.volume = parseFloat(val);
+            if (parseFloat(val) > 0) {
+                cameraVideo.muted = false;
+            } else {
+                cameraVideo.muted = true;
+            }
+        }
+
+        // --- Mouse Touch Injection (Screen Mirroring) ---
+        let isDraggingVideo = false, startNormX = 0, startNormY = 0;
+        screenVideo.addEventListener('mousedown', (e) => {
+            isDraggingVideo = true;
+            const rect = screenVideo.getBoundingClientRect();
+            startNormX = (e.clientX - rect.left) / rect.width;
+            startNormY = (e.clientY - rect.top) / rect.height;
+        });
+
+        screenVideo.addEventListener('mouseup', (e) => {
+            if (!isDraggingVideo) return;
+            isDraggingVideo = false;
+            const rect = screenVideo.getBoundingClientRect();
+            const endNormX = (e.clientX - rect.left) / rect.width;
+            const endNormY = (e.clientY - rect.top) / rect.height;
+            const distance = Math.hypot(endNormX - startNormX, endNormY - startNormY);
+
+            if (distance < 0.02) {
+                sendCommand({ action: 'INPUT_TAP', x: endNormX, y: endNormY });
+            } else {
+                sendCommand({ action: 'INPUT_SWIPE', startX: startNormX, startY: startNormY, endX: endNormX, endY: endNormY });
+            }
+        });
+
+        function sendGlobalAction(actionType) {
+            sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
         }
 
         // --- Window Manager Engine ---
@@ -606,7 +787,6 @@
             renderApps(filtered);
         }
 
-        // --- File Explorer Logic (Phase D) ---
         function renderDirectory(data) {
             if (!data) return;
             currentDirPath = data.currentPath || '';
@@ -657,7 +837,6 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
-        // --- Photos Gallery Logic (Phase D) ---
         function renderPhotos(photos) {
             const grid = document.getElementById('photos-grid');
             grid.innerHTML = '';

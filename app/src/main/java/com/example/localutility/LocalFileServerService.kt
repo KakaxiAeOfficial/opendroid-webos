@@ -74,6 +74,11 @@ class LocalFileServerService : Service() {
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        
+        // Connect WebRTC answers & ICE candidates directly to 5G Cloud Message Broker
+        val webRtcManager = WebRtcManager.getInstance(applicationContext)
+        webRtcManager.onSendMessage = { broadcastMessage(it) }
+
         startMqttWorker()
         initCloudBridge()
     }
@@ -252,6 +257,9 @@ class LocalFileServerService : Service() {
             "GLOBAL_ACTION" -> {
                 RemoteInputService.instance?.executeGlobalAction(json.getString("actionType"))
             }
+            "START_SCREEN_STREAM" -> {
+                // Prepares WebRTC for screen sharing
+            }
             "START_CAMERA" -> {
                 val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
                     putExtra("facing", json.optString("facing", "back"))
@@ -301,7 +309,6 @@ class LocalFileServerService : Service() {
             "FETCH_CLIPBOARD" -> {
                 broadcastMessage(JSONObject().put("type", "CLIPBOARD_DATA").put("text", teleManager.getClipboardText()).toString())
             }
-            // --- Phase D Actions: Files & Photos ---
             "FETCH_DIR" -> {
                 val path = json.optString("path", "")
                 val dirData = teleManager.getDirectoryContents(path)
@@ -363,10 +370,6 @@ class LocalFileServerService : Service() {
             }
 
             webSocket("/ws") {
-                val webRtcManager = WebRtcManager.getInstance(applicationContext)
-                webRtcManager.onSendMessage = { broadcastMessage(it) }
-                NotificationMirrorService.instance?.onNotificationPosted = { broadcastMessage(it.toString()) }
-
                 val senderJob = launch {
                     for (msg in wsMessageChannel) {
                         send(Frame.Text(msg))

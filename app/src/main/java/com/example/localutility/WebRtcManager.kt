@@ -91,6 +91,7 @@ class WebRtcManager private constructor(private val context: Context) {
                     put("sdpMid", candidate.sdpMid)
                     put("candidate", candidate.sdp)
                 }
+                Log.d("WebRTC", "Dispatching ICE candidate to Cloud")
                 onSendMessage?.invoke(json.toString())
             }
             override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
@@ -148,21 +149,14 @@ class WebRtcManager private constructor(private val context: Context) {
             val newTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
             newTrack?.setEnabled(true)
 
-            val transceiver = peerConnection?.transceivers?.find {
-                it.mediaType == MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO
-            }
-
-            if (transceiver != null) {
-                transceiver.sender.setTrack(newTrack, true)
+            val sender = peerConnection?.senders?.find { it.track()?.kind() == "video" }
+            if (sender != null) {
+                sender.setTrack(newTrack, true)
             } else {
-                val sender = peerConnection?.senders?.find { it.track()?.kind() == "video" }
-                if (sender != null) {
-                    sender.setTrack(newTrack, true)
-                } else {
-                    peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
-                }
+                peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
             }
             videoTrack = newTrack
+            Log.d("WebRTC", "Video track successfully replaced and active (isScreencast: $isScreencast)")
         } catch (e: Exception) {
             Log.e("WebRTC", "replaceVideoTrack error", e)
         }
@@ -201,7 +195,6 @@ class WebRtcManager private constructor(private val context: Context) {
         }
     }
 
-    // --- FIX: createAnswer() is called ONLY inside onSetSuccess() ---
     fun handleRemoteOffer(sdp: String) {
         val sessionDescription = SessionDescription(SessionDescription.Type.OFFER, sdp)
         peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
@@ -215,7 +208,7 @@ class WebRtcManager private constructor(private val context: Context) {
                                 put("type", "answer")
                                 put("sdp", it.description)
                             }
-                            Log.d("WebRTC", "Sending SDP Answer to browser")
+                            Log.d("WebRTC", "Dispatching SDP Answer to cloud")
                             onSendMessage?.invoke(json.toString())
                         }
                     }
