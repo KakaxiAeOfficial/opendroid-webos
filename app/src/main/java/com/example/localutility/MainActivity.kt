@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
         nsdManager = NsdDiscoveryManager(this)
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
+        // Runtime Permissions (Added READ_CALL_LOG)
         requestPermissionsLauncher.launch(
             arrayOf(
                 android.Manifest.permission.CAMERA,
@@ -71,6 +72,7 @@ class MainActivity : ComponentActivity() {
                 android.Manifest.permission.SEND_SMS,
                 android.Manifest.permission.READ_CONTACTS,
                 android.Manifest.permission.CALL_PHONE,
+                android.Manifest.permission.READ_CALL_LOG,
                 android.Manifest.permission.ACCESS_FINE_LOCATION,
                 android.Manifest.permission.ACCESS_COARSE_LOCATION
             )
@@ -120,7 +122,6 @@ class MainActivity : ComponentActivity() {
                         
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Live Cloud Status Indicator
                         Surface(
                             shape = RoundedCornerShape(16.dp),
                             color = if (cloudOnline) Color(0xFFE8F5E9) else Color(0xFFFFF3E0),
