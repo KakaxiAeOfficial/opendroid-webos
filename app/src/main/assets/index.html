@@ -205,7 +205,7 @@
         </div>
     </div>
 
-    <!-- Window: Call Logs -->
+    <!-- Window: Call Logs (Updated to 200 calls) -->
     <div id="call-logs-window" class="window hidden" style="width: 420px; height: 480px; top: 120px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -216,7 +216,7 @@
         </div>
         <div class="flex-1 bg-white overflow-hidden flex flex-col">
             <div class="p-2.5 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
-                <span>Recent 50 calls</span>
+                <span>Recent 200 calls</span>
                 <button onclick="sendCommand({action: 'FETCH_CALL_LOGS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
             </div>
             <div id="call-logs-list" class="flex-1 overflow-y-auto divide-y text-xs">
@@ -225,7 +225,7 @@
         </div>
     </div>
 
-    <!-- Window: Device Info (With Real Storage) -->
+    <!-- Window: Device Info -->
     <div id="info-window" class="window hidden" style="width: 380px; height: 350px; top: 140px; left: 400px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <span class="font-semibold text-xs">📊 Device Information</span>

