@@ -107,7 +107,6 @@ class WebRtcManager private constructor(private val context: Context) {
             override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {}
         })
 
-        // Pre-allocate Video Transceiver so the video channel is ALWAYS open in SDP
         try {
             peerConnection?.addTransceiver(
                 MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO,
@@ -149,7 +148,6 @@ class WebRtcManager private constructor(private val context: Context) {
             val newTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
             newTrack?.setEnabled(true)
 
-            // Inject the new camera track into the pre-allocated transceiver
             val transceiver = peerConnection?.transceivers?.find {
                 it.mediaType == MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO
             }
@@ -203,22 +201,35 @@ class WebRtcManager private constructor(private val context: Context) {
         }
     }
 
+    // --- FIX: createAnswer() is called ONLY inside onSetSuccess() ---
     fun handleRemoteOffer(sdp: String) {
         val sessionDescription = SessionDescription(SessionDescription.Type.OFFER, sdp)
-        peerConnection?.setRemoteDescription(SimpleSdpObserver(), sessionDescription)
-
-        peerConnection?.createAnswer(object : SimpleSdpObserver() {
-            override fun onCreateSuccess(desc: SessionDescription?) {
-                desc?.let {
-                    peerConnection?.setLocalDescription(SimpleSdpObserver(), it)
-                    val json = JSONObject().apply {
-                        put("type", "answer")
-                        put("sdp", it.description)
+        peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
+            override fun onSetSuccess() {
+                Log.d("WebRTC", "Remote Offer set successfully! Creating answer...")
+                peerConnection?.createAnswer(object : SimpleSdpObserver() {
+                    override fun onCreateSuccess(desc: SessionDescription?) {
+                        desc?.let {
+                            peerConnection?.setLocalDescription(SimpleSdpObserver(), it)
+                            val json = JSONObject().apply {
+                                put("type", "answer")
+                                put("sdp", it.description)
+                            }
+                            Log.d("WebRTC", "Sending SDP Answer to browser")
+                            onSendMessage?.invoke(json.toString())
+                        }
                     }
-                    onSendMessage?.invoke(json.toString())
-                }
+
+                    override fun onCreateFailure(error: String?) {
+                        Log.e("WebRTC", "createAnswer failure: $error")
+                    }
+                }, MediaConstraints())
             }
-        }, MediaConstraints())
+
+            override fun onSetFailure(error: String?) {
+                Log.e("WebRTC", "setRemoteDescription failure: $error")
+            }
+        }, sessionDescription)
     }
 
     fun handleRemoteIceCandidate(sdpMid: String, sdpMLineIndex: Int, sdp: String) {
