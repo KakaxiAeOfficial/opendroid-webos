@@ -225,7 +225,7 @@
         </div>
     </div>
 
-    <!-- Window: Apps (Installed Apps List - New) -->
+    <!-- Window: Apps -->
     <div id="apps-window" class="window hidden" style="width: 420px; height: 500px; top: 130px; left: 390px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -245,7 +245,50 @@
         </div>
     </div>
 
-    <!-- Window: Clipboard Sync (Upgraded) -->
+    <!-- Window: Files Explorer (Phase D) -->
+    <div id="file-window" class="window hidden" style="width: 520px; height: 500px; top: 110px; left: 370px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📁</span>
+                <span class="font-semibold text-xs">Internal Storage</span>
+            </div>
+            <button onclick="wm.closeWindow('file-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+        </div>
+        <div class="flex-1 bg-white overflow-hidden flex flex-col">
+            <!-- Navigation Toolbar -->
+            <div class="p-2.5 bg-gray-50 border-b flex items-center gap-2 text-xs">
+                <button onclick="navigateUp()" class="px-2 py-1 bg-white border rounded hover:bg-gray-100 font-bold text-gray-700 shadow-sm">⬆ Up</button>
+                <div id="current-dir-path" class="flex-1 font-mono text-[11px] text-gray-600 truncate px-2 py-1 bg-white border rounded shadow-inner">/storage/emulated/0</div>
+                <button onclick="sendCommand({action: 'FETCH_DIR', path: currentDirPath})" class="text-blue-600 hover:underline text-xs">🔄 Refresh</button>
+            </div>
+            <!-- Files & Folders List -->
+            <div id="dir-files-list" class="flex-1 overflow-y-auto divide-y text-xs">
+                <div class="p-4 text-center text-gray-400 text-xs">Loading directory...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Window: Photos Gallery (Phase D) -->
+    <div id="photos-window" class="window hidden" style="width: 540px; height: 500px; top: 120px; left: 400px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">🖼️</span>
+                <span class="font-semibold text-xs">Photos Gallery</span>
+            </div>
+            <button onclick="wm.closeWindow('photos-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+        </div>
+        <div class="flex-1 bg-white overflow-hidden flex flex-col">
+            <div class="p-2.5 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
+                <span>Recent Camera & Gallery Images</span>
+                <button onclick="sendCommand({action: 'FETCH_PHOTOS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
+            </div>
+            <div id="photos-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-3 text-xs">
+                <div class="col-span-3 p-4 text-center text-gray-400 text-xs">Loading photos...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Window: Clipboard Sync -->
     <div id="clipboard-window" class="window hidden" style="width: 380px; height: 300px; top: 150px; left: 410px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -325,6 +368,8 @@
         let handshakeInterval = null;
         let latestLocation = null;
         let allInstalledApps = [];
+        let currentDirPath = '';
+        let parentDirPath = '';
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -418,6 +463,10 @@
             } else if (data.type === 'CLIPBOARD_SET_ACK') {
                 document.getElementById('clipboard-status').textContent = 'Copied to phone clipboard successfully!';
                 setTimeout(() => { document.getElementById('clipboard-status').textContent = ''; }, 3000);
+            } else if (data.type === 'DIR_CONTENTS') {
+                renderDirectory(data.data);
+            } else if (data.type === 'PHOTOS_LIST') {
+                renderPhotos(data.data);
             }
         }
 
@@ -456,6 +505,8 @@
                 if(id === 'call-logs-window') sendCommand({action: 'FETCH_CALL_LOGS'});
                 if(id === 'apps-window') sendCommand({action: 'FETCH_APPS'});
                 if(id === 'clipboard-window') sendCommand({action: 'FETCH_CLIPBOARD'});
+                if(id === 'file-window') sendCommand({action: 'FETCH_DIR', path: currentDirPath});
+                if(id === 'photos-window') sendCommand({action: 'FETCH_PHOTOS'});
                 if(id === 'map-window') {
                     sendCommand({action: 'FETCH_LOCATION'});
                     if (latestLocation) renderMap(latestLocation);
@@ -553,6 +604,82 @@
                 app.name.toLowerCase().includes(q) || app.package.toLowerCase().includes(q)
             );
             renderApps(filtered);
+        }
+
+        // --- File Explorer Logic (Phase D) ---
+        function renderDirectory(data) {
+            if (!data) return;
+            currentDirPath = data.currentPath || '';
+            parentDirPath = data.parentPath || '';
+            document.getElementById('current-dir-path').textContent = currentDirPath;
+
+            const list = document.getElementById('dir-files-list');
+            list.innerHTML = '';
+
+            const files = data.files || [];
+            if (files.length === 0) {
+                list.innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">Folder is empty</div>';
+                return;
+            }
+
+            files.forEach(item => {
+                const isDir = item.isDirectory;
+                const icon = isDir ? '📁' : '📄';
+                const sizeStr = isDir ? '--' : formatBytes(item.size);
+
+                list.innerHTML += `
+                    <div class="p-2.5 hover:bg-gray-50 flex justify-between items-center cursor-pointer select-none" onclick="${isDir ? `navigateToDir('${item.path.replace(/\\/g, '\\\\')}')` : ''}">
+                        <div class="flex items-center gap-2.5 min-w-0 pr-2">
+                            <span class="text-base">${icon}</span>
+                            <span class="truncate font-medium text-gray-800 text-xs">${item.name}</span>
+                        </div>
+                        <span class="text-[10px] text-gray-400 font-mono flex-shrink-0">${sizeStr}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function navigateToDir(path) {
+            sendCommand({ action: 'FETCH_DIR', path: path });
+        }
+
+        function navigateUp() {
+            if (parentDirPath && parentDirPath !== currentDirPath) {
+                sendCommand({ action: 'FETCH_DIR', path: parentDirPath });
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // --- Photos Gallery Logic (Phase D) ---
+        function renderPhotos(photos) {
+            const grid = document.getElementById('photos-grid');
+            grid.innerHTML = '';
+            if (!photos || photos.length === 0) {
+                grid.innerHTML = '<div class="col-span-3 p-6 text-center text-gray-400 text-xs">No photos found</div>';
+                return;
+            }
+
+            photos.forEach(photo => {
+                const dateStr = new Date(photo.date).toLocaleDateString([], {month: 'short', day: 'numeric'});
+                const sizeStr = formatBytes(photo.size);
+
+                grid.innerHTML += `
+                    <div class="bg-gray-50 border rounded-xl p-2.5 flex flex-col items-center justify-between hover:shadow-md transition-shadow">
+                        <div class="w-12 h-12 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-xl flex items-center justify-center text-2xl shadow-sm my-1">🖼️</div>
+                        <div class="w-full text-center mt-1">
+                            <div class="font-medium text-gray-800 text-[11px] truncate" title="${photo.name}">${photo.name}</div>
+                            <div class="text-[9px] text-gray-400 mt-0.5">${sizeStr} • ${dateStr}</div>
+                        </div>
+                    </div>
+                `;
+            });
         }
 
         function syncClipboard() {

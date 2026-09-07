@@ -16,11 +16,13 @@ import android.os.Looper
 import android.os.StatFs
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.provider.MediaStore
 import android.provider.Telephony
 import android.telephony.SmsManager
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.util.Locale
 
 class TelephonyAndLocationManager(private val context: Context) {
@@ -55,7 +57,87 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 1. Real Storage Calculations ---
+    // --- 1. File Explorer Engine (Directory Navigation) ---
+    fun getDirectoryContents(targetPath: String?): JSONObject {
+        val root = Environment.getExternalStorageDirectory()
+        val path = if (!targetPath.isNullOrEmpty()) targetPath else root.absolutePath
+        val targetDir = File(path)
+
+        val result = JSONObject()
+        val filesArray = JSONArray()
+
+        try {
+            val dirToRead = if (targetDir.exists() && targetDir.isDirectory) targetDir else root
+            result.put("currentPath", dirToRead.absolutePath)
+            result.put("parentPath", dirToRead.parent ?: root.absolutePath)
+
+            val rawList = dirToRead.listFiles() ?: emptyArray()
+
+            // Sort: Folders first, then files alphabetically
+            val sortedList = rawList.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase(Locale.US) }))
+
+            for (file in sortedList) {
+                if (file.name.startsWith(".")) continue // Skip hidden files
+                val item = JSONObject().apply {
+                    put("name", file.name)
+                    put("path", file.absolutePath)
+                    put("isDirectory", file.isDirectory)
+                    put("size", if (file.isDirectory) 0L else file.length())
+                    put("modified", file.lastModified())
+                }
+                filesArray.put(item)
+            }
+            result.put("files", filesArray)
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error reading directory", e)
+            result.put("error", e.message ?: "Failed to read directory")
+        }
+
+        return result
+    }
+
+    // --- 2. Photos Gallery Query ---
+    fun getRecentPhotos(): JSONArray {
+        val array = JSONArray()
+        try {
+            val projection = arrayOf(
+                MediaStore.Images.Media._ID,
+                MediaStore.Images.Media.DISPLAY_NAME,
+                MediaStore.Images.Media.SIZE,
+                MediaStore.Images.Media.DATE_ADDED
+            )
+            val cursor = context.contentResolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                "${MediaStore.Images.Media.DATE_ADDED} DESC"
+            )
+            cursor?.use {
+                val idIdx = it.getColumnIndex(MediaStore.Images.Media._ID)
+                val nameIdx = it.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
+                val sizeIdx = it.getColumnIndex(MediaStore.Images.Media.SIZE)
+                val dateIdx = it.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
+
+                var count = 0
+                while (it.moveToNext() && count < 60) {
+                    val obj = JSONObject().apply {
+                        put("id", if (idIdx >= 0) it.getLong(idIdx) else 0L)
+                        put("name", if (nameIdx >= 0) it.getString(nameIdx) else "Photo")
+                        put("size", if (sizeIdx >= 0) it.getLong(sizeIdx) else 0L)
+                        put("date", if (dateIdx >= 0) it.getLong(dateIdx) * 1000L else 0L)
+                    }
+                    array.put(obj)
+                    count++
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error querying photos", e)
+        }
+        return array
+    }
+
+    // --- 3. Real Storage Calculations ---
     fun getStorageStats(): JSONObject {
         val obj = JSONObject()
         try {
@@ -84,7 +166,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 2. Call Logs Query (200 Calls Safe) ---
+    // --- 4. Call Logs Query ---
     fun getCallLogs(): JSONArray {
         val array = JSONArray()
         try {
@@ -134,7 +216,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 3. Installed Apps Query ---
+    // --- 5. Installed Apps Query ---
     fun getInstalledApps(): JSONArray {
         val array = JSONArray()
         try {
@@ -162,7 +244,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 4. Clipboard Operations ---
+    // --- 6. Clipboard Operations ---
     fun setClipboardText(text: String) {
         Handler(Looper.getMainLooper()).post {
             try {
@@ -186,7 +268,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 5. SMS Queries ---
+    // --- 7. SMS Queries ---
     fun getRecentSms(): JSONArray {
         val array = JSONArray()
         try {
@@ -232,7 +314,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 6. Contacts Query ---
+    // --- 8. Contacts Query ---
     fun getContacts(): JSONArray {
         val array = JSONArray()
         try {
@@ -256,7 +338,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 7. GPS Location ---
+    // --- 9. GPS Location ---
     @SuppressLint("MissingPermission")
     fun getLocation(): JSONObject {
         val obj = JSONObject()
@@ -280,7 +362,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 8. Make Phone Call ---
+    // --- 10. Make Phone Call ---
     @SuppressLint("MissingPermission")
     fun makeCall(number: String) {
         try {

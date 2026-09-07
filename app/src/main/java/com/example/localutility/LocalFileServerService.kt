@@ -290,7 +290,6 @@ class LocalFileServerService : Service() {
                 val success = teleManager.sendSms(json.getString("to"), json.getString("message"))
                 broadcastMessage("{\"type\":\"SMS_SENT\",\"success\":$success}")
             }
-            // --- Phase C Actions: Apps & Clipboard ---
             "FETCH_APPS" -> {
                 broadcastMessage(JSONObject().put("type", "APPS_LIST").put("data", teleManager.getInstalledApps()).toString())
             }
@@ -301,6 +300,16 @@ class LocalFileServerService : Service() {
             }
             "FETCH_CLIPBOARD" -> {
                 broadcastMessage(JSONObject().put("type", "CLIPBOARD_DATA").put("text", teleManager.getClipboardText()).toString())
+            }
+            // --- Phase D Actions: Files & Photos ---
+            "FETCH_DIR" -> {
+                val path = json.optString("path", "")
+                val dirData = teleManager.getDirectoryContents(path)
+                broadcastMessage(JSONObject().put("type", "DIR_CONTENTS").put("data", dirData).toString())
+            }
+            "FETCH_PHOTOS" -> {
+                val photosData = teleManager.getRecentPhotos()
+                broadcastMessage(JSONObject().put("type", "PHOTOS_LIST").put("data", photosData).toString())
             }
         }
     }
