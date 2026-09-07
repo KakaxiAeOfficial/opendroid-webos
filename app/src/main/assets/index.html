@@ -64,21 +64,18 @@
         </div>
     </div>
 
-    <!-- Official OpenDroid Top Dock Bar -->
+    <!-- Top Dock Bar -->
     <div class="fixed top-2 left-1/2 -translate-x-1/2 h-10 bg-gray-900/85 backdrop-blur-md text-white flex items-center gap-4 px-4 rounded-full z-50 shadow-xl border border-white/10 text-xs">
-        <!-- Logo -->
         <div class="flex items-center gap-2 pr-3 border-r border-gray-700">
             <div class="w-6 h-6 bg-gradient-to-tr from-cyan-400 to-blue-500 rounded-md flex items-center justify-center font-black text-xs text-white shadow">O</div>
             <span class="font-bold tracking-wide text-sm">OpenDroid</span>
         </div>
 
-        <!-- Quick Search Bar -->
         <div class="relative flex items-center">
             <input type="text" id="top-search" placeholder="Search contacts or messages..." class="bg-gray-800/80 border border-gray-700 rounded-full px-3 py-1 text-xs w-48 focus:w-64 transition-all focus:outline-none focus:border-blue-500 text-gray-200">
             <span class="absolute right-2 text-gray-400 text-xs">🔍</span>
         </div>
 
-        <!-- System Controls & Status -->
         <div class="flex items-center gap-4 pl-3 border-l border-gray-700">
             <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
             <button id="siren-btn" onclick="toggleSiren()" class="hover:text-red-400 transition-colors font-medium flex items-center gap-1">
@@ -94,9 +91,8 @@
         </div>
     </div>
 
-    <!-- Authentic Desktop Icons Grid (Left-Aligned 4 Columns) -->
+    <!-- Desktop Icons Grid (4x4 Grid - 16 Icons) -->
     <div class="p-6 mt-12 grid grid-cols-4 gap-x-8 gap-y-6 w-max">
-        
         <!-- Row 1: Communication -->
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('sms-window')">
             <div class="app-tile bg-gradient-to-tr from-cyan-400 to-cyan-600">💬</div>
@@ -106,13 +102,13 @@
             <div class="app-tile bg-gradient-to-tr from-green-500 to-emerald-600">📞</div>
             <span class="text-xs font-medium text-center mt-1">Dialer</span>
         </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('call-logs-window')">
+            <div class="app-tile bg-gradient-to-tr from-teal-500 to-emerald-700">📑</div>
+            <span class="text-xs font-medium text-center mt-1">Call Logs</span>
+        </div>
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('contacts-window')">
             <div class="app-tile bg-gradient-to-tr from-blue-500 to-blue-700">📇</div>
             <span class="text-xs font-medium text-center mt-1">Contacts</span>
-        </div>
-        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('clipboard-window')">
-            <div class="app-tile bg-gradient-to-tr from-amber-400 to-orange-500">📋</div>
-            <span class="text-xs font-medium text-center mt-1">Clipboard</span>
         </div>
 
         <!-- Row 2: Media & Files -->
@@ -151,7 +147,11 @@
             <span class="text-xs font-medium text-center mt-1">Ringtone</span>
         </div>
 
-        <!-- Row 4: Surveillance & Screen -->
+        <!-- Row 4: Surveillance & Utilities -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('clipboard-window')">
+            <div class="app-tile bg-gradient-to-tr from-amber-400 to-orange-500">📋</div>
+            <span class="text-xs font-medium text-center mt-1">Clipboard</span>
+        </div>
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('screen-window')">
             <div class="app-tile bg-gradient-to-tr from-sky-400 to-blue-600">📱</div>
             <span class="text-xs font-medium text-center mt-1">Mirroring</span>
@@ -166,7 +166,7 @@
         </div>
     </div>
 
-    <!-- Window: Messages (Two-Pane SMS View) -->
+    <!-- Window: Messages -->
     <div id="sms-window" class="window hidden" style="width: 440px; height: 520px; top: 80px; left: 320px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -187,7 +187,7 @@
         </div>
     </div>
 
-    <!-- Window: Contacts & Dialer -->
+    <!-- Window: Dialer & Contacts -->
     <div id="contacts-window" class="window hidden" style="width: 360px; height: 500px; top: 100px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -205,8 +205,28 @@
         </div>
     </div>
 
-    <!-- Window: Device Info -->
-    <div id="info-window" class="window hidden" style="width: 380px; height: 320px; top: 140px; left: 400px;">
+    <!-- Window: Call Logs -->
+    <div id="call-logs-window" class="window hidden" style="width: 420px; height: 480px; top: 120px; left: 380px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📑</span>
+                <span class="font-semibold text-xs">Call History</span>
+            </div>
+            <button onclick="wm.closeWindow('call-logs-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+        </div>
+        <div class="flex-1 bg-white overflow-hidden flex flex-col">
+            <div class="p-2.5 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
+                <span>Recent 50 calls</span>
+                <button onclick="sendCommand({action: 'FETCH_CALL_LOGS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
+            </div>
+            <div id="call-logs-list" class="flex-1 overflow-y-auto divide-y text-xs">
+                <div class="p-4 text-center text-gray-400 text-xs">Loading call logs...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Window: Device Info (With Real Storage) -->
+    <div id="info-window" class="window hidden" style="width: 380px; height: 350px; top: 140px; left: 400px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <span class="font-semibold text-xs">📊 Device Information</span>
             <button onclick="wm.closeWindow('info-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
@@ -218,20 +238,24 @@
                     <span id="device-model-text" class="font-bold text-gray-800">Connected Phone</span>
                 </div>
                 <div class="flex justify-between pb-2 border-b border-gray-200">
-                    <span class="text-gray-500">Network Connection:</span>
-                    <span class="font-bold text-green-600">5G High-Speed Cloud</span>
+                    <span class="text-gray-500">Network:</span>
+                    <span class="font-bold text-green-600">5G Cloud Bridge</span>
                 </div>
                 <div class="flex justify-between pb-2 border-b border-gray-200">
-                    <span class="text-gray-500">Battery Status:</span>
+                    <span class="text-gray-500">Battery:</span>
                     <span id="device-battery-detail" class="font-bold text-gray-800">--%</span>
                 </div>
                 <div>
                     <div class="flex justify-between text-[11px] mb-1">
                         <span class="text-gray-500">Internal Storage</span>
-                        <span class="text-gray-700 font-semibold">Ready</span>
+                        <span id="storage-detail-text" class="text-gray-700 font-semibold">Loading...</span>
                     </div>
                     <div class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
-                        <div class="bg-blue-600 h-full w-[45%]"></div>
+                        <div id="storage-progress-bar" class="bg-blue-600 h-full w-[0%] transition-all duration-500"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                        <span id="storage-free-text">Free: --</span>
+                        <span id="storage-percent-text">0% used</span>
                     </div>
                 </div>
             </div>
@@ -261,9 +285,6 @@
             <div id="map" class="absolute inset-0"></div>
         </div>
     </div>
-
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed top-12 right-4 w-80 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <script>
         let currentPairingCode = '';
@@ -352,6 +373,10 @@
             } else if (data.type === 'LOCATION') {
                 latestLocation = data;
                 renderMap(data);
+            } else if (data.type === 'STORAGE_STATS') {
+                renderStorage(data.data);
+            } else if (data.type === 'CALL_LOGS_LIST') {
+                renderCallLogs(data.data);
             }
         }
 
@@ -386,6 +411,8 @@
                 this.focus(win);
                 if(id === 'sms-window') sendCommand({action: 'FETCH_SMS'});
                 if(id === 'contacts-window') sendCommand({action: 'FETCH_CONTACTS'});
+                if(id === 'info-window') sendCommand({action: 'FETCH_STORAGE'});
+                if(id === 'call-logs-window') sendCommand({action: 'FETCH_CALL_LOGS'});
                 if(id === 'map-window') {
                     sendCommand({action: 'FETCH_LOCATION'});
                     if (latestLocation) renderMap(latestLocation);
@@ -416,6 +443,43 @@
                 btn.classList.remove('text-red-400', 'animate-pulse');
                 btn.innerHTML = '<span>🔔</span><span>Ring</span>';
             }
+        }
+
+        // --- Renderers ---
+        function renderStorage(storage) {
+            if (!storage) return;
+            document.getElementById('storage-detail-text').textContent = `${storage.usedGB} / ${storage.totalGB}`;
+            document.getElementById('storage-progress-bar').style.width = `${storage.usedPercent}%`;
+            document.getElementById('storage-free-text').textContent = `Free: ${storage.freeGB}`;
+            document.getElementById('storage-percent-text').textContent = `${storage.usedPercent}% used`;
+        }
+
+        function renderCallLogs(logs) {
+            const list = document.getElementById('call-logs-list');
+            list.innerHTML = '';
+            if (!logs || logs.length === 0) {
+                list.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">No call logs found</div>';
+                return;
+            }
+            logs.forEach(log => {
+                const isMissed = log.type === 'Missed';
+                const isIncoming = log.type === 'Incoming';
+                const badgeColor = isMissed ? 'text-red-500 bg-red-50' : (isIncoming ? 'text-blue-500 bg-blue-50' : 'text-green-500 bg-green-50');
+                const dateStr = new Date(log.date).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+
+                list.innerHTML += `
+                    <div class="p-3 hover:bg-gray-50 flex justify-between items-center cursor-pointer" onclick="document.getElementById('dial-number').value='${log.number}'; wm.openWindow('contacts-window')">
+                        <div>
+                            <div class="font-semibold text-gray-800">${log.name !== 'Unknown' ? log.name : log.number}</div>
+                            <div class="text-[11px] text-gray-400">${log.number} • ${dateStr}</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-medium ${badgeColor}">${log.type}</span>
+                            <div class="text-[10px] text-gray-400 mt-0.5">${log.duration}</div>
+                        </div>
+                    </div>
+                `;
+            });
         }
 
         function renderSms(sms) {

