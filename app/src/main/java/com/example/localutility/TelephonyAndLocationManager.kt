@@ -14,6 +14,7 @@ import android.provider.CallLog
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.telephony.SmsManager
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
@@ -79,7 +80,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 2. Call Logs Query ---
+    // --- 2. Call Logs Query (Android 14 Safe) ---
     fun getCallLogs(): JSONArray {
         val array = JSONArray()
         try {
@@ -92,7 +93,9 @@ class TelephonyAndLocationManager(private val context: Context) {
                     CallLog.Calls.DATE,
                     CallLog.Calls.DURATION
                 ),
-                null, null, "${CallLog.Calls.DATE} DESC LIMIT 50"
+                null,
+                null,
+                "${CallLog.Calls.DATE} DESC"
             )
             cursor?.use {
                 val numIdx = it.getColumnIndex(CallLog.Calls.NUMBER)
@@ -101,7 +104,8 @@ class TelephonyAndLocationManager(private val context: Context) {
                 val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
                 val durIdx = it.getColumnIndex(CallLog.Calls.DURATION)
 
-                while (it.moveToNext()) {
+                var count = 0
+                while (it.moveToNext() && count < 50) {
                     val typeInt = if (typeIdx >= 0) it.getInt(typeIdx) else CallLog.Calls.INCOMING_TYPE
                     val typeStr = when (typeInt) {
                         CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
@@ -117,9 +121,12 @@ class TelephonyAndLocationManager(private val context: Context) {
                         put("duration", if (durIdx >= 0) "${it.getInt(durIdx)}s" else "0s")
                     }
                     array.put(obj)
+                    count++
                 }
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error in getCallLogs", e)
+        }
         return array
     }
 
@@ -130,7 +137,9 @@ class TelephonyAndLocationManager(private val context: Context) {
             val cursor = context.contentResolver.query(
                 Telephony.Sms.CONTENT_URI,
                 arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.TYPE),
-                null, null, "${Telephony.Sms.DATE} DESC LIMIT 50"
+                null,
+                null,
+                "${Telephony.Sms.DATE} DESC"
             )
             cursor?.use {
                 val addrIdx = it.getColumnIndex(Telephony.Sms.ADDRESS)
@@ -138,7 +147,8 @@ class TelephonyAndLocationManager(private val context: Context) {
                 val dateIdx = it.getColumnIndex(Telephony.Sms.DATE)
                 val typeIdx = it.getColumnIndex(Telephony.Sms.TYPE)
 
-                while (it.moveToNext()) {
+                var count = 0
+                while (it.moveToNext() && count < 50) {
                     val obj = JSONObject().apply {
                         put("address", if (addrIdx >= 0) it.getString(addrIdx) else "")
                         put("body", if (bodyIdx >= 0) it.getString(bodyIdx) else "")
@@ -146,9 +156,12 @@ class TelephonyAndLocationManager(private val context: Context) {
                         put("type", if (typeIdx >= 0 && it.getInt(typeIdx) == Telephony.Sms.MESSAGE_TYPE_INBOX) "inbox" else "sent")
                     }
                     array.put(obj)
+                    count++
                 }
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         return array
     }
 
