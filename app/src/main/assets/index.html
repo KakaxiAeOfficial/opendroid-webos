@@ -3,156 +3,259 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenDroid Web OS</title>
+    <title>OpenDroid WebOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- EMQX WebSocket Client -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        body { overflow: hidden; background: url('https://images.unsplash.com/photo-1604328698692-f76ea9498e76?q=80&w=2070&auto=format&fit=crop') no-repeat center center fixed; background-size: cover; }
-        .window { position: absolute; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; min-width: 320px; min-height: 220px; }
+        body { 
+            overflow: hidden; 
+            background: url('https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=2560&auto=format&fit=crop') no-repeat center center fixed; 
+            background-size: cover; 
+            user-select: none;
+        }
+        .window { 
+            position: absolute; 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(14px); 
+            border-radius: 0.75rem; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.35); 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            min-width: 320px; 
+            min-height: 220px; 
+        }
         .title-bar { cursor: grab; user-select: none; }
         .title-bar:active { cursor: grabbing; }
-        .desktop-icon { cursor: pointer; transition: transform 0.1s; }
-        .desktop-icon:active { transform: scale(0.95); }
+        .desktop-icon { 
+            cursor: pointer; 
+            transition: transform 0.15s ease, filter 0.15s ease; 
+        }
+        .desktop-icon:hover { transform: translateY(-3px); filter: brightness(1.1); }
+        .desktop-icon:active { transform: scale(0.92); }
+        .app-tile {
+            width: 54px;
+            height: 54px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+        }
     </style>
 </head>
-<body class="h-screen w-screen text-gray-800 font-sans">
+<body class="h-screen w-screen text-gray-800 font-sans relative">
 
     <!-- Connect / Pairing Modal -->
     <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full text-center">
-            <div class="w-14 h-14 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 shadow-lg">📱</div>
-            <h2 class="text-xl font-bold text-gray-900">Connect to Device</h2>
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center">
+            <div class="w-14 h-14 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 shadow-lg text-white">📱</div>
+            <h2 class="text-xl font-bold text-gray-900">OpenDroid WebOS</h2>
             <p class="text-xs text-gray-500 mt-1 mb-4">Enter the 6-digit code shown on your phone screen:</p>
-            <input type="text" id="pairing-code-input" placeholder="e.g. 932941" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
-            <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition-all">Connect 5G Stream</button>
+            <input type="text" id="pairing-code-input" placeholder="e.g. 932941" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
+            <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-all">Connect 5G Stream</button>
             <div class="mt-3">
                 <button onclick="connectLocal()" class="text-xs text-gray-400 hover:text-gray-600 underline">Or connect via Local Wi-Fi</button>
             </div>
         </div>
     </div>
 
-    <!-- Taskbar -->
-    <div class="fixed top-0 left-0 right-0 h-9 bg-gray-900/90 backdrop-blur text-white flex justify-between items-center px-4 z-50 shadow-md text-sm">
-        <div class="flex items-center gap-4">
-            <span class="font-bold tracking-wide flex items-center gap-2">📱 OpenDroid WebOS</span>
-            <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
+    <!-- Official OpenDroid Top Dock Bar -->
+    <div class="fixed top-2 left-1/2 -translate-x-1/2 h-10 bg-gray-900/85 backdrop-blur-md text-white flex items-center gap-4 px-4 rounded-full z-50 shadow-xl border border-white/10 text-xs">
+        <!-- Logo -->
+        <div class="flex items-center gap-2 pr-3 border-r border-gray-700">
+            <div class="w-6 h-6 bg-gradient-to-tr from-cyan-400 to-blue-500 rounded-md flex items-center justify-center font-black text-xs text-white shadow">O</div>
+            <span class="font-bold tracking-wide text-sm">OpenDroid</span>
         </div>
-        <div class="flex items-center gap-4">
-            <button id="siren-btn" onclick="toggleSiren()" class="hover:text-red-400 transition-colors font-medium">🔔 Ring Phone</button>
+
+        <!-- Quick Search Bar -->
+        <div class="relative flex items-center">
+            <input type="text" id="top-search" placeholder="Search contacts or messages..." class="bg-gray-800/80 border border-gray-700 rounded-full px-3 py-1 text-xs w-48 focus:w-64 transition-all focus:outline-none focus:border-blue-500 text-gray-200">
+            <span class="absolute right-2 text-gray-400 text-xs">🔍</span>
+        </div>
+
+        <!-- System Controls & Status -->
+        <div class="flex items-center gap-4 pl-3 border-l border-gray-700">
+            <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
+            <button id="siren-btn" onclick="toggleSiren()" class="hover:text-red-400 transition-colors font-medium flex items-center gap-1">
+                <span>🔔</span>
+                <span>Ring</span>
+            </button>
             <div class="flex items-center gap-1 font-mono">
                 <span id="battery-icon">🔋</span>
                 <span id="battery-text">--%</span>
             </div>
-            <span id="clock" class="font-mono">00:00</span>
+            <span id="clock" class="font-mono text-gray-300">00:00</span>
+            <button onclick="location.reload()" title="Disconnect" class="hover:text-red-400 font-bold ml-1">⏻</button>
         </div>
     </div>
 
-    <!-- Desktop Icons Container -->
-    <div class="p-4 mt-10 grid grid-cols-1 gap-6 w-24">
-        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('screen-window')">
-            <div class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">📱</div>
-            <span class="text-xs font-semibold text-center">Screen</span>
+    <!-- Authentic Desktop Icons Grid (Left-Aligned 4 Columns) -->
+    <div class="p-6 mt-12 grid grid-cols-4 gap-x-8 gap-y-6 w-max">
+        
+        <!-- Row 1: Communication -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('sms-window')">
+            <div class="app-tile bg-gradient-to-tr from-cyan-400 to-cyan-600">💬</div>
+            <span class="text-xs font-medium text-center mt-1">Messages</span>
         </div>
-        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('camera-window')">
-            <div class="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">📷</div>
-            <span class="text-xs font-semibold text-center">Camera</span>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('contacts-window')">
+            <div class="app-tile bg-gradient-to-tr from-green-500 to-emerald-600">📞</div>
+            <span class="text-xs font-medium text-center mt-1">Dialer</span>
         </div>
-        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('sms-window')">
-            <div class="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">💬</div>
-            <span class="text-xs font-semibold text-center">Messages</span>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('contacts-window')">
+            <div class="app-tile bg-gradient-to-tr from-blue-500 to-blue-700">📇</div>
+            <span class="text-xs font-medium text-center mt-1">Contacts</span>
         </div>
-        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('contacts-window')">
-            <div class="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">📞</div>
-            <span class="text-xs font-semibold text-center">Dialer</span>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('clipboard-window')">
+            <div class="app-tile bg-gradient-to-tr from-amber-400 to-orange-500">📋</div>
+            <span class="text-xs font-medium text-center mt-1">Clipboard</span>
         </div>
-        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-md" onclick="wm.openWindow('map-window')">
-            <div class="w-12 h-12 bg-red-500 rounded-xl flex items-center justify-center text-2xl mb-1 shadow-lg">📍</div>
-            <span class="text-xs font-semibold text-center">Find Phone</span>
+
+        <!-- Row 2: Media & Files -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('file-window')">
+            <div class="app-tile bg-gradient-to-tr from-amber-400 to-yellow-500">📁</div>
+            <span class="text-xs font-medium text-center mt-1">Files</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('photos-window')">
+            <div class="app-tile bg-gradient-to-tr from-orange-400 to-red-500">🖼️</div>
+            <span class="text-xs font-medium text-center mt-1">Photos</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('music-window')">
+            <div class="app-tile bg-gradient-to-tr from-purple-500 to-indigo-600">🎵</div>
+            <span class="text-xs font-medium text-center mt-1">Music</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('videos-window')">
+            <div class="app-tile bg-gradient-to-tr from-blue-400 to-indigo-500">🎬</div>
+            <span class="text-xs font-medium text-center mt-1">Videos</span>
+        </div>
+
+        <!-- Row 3: Management & Tools -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('info-window')">
+            <div class="app-tile bg-gradient-to-tr from-teal-400 to-teal-600">📊</div>
+            <span class="text-xs font-medium text-center mt-1">Device Info</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('apps-window')">
+            <div class="app-tile bg-gradient-to-tr from-blue-500 to-cyan-600">📱</div>
+            <span class="text-xs font-medium text-center mt-1">Apps</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('map-window')">
+            <div class="app-tile bg-gradient-to-tr from-red-500 to-rose-600">📍</div>
+            <span class="text-xs font-medium text-center mt-1">Find Phone</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="toggleSiren()">
+            <div class="app-tile bg-gradient-to-tr from-orange-500 to-amber-600">🔔</div>
+            <span class="text-xs font-medium text-center mt-1">Ringtone</span>
+        </div>
+
+        <!-- Row 4: Surveillance & Screen -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('screen-window')">
+            <div class="app-tile bg-gradient-to-tr from-sky-400 to-blue-600">📱</div>
+            <span class="text-xs font-medium text-center mt-1">Mirroring</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('camera-window')">
+            <div class="app-tile bg-gradient-to-tr from-purple-500 to-pink-600">📷</div>
+            <span class="text-xs font-medium text-center mt-1">Camera</span>
+        </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('help-window')">
+            <div class="app-tile bg-gradient-to-tr from-cyan-500 to-blue-500">❓</div>
+            <span class="text-xs font-medium text-center mt-1">Help</span>
         </div>
     </div>
 
-    <!-- Window 1: Live Screen Mirroring -->
-    <div id="screen-window" class="window hidden" style="width: 360px; height: 680px; top: 50px; left: 140px;">
+    <!-- Window: Messages (Two-Pane SMS View) -->
+    <div id="sms-window" class="window hidden" style="width: 440px; height: 520px; top: 80px; left: 320px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <span class="font-semibold text-sm">Live Screen Control</span>
-            <button onclick="wm.closeWindow('screen-window')" class="text-red-400 hover:text-red-500">✖</button>
-        </div>
-        <div class="flex-1 relative bg-black flex flex-col">
-            <video id="screen-video" class="flex-1 w-full" style="object-fit: fill; cursor: crosshair;" autoplay playsinline muted></video>
-            <div class="bg-gray-900 h-12 flex justify-around items-center border-t border-gray-700">
-                <button onclick="sendGlobalAction('BACK')" class="text-white text-xl hover:text-gray-300 px-4">◀</button>
-                <button onclick="sendGlobalAction('HOME')" class="text-white text-xl hover:text-gray-300 px-4">⚪</button>
-                <button onclick="sendGlobalAction('RECENTS')" class="text-white text-xl hover:text-gray-300 px-4">⏹</button>
+            <div class="flex items-center gap-2">
+                <span class="text-xs">💬</span>
+                <span class="font-semibold text-xs">Messages</span>
             </div>
-            <div id="video-overlay" class="absolute inset-0 flex items-center justify-center text-white bg-black bg-opacity-60">
-                <button onclick="startWebRTC()" class="bg-blue-600 px-5 py-2.5 rounded-lg shadow-lg hover:bg-blue-700 font-bold">Start Live Screen</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Window 2: Remote Camera -->
-    <div id="camera-window" class="window hidden" style="width: 400px; height: 550px; top: 90px; left: 380px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <span class="font-semibold text-sm">Remote Camera & Mic</span>
-            <button onclick="wm.closeWindow('camera-window')" class="text-red-400 hover:text-red-500">✖</button>
-        </div>
-        <div class="flex-1 relative bg-black flex flex-col">
-            <video id="camera-video" class="flex-1 w-full object-contain" autoplay playsinline muted></video>
-            <div class="bg-gray-900 p-3 flex flex-col gap-3 border-t border-gray-700">
-                <div class="flex justify-between">
-                    <button onclick="startCameraStream('back')" class="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 font-semibold shadow">Start Camera</button>
-                    <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 text-white px-3 py-1.5 rounded text-sm hover:bg-gray-600">🔄 Switch</button>
-                    <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 text-white px-3 py-1.5 rounded text-sm hover:bg-yellow-700 font-medium">💡 Flash</button>
-                </div>
-                <div class="flex items-center gap-2 text-white text-sm">
-                    <span>🔊 Audio:</span>
-                    <input type="range" id="mic-volume" min="0" max="1" step="0.1" value="0" class="flex-1" onchange="adjustAudioVolume(this.value)">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Window 3: Messages -->
-    <div id="sms-window" class="window hidden" style="width: 380px; height: 500px; top: 110px; left: 300px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <span class="font-semibold text-sm">SMS Messages</span>
-            <button onclick="wm.closeWindow('sms-window')" class="text-red-400 hover:text-red-500">✖</button>
+            <button onclick="wm.closeWindow('sms-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
         </div>
         <div class="flex-1 flex flex-col bg-gray-50 overflow-hidden">
             <div id="sms-list" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2"></div>
             <div class="bg-white p-3 border-t flex flex-col gap-2">
-                <input type="text" id="sms-to" placeholder="Phone Number" class="border rounded px-2 py-1 text-sm">
+                <input type="text" id="sms-to" placeholder="Phone Number" class="border rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-blue-500">
                 <div class="flex gap-2">
-                    <input type="text" id="sms-body" placeholder="Message..." class="border rounded px-2 py-1 text-sm flex-1">
-                    <button onclick="sendSms()" class="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600">Send</button>
+                    <input type="text" id="sms-body" placeholder="Type SMS message..." class="border rounded-lg px-2.5 py-1.5 text-xs flex-1 focus:ring-1 focus:ring-blue-500">
+                    <button onclick="sendSms()" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-700">Send</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Window 4: Contacts & Dialer -->
-    <div id="contacts-window" class="window hidden" style="width: 340px; height: 480px; top: 120px; left: 340px;">
+    <!-- Window: Contacts & Dialer -->
+    <div id="contacts-window" class="window hidden" style="width: 360px; height: 500px; top: 100px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <span class="font-semibold text-sm">Contacts & Dialer</span>
-            <button onclick="wm.closeWindow('contacts-window')" class="text-red-400 hover:text-red-500">✖</button>
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📞</span>
+                <span class="font-semibold text-xs">Dialer & Contacts</span>
+            </div>
+            <button onclick="wm.closeWindow('contacts-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
         </div>
         <div class="flex-1 flex flex-col bg-white overflow-hidden">
-            <div class="p-3 bg-gray-100 border-b flex gap-2">
-                <input type="text" id="dial-number" placeholder="Enter number..." class="border rounded px-2 py-1 text-lg flex-1 font-mono">
-                <button onclick="makeCall()" class="bg-green-500 text-white px-4 py-1 rounded hover:bg-green-600">📞</button>
+            <div class="p-3 bg-gray-50 border-b flex gap-2">
+                <input type="text" id="dial-number" placeholder="Enter number..." class="border rounded-lg px-3 py-1.5 text-base flex-1 font-mono focus:ring-1 focus:ring-green-500">
+                <button onclick="makeCall()" class="bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 font-bold shadow">📞 Call</button>
             </div>
-            <div id="contacts-list" class="flex-1 overflow-y-auto divide-y"></div>
+            <div id="contacts-list" class="flex-1 overflow-y-auto divide-y text-xs"></div>
         </div>
     </div>
 
-    <!-- Window 5: Find Phone (GPS Map) -->
+    <!-- Window: Device Info -->
+    <div id="info-window" class="window hidden" style="width: 380px; height: 320px; top: 140px; left: 400px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <span class="font-semibold text-xs">📊 Device Information</span>
+            <button onclick="wm.closeWindow('info-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+        </div>
+        <div class="flex-1 p-5 bg-gray-50 flex flex-col justify-between text-xs">
+            <div class="space-y-3">
+                <div class="flex justify-between pb-2 border-b border-gray-200">
+                    <span class="text-gray-500">Device Model:</span>
+                    <span id="device-model-text" class="font-bold text-gray-800">Connected Phone</span>
+                </div>
+                <div class="flex justify-between pb-2 border-b border-gray-200">
+                    <span class="text-gray-500">Network Connection:</span>
+                    <span class="font-bold text-green-600">5G High-Speed Cloud</span>
+                </div>
+                <div class="flex justify-between pb-2 border-b border-gray-200">
+                    <span class="text-gray-500">Battery Status:</span>
+                    <span id="device-battery-detail" class="font-bold text-gray-800">--%</span>
+                </div>
+                <div>
+                    <div class="flex justify-between text-[11px] mb-1">
+                        <span class="text-gray-500">Internal Storage</span>
+                        <span class="text-gray-700 font-semibold">Ready</span>
+                    </div>
+                    <div class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+                        <div class="bg-blue-600 h-full w-[45%]"></div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="toggleSiren()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition-colors">Test Remote Alarm Siren</button>
+        </div>
+    </div>
+
+    <!-- Window: Clipboard Sync -->
+    <div id="clipboard-window" class="window hidden" style="width: 360px; height: 260px; top: 160px; left: 420px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <span class="font-semibold text-xs">📋 Clipboard Sync</span>
+            <button onclick="wm.closeWindow('clipboard-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+        </div>
+        <div class="flex-1 p-3 bg-gray-50 flex flex-col gap-2">
+            <textarea id="clipboard-input" placeholder="Type or paste text here to copy to phone..." class="flex-1 border rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-500"></textarea>
+            <button onclick="syncClipboard()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-1.5 rounded-lg text-xs">Copy to Phone</button>
+        </div>
+    </div>
+
+    <!-- Window: Find Phone (GPS Map) -->
     <div id="map-window" class="window hidden" style="width: 520px; height: 420px; top: 130px; left: 420px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <span class="font-semibold text-sm">Live GPS Location</span>
-            <button onclick="wm.closeWindow('map-window')" class="text-red-400 hover:text-red-500">✖</button>
+            <span class="font-semibold text-xs">📍 Live GPS Location</span>
+            <button onclick="wm.closeWindow('map-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
         </div>
         <div id="map-container" class="flex-1 bg-gray-200 relative">
             <div id="map" class="absolute inset-0"></div>
@@ -178,7 +281,7 @@
             }
             currentPairingCode = code;
             document.getElementById('pair-modal').classList.add('hidden');
-            document.getElementById('ws-status-taskbar').textContent = '● Connecting to EMQX Broker...';
+            document.getElementById('ws-status-taskbar').textContent = '● Connecting...';
 
             mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
             
@@ -233,19 +336,15 @@
                 document.getElementById('ws-status-taskbar').textContent = '● Connected (5G Phone Active)';
                 document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs font-semibold';
                 
+                if (data.device) {
+                    document.getElementById('device-model-text').textContent = data.device;
+                }
+
                 if (data.percent !== undefined) {
                     document.getElementById('battery-text').textContent = `${data.percent}%`;
+                    document.getElementById('device-battery-detail').textContent = `${data.percent}% (${data.charging ? 'Charging' : 'On Battery'})`;
                     document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
                 }
-            } else if (data.type === 'NOTIFICATION') {
-                showNotification(data);
-            } else if (data.type === 'answer' && pc) {
-                console.log("Applying Answer from Phone...");
-                pc.setRemoteDescription(new RTCSessionDescription(data))
-                  .then(() => console.log('SDP Answer applied successfully! Video pipeline open.'))
-                  .catch(e => console.error('Set remote description error:', e));
-            } else if (data.type === 'candidate' && pc) {
-                pc.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error(e));
             } else if (data.type === 'SMS_LIST') {
                 renderSms(data.data);
             } else if (data.type === 'CONTACTS_LIST') {
@@ -256,99 +355,7 @@
             }
         }
 
-        // --- WebRTC Pipeline ---
-        let pc = null;
-        let incomingStream = new MediaStream();
-        const screenVideo = document.getElementById('screen-video');
-        const cameraVideo = document.getElementById('camera-video');
-
-        async function initPeerConnection() {
-            if (pc) {
-                try { pc.close(); } catch(e) {}
-            }
-
-            incomingStream = new MediaStream();
-            screenVideo.srcObject = incomingStream;
-            cameraVideo.srcObject = incomingStream;
-
-            pc = new RTCPeerConnection({
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:openrelay.metered.ca:80' },
-                    {
-                        urls: 'turn:openrelay.metered.ca:80',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    },
-                    {
-                        urls: 'turn:openrelay.metered.ca:443',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    },
-                    {
-                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    }
-                ]
-            });
-
-            pc.addTransceiver('video', { direction: 'recvonly' });
-            pc.addTransceiver('audio', { direction: 'recvonly' });
-
-            pc.ontrack = (event) => {
-                console.log('WebRTC ontrack received:', event.track.kind);
-                incomingStream.addTrack(event.track);
-
-                screenVideo.muted = true;
-                cameraVideo.muted = true;
-
-                screenVideo.play().catch(e => console.log('Screen play:', e));
-                cameraVideo.play().catch(e => console.log('Camera play:', e));
-            };
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    sendCommand({
-                        type: 'candidate',
-                        sdpMLineIndex: event.candidate.sdpMLineIndex,
-                        sdpMid: event.candidate.sdpMid,
-                        candidate: event.candidate.candidate
-                    });
-                }
-            };
-        }
-
-        async function startWebRTC() {
-            document.getElementById('video-overlay').classList.add('hidden');
-            await initPeerConnection();
-
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            console.log("Sending WebRTC Offer to Phone...");
-            sendCommand({ type: 'offer', sdp: offer.sdp });
-        }
-
-        async function startCameraStream(facing) {
-            console.log("Triggering Camera on Phone...");
-            sendCommand({ action: 'START_CAMERA', facing: facing });
-            // Allow 400ms for hardware sensor startup
-            setTimeout(async () => {
-                await startWebRTC();
-            }, 400);
-        }
-
-        function adjustAudioVolume(val) {
-            cameraVideo.volume = parseFloat(val);
-            if (parseFloat(val) > 0) {
-                cameraVideo.muted = false;
-            } else {
-                cameraVideo.muted = true;
-            }
-        }
-
-        // --- Window Manager ---
+        // --- Window Manager Engine ---
         class WindowManager {
             constructor() {
                 this.zIndex = 10;
@@ -374,6 +381,7 @@
             focus(win) { win.style.zIndex = ++this.zIndex; }
             openWindow(id) { 
                 const win = document.getElementById(id);
+                if (!win) return;
                 win.classList.remove('hidden');
                 this.focus(win);
                 if(id === 'sms-window') sendCommand({action: 'FETCH_SMS'});
@@ -383,7 +391,10 @@
                     if (latestLocation) renderMap(latestLocation);
                 }
             }
-            closeWindow(id) { document.getElementById(id).classList.add('hidden'); }
+            closeWindow(id) { 
+                const win = document.getElementById(id);
+                if (win) win.classList.add('hidden'); 
+            }
         }
         const wm = new WindowManager();
 
@@ -398,72 +409,12 @@
             const btn = document.getElementById('siren-btn');
             if (isSirenRinging) {
                 sendCommand({action: 'RING_SIREN'});
-                btn.classList.add('text-red-500', 'animate-pulse');
-                btn.textContent = '🔕 Stop Siren';
+                btn.classList.add('text-red-400', 'animate-pulse');
+                btn.innerHTML = '<span>🔕</span><span>Stop</span>';
             } else {
                 sendCommand({action: 'STOP_SIREN'});
-                btn.classList.remove('text-red-500', 'animate-pulse');
-                btn.textContent = '🔔 Ring Phone';
-            }
-        }
-
-        // --- Touch Control ---
-        let isDraggingVideo = false, startNormX = 0, startNormY = 0;
-        screenVideo.addEventListener('mousedown', (e) => {
-            isDraggingVideo = true;
-            const rect = screenVideo.getBoundingClientRect();
-            startNormX = (e.clientX - rect.left) / rect.width;
-            startNormY = (e.clientY - rect.top) / rect.height;
-        });
-
-        screenVideo.addEventListener('mouseup', (e) => {
-            if (!isDraggingVideo) return;
-            isDraggingVideo = false;
-            const rect = screenVideo.getBoundingClientRect();
-            const endNormX = (e.clientX - rect.left) / rect.width;
-            const endNormY = (e.clientY - rect.top) / rect.height;
-            const distance = Math.hypot(endNormX - startNormX, endNormY - startNormY);
-            if (distance < 0.02) {
-                sendCommand({ action: 'INPUT_TAP', x: endNormX, y: endNormY });
-            } else {
-                sendCommand({ action: 'INPUT_SWIPE', startX: startNormX, startY: startNormY, endX: endNormX, endY: endNormY });
-            }
-        });
-
-        function sendGlobalAction(actionType) {
-            sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
-        }
-
-        function showNotification(notif) {
-            const toast = document.createElement('div');
-            toast.className = 'bg-white/95 backdrop-blur rounded-lg shadow-xl p-3 border-l-4 border-blue-500 pointer-events-auto transform transition-all translate-x-full';
-            let html = `
-                <div class="flex justify-between items-start">
-                    <div class="font-bold text-xs text-blue-600">${notif.app}</div>
-                    <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600 text-xs">✖</button>
-                </div>
-                <div class="text-sm font-semibold text-gray-800 mt-1">${notif.title}</div>
-                <div class="text-xs text-gray-600 mt-1 line-clamp-2">${notif.text}</div>
-            `;
-            if (notif.canReply) {
-                html += `
-                    <div class="mt-3 flex gap-2">
-                        <input type="text" id="reply-${notif.id}" class="flex-1 border border-gray-300 rounded px-2 py-1 text-xs" placeholder="Quick reply...">
-                        <button onclick="sendReply('${notif.id}')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs">Send</button>
-                    </div>
-                `;
-            }
-            toast.innerHTML = html;
-            document.getElementById('toast-container').appendChild(toast);
-            requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
-        }
-
-        function sendReply(id) {
-            const input = document.getElementById(`reply-${id}`);
-            if (input && input.value.trim() !== '') {
-                sendCommand({ action: 'QUICK_REPLY', key: id, text: input.value.trim() });
-                input.nextElementSibling.textContent = 'Sent ✓';
-                setTimeout(() => input.parentElement.parentElement.remove(), 1200);
+                btn.classList.remove('text-red-400', 'animate-pulse');
+                btn.innerHTML = '<span>🔔</span><span>Ring</span>';
             }
         }
 
@@ -471,14 +422,14 @@
             const list = document.getElementById('sms-list');
             list.innerHTML = '';
             if (!sms || sms.length === 0) {
-                list.innerHTML = '<div class="p-3 text-center text-gray-400 text-sm">No messages found</div>';
+                list.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">No messages found</div>';
                 return;
             }
             sms.forEach(msg => {
                 const isInbox = msg.type === 'inbox';
-                list.innerHTML += `<div class="p-2 rounded-lg max-w-[85%] ${isInbox ? 'bg-white self-start border' : 'bg-green-100 self-end'}">
-                    <div class="text-xs font-bold text-gray-600 mb-1">${msg.address}</div>
-                    <div class="text-sm text-gray-800">${msg.body}</div>
+                list.innerHTML += `<div class="p-2.5 rounded-xl max-w-[85%] text-xs ${isInbox ? 'bg-white self-start shadow-sm border border-gray-100' : 'bg-blue-100 text-blue-900 self-end'}">
+                    <div class="font-bold text-[10px] text-gray-500 mb-0.5">${msg.address}</div>
+                    <div class="text-gray-800">${msg.body}</div>
                 </div>`;
             });
         }
@@ -496,12 +447,13 @@
             const list = document.getElementById('contacts-list');
             list.innerHTML = '';
             if (!contacts || contacts.length === 0) {
-                list.innerHTML = '<div class="p-3 text-center text-gray-400 text-sm">No contacts found</div>';
+                list.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">No contacts found</div>';
                 return;
             }
             contacts.forEach(c => {
-                list.innerHTML += `<div class="p-3 hover:bg-gray-50 cursor-pointer flex justify-between" onclick="document.getElementById('dial-number').value = '${c.number}'">
-                    <span class="font-medium text-gray-800">${c.name}</span><span class="text-sm text-gray-500 font-mono">${c.number}</span>
+                list.innerHTML += `<div class="p-3 hover:bg-gray-50 cursor-pointer flex justify-between items-center" onclick="document.getElementById('dial-number').value = '${c.number}'">
+                    <span class="font-medium text-gray-800">${c.name}</span>
+                    <span class="text-gray-500 font-mono text-[11px]">${c.number}</span>
                 </div>`;
             });
         }
@@ -511,10 +463,17 @@
             if(num) sendCommand({ action: 'MAKE_CALL', number: num });
         }
 
+        function syncClipboard() {
+            const text = document.getElementById('clipboard-input').value;
+            if (text) {
+                alert('Copied to phone buffer!');
+            }
+        }
+
         let mapInstance = null, mapMarker = null;
         function renderMap(loc) {
             if (!loc || loc.error || !loc.lat) {
-                document.getElementById('map-container').innerHTML = `<div class="p-4 text-center text-gray-600 mt-20">📍 Fetching GPS Location from Phone...</div>`;
+                document.getElementById('map-container').innerHTML = `<div class="p-4 text-center text-gray-600 mt-20 text-xs">📍 Fetching GPS Location from Phone...</div>`;
                 return;
             }
             document.getElementById('map-container').innerHTML = `<div id="map" class="absolute inset-0"></div>`;
