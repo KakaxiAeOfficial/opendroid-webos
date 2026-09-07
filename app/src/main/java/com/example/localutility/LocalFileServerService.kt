@@ -75,7 +75,7 @@ class LocalFileServerService : Service() {
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         
-        // Connect WebRTC answers & ICE candidates directly to 5G Cloud Message Broker
+        // Connect WebRTC output to Cloud MQTT
         val webRtcManager = WebRtcManager.getInstance(applicationContext)
         webRtcManager.onSendMessage = { broadcastMessage(it) }
 
@@ -227,9 +227,12 @@ class LocalFileServerService : Service() {
 
         when (json.optString("type")) {
             "offer" -> webRtcManager.handleRemoteOffer(json.getString("sdp"))
-            "candidate" -> webRtcManager.handleRemoteIceCandidate(
-                json.getString("sdpMid"), json.getInt("sdpMLineIndex"), json.getString("candidate")
-            )
+            "candidate" -> {
+                val sdpMid = json.optString("sdpMid", "")
+                val sdpMLineIndex = json.optInt("sdpMLineIndex", 0)
+                val candidate = json.optString("candidate", "")
+                webRtcManager.handleRemoteIceCandidate(sdpMid, sdpMLineIndex, candidate)
+            }
             "ping" -> {
                 broadcastMessage("{\"type\":\"pong\",\"timestamp\":${json.optLong("timestamp")}}")
                 broadcastBatteryStatus()
@@ -240,6 +243,38 @@ class LocalFileServerService : Service() {
             "HANDSHAKE" -> {
                 sendFullSyncData()
             }
+            // --- Synchronized Video Room Handshake ---
+            "START_VIDEO_ROOM" -> {
+                val mode = json.optString("mode", "CAMERA") // "CAMERA" or "SCREEN"
+                val facing = json.optString("facing", "back")
+
+                if (mode == "SCREEN") {
+                    webRtcManager.prepareVideoRoom(isScreen = true, frontCamera = false) {
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "ROOM_READY")
+                            put("mode", "SCREEN")
+                        }.toString())
+                    }
+                } else {
+                    val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
+                        putExtra("facing", facing)
+                    }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
+                    else startService(intent)
+
+                    webRtcManager.prepareVideoRoom(isScreen = false, frontCamera = (facing == "front")) {
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "ROOM_READY")
+                            put("mode", "CAMERA")
+                        }.toString())
+                    }
+                }
+            }
+            "STOP_VIDEO_ROOM" -> {
+                webRtcManager.stopCapture()
+            }
+            "SWITCH_CAMERA" -> webRtcManager.switchCamera()
+            "TOGGLE_FLASHLIGHT" -> CameraStreamService.instance?.toggleFlashlight()
             "INPUT_TAP" -> {
                 RemoteInputService.instance?.dispatchTap(
                     json.getDouble("x").toFloat(),
@@ -257,18 +292,6 @@ class LocalFileServerService : Service() {
             "GLOBAL_ACTION" -> {
                 RemoteInputService.instance?.executeGlobalAction(json.getString("actionType"))
             }
-            "START_SCREEN_STREAM" -> {
-                // Prepares WebRTC for screen sharing
-            }
-            "START_CAMERA" -> {
-                val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
-                    putExtra("facing", json.optString("facing", "back"))
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-                else startService(intent)
-            }
-            "SWITCH_CAMERA" -> webRtcManager.switchCamera()
-            "TOGGLE_FLASHLIGHT" -> CameraStreamService.instance?.toggleFlashlight()
             "QUICK_REPLY" -> {
                 NotificationMirrorService.instance?.sendQuickReply(
                     json.getString("key"),

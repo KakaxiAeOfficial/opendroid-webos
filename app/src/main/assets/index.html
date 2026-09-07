@@ -166,16 +166,21 @@
         </div>
     </div>
 
-    <!-- Window: Screen Mirroring (Phase E) -->
+    <!-- Window: Screen Mirroring (Synchronized Video Room) -->
     <div id="screen-window" class="window hidden" style="width: 360px; height: 680px; top: 60px; left: 330px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📱</span>
                 <span class="font-semibold text-xs">Screen Mirroring</span>
             </div>
-            <button onclick="wm.closeWindow('screen-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+            <button onclick="closeVideoRoom('screen-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
         </div>
         <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
+            <!-- Live Status Banner -->
+            <div id="screen-status-bar" class="bg-gray-900/90 text-yellow-400 text-[10px] py-1 px-2 text-center border-b border-gray-800 font-mono">
+                Click below to start screen stream
+            </div>
+
             <!-- Screen Video Element -->
             <video id="screen-video" class="flex-1 w-full h-full" style="object-fit: fill; cursor: crosshair;" autoplay playsinline muted></video>
             
@@ -188,27 +193,32 @@
 
             <!-- Video Connect Overlay -->
             <div id="screen-overlay" class="absolute inset-0 flex items-center justify-center text-white bg-black/70 z-20">
-                <button onclick="startWebRTC()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg transition-all">Start Live Screen</button>
+                <button onclick="requestVideoRoom('SCREEN', 'back')" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg transition-all">Start Live Screen</button>
             </div>
         </div>
     </div>
 
-    <!-- Window: Remote Camera (Phase E) -->
+    <!-- Window: Remote Camera (Synchronized Video Room) -->
     <div id="camera-window" class="window hidden" style="width: 420px; height: 560px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📷</span>
                 <span class="font-semibold text-xs">Remote Camera & Mic</span>
             </div>
-            <button onclick="wm.closeWindow('camera-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+            <button onclick="closeVideoRoom('camera-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
         </div>
         <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
+            <!-- Live Status Banner -->
+            <div id="camera-status-bar" class="bg-gray-900/90 text-yellow-400 text-[10px] py-1 px-2 text-center border-b border-gray-800 font-mono">
+                Click Start Camera below
+            </div>
+
             <video id="camera-video" class="flex-1 w-full object-contain" autoplay playsinline muted></video>
             
-            <!-- Camera Hardware Controls -->
+            <!-- Camera Controls -->
             <div class="bg-gray-900 p-3 flex flex-col gap-2.5 border-t border-gray-700 z-10 text-xs">
                 <div class="flex justify-between items-center gap-2">
-                    <button onclick="startCameraStream('back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow">Start Camera</button>
+                    <button onclick="requestVideoRoom('CAMERA', 'back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow">Start Camera</button>
                     <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3 py-1.5 rounded-lg">🔄 Switch</button>
                     <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3 py-1.5 rounded-lg">💡 Flash</button>
                 </div>
@@ -422,6 +432,7 @@
         let allInstalledApps = [];
         let currentDirPath = '';
         let parentDirPath = '';
+        let currentActiveMode = 'CAMERA';
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -495,6 +506,17 @@
                     document.getElementById('device-battery-detail').textContent = `${data.percent}% (${data.charging ? 'Charging' : 'On Battery'})`;
                     document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
                 }
+            } else if (data.type === 'ROOM_READY') {
+                // Phone confirms hardware & track binding ready in video room!
+                updateVideoStatus(data.mode, "Phone Bound! Generating WebRTC Offer...");
+                executeWebRtcOffer(data.mode);
+            } else if (data.type === 'answer' && pc) {
+                updateVideoStatus(currentActiveMode, "SDP Answer received. Connecting P2P...");
+                pc.setRemoteDescription(new RTCSessionDescription(data))
+                  .then(() => console.log("WebRTC P2P Room Locked!"))
+                  .catch(e => console.error("setRemoteDescription error:", e));
+            } else if (data.type === 'candidate' && pc) {
+                pc.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error("addIceCandidate error:", e));
             } else if (data.type === 'SMS_LIST') {
                 renderSms(data.data);
             } else if (data.type === 'CONTACTS_LIST') {
@@ -519,53 +541,58 @@
                 renderDirectory(data.data);
             } else if (data.type === 'PHOTOS_LIST') {
                 renderPhotos(data.data);
-            } else if (data.type === 'answer' && pc) {
-                console.log("Applying SDP Answer from phone...");
-                pc.setRemoteDescription(new RTCSessionDescription(data))
-                  .then(() => console.log("WebRTC P2P Video Connected!"))
-                  .catch(e => console.error("setRemoteDescription error:", e));
-            } else if (data.type === 'candidate' && pc) {
-                pc.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error("addIceCandidate error:", e));
             }
         }
 
-        // --- WebRTC Video Engine (Screen & Camera) ---
+        // --- Synchronized WebRTC Video Room Engine ---
         let pc = null;
-        let incomingStream = new MediaStream();
         const screenVideo = document.getElementById('screen-video');
         const cameraVideo = document.getElementById('camera-video');
 
-        screenVideo.srcObject = incomingStream;
-        cameraVideo.srcObject = incomingStream;
+        function updateVideoStatus(mode, statusText) {
+            const bar = mode === 'SCREEN' ? document.getElementById('screen-status-bar') : document.getElementById('camera-status-bar');
+            if (bar) {
+                bar.textContent = statusText;
+                bar.className = "bg-gray-900/90 text-yellow-400 text-[10px] py-1 px-2 text-center border-b border-gray-800 font-mono";
+            }
+        }
 
-        async function initPeerConnection() {
+        // 1. Request Phone to bind hardware in fresh room
+        function requestVideoRoom(mode, facing) {
+            currentActiveMode = mode;
+            if (mode === 'SCREEN') {
+                document.getElementById('screen-overlay').classList.add('hidden');
+            }
+            updateVideoStatus(mode, "Requesting Phone to bind video hardware...");
+            sendCommand({ action: 'START_VIDEO_ROOM', mode: mode, facing: facing });
+        }
+
+        // 2. Once phone signals ROOM_READY, negotiate WebRTC cleanly
+        async function executeWebRtcOffer(mode) {
             if (pc) {
                 try { pc.close(); } catch(e) {}
             }
 
-            incomingStream = new MediaStream();
-            screenVideo.srcObject = incomingStream;
-            cameraVideo.srcObject = incomingStream;
+            const targetVideo = mode === 'SCREEN' ? screenVideo : cameraVideo;
 
             pc = new RTCPeerConnection({
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:openrelay.metered.ca:80' },
                     {
-                        urls: 'turn:openrelay.metered.ca:80',
+                        urls: 'turn:staticauth.openrelay.metered.ca:80',
                         username: 'openrelayproject',
-                        credential: 'openrelayproject'
+                        credential: 'openrelayprojectsecret'
                     },
                     {
-                        urls: 'turn:openrelay.metered.ca:443',
+                        urls: 'turn:staticauth.openrelay.metered.ca:443',
                         username: 'openrelayproject',
-                        credential: 'openrelayproject'
+                        credential: 'openrelayprojectsecret'
                     },
                     {
-                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                        urls: 'turn:staticauth.openrelay.metered.ca:443?transport=tcp',
                         username: 'openrelayproject',
-                        credential: 'openrelayproject'
+                        credential: 'openrelayprojectsecret'
                     }
                 ]
             });
@@ -574,14 +601,19 @@
             pc.addTransceiver('audio', { direction: 'recvonly' });
 
             pc.ontrack = (event) => {
-                console.log("WebRTC ontrack received:", event.track.kind);
-                incomingStream.addTrack(event.track);
-
-                screenVideo.muted = true;
-                cameraVideo.muted = true;
-
-                screenVideo.play().catch(e => console.log("Screen video play:", e));
-                cameraVideo.play().catch(e => console.log("Camera video play:", e));
+                console.log("WebRTC video track bound successfully:", event.track.kind);
+                if (event.streams && event.streams[0]) {
+                    targetVideo.srcObject = event.streams[0];
+                } else {
+                    targetVideo.srcObject = new MediaStream([event.track]);
+                }
+                targetVideo.play().catch(e => console.log('play handled', e));
+                
+                const bar = mode === 'SCREEN' ? document.getElementById('screen-status-bar') : document.getElementById('camera-status-bar');
+                if (bar) {
+                    bar.textContent = "🟢 Stream Live & Synchronized";
+                    bar.className = "bg-green-950 text-green-400 text-[10px] py-1 px-2 text-center border-b border-green-800 font-mono font-bold";
+                }
             };
 
             pc.onicecandidate = (event) => {
@@ -594,24 +626,27 @@
                     });
                 }
             };
-        }
 
-        async function startWebRTC() {
-            document.getElementById('screen-overlay').classList.add('hidden');
-            await initPeerConnection();
+            pc.oniceconnectionstatechange = () => {
+                console.log("ICE Connection State:", pc.iceConnectionState);
+            };
 
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            console.log("Sending WebRTC Offer to Phone...");
+            updateVideoStatus(mode, "Offer sent. Awaiting phone answer...");
             sendCommand({ type: 'offer', sdp: offer.sdp });
         }
 
-        async function startCameraStream(facing) {
-            console.log("Requesting camera stream:", facing);
-            sendCommand({ action: 'START_CAMERA', facing: facing });
-            setTimeout(async () => {
-                await startWebRTC();
-            }, 400);
+        function closeVideoRoom(windowId) {
+            wm.closeWindow(windowId);
+            sendCommand({ action: 'STOP_VIDEO_ROOM' });
+            if (pc) {
+                try { pc.close(); pc = null; } catch(e) {}
+            }
+            if (windowId === 'screen-window') {
+                document.getElementById('screen-overlay').classList.remove('hidden');
+                document.getElementById('screen-status-bar').textContent = "Click below to start screen stream";
+            }
         }
 
         function adjustAudioVolume(val) {
@@ -623,7 +658,7 @@
             }
         }
 
-        // --- Mouse Touch Injection (Screen Mirroring) ---
+        // --- Mouse Touch Control (Screen Mirroring) ---
         let isDraggingVideo = false, startNormX = 0, startNormY = 0;
         screenVideo.addEventListener('mousedown', (e) => {
             isDraggingVideo = true;
