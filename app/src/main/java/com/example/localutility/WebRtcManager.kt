@@ -57,13 +57,11 @@ class WebRtcManager private constructor(private val context: Context) {
             .createPeerConnectionFactory()
     }
 
-    // --- Fresh Synchronized Video Room Creation & Track Binding ---
+    // --- Fresh Synchronized Video Room Engine ---
     fun prepareVideoRoom(isScreen: Boolean, frontCamera: Boolean, onBound: () -> Unit) {
         try {
-            // 1. Clean any old stale connection
             stopCapture()
 
-            // 2. Setup ICE Servers (STUN + Verified Metered OpenRelay TURN)
             val iceServers = listOf(
                 PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
                 PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
@@ -86,7 +84,6 @@ class WebRtcManager private constructor(private val context: Context) {
                 continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
             }
 
-            // 3. Create fresh PeerConnection for this session
             peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
                 override fun onIceCandidate(candidate: IceCandidate) {
                     val json = JSONObject().apply {
@@ -111,7 +108,6 @@ class WebRtcManager private constructor(private val context: Context) {
                 override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {}
             })
 
-            // 4. Initialize Hardware Video Capturer & Bind Track Directly
             surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", rootEglBase.eglBaseContext)
             videoSource = peerConnectionFactory?.createVideoSource(isScreen)
 
@@ -137,14 +133,12 @@ class WebRtcManager private constructor(private val context: Context) {
                 }
             }
 
-            // 5. Bind Video Track into PeerConnection
             val newTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
             newTrack?.setEnabled(true)
             videoTrack = newTrack
 
             peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
 
-            // 6. Bind Audio Track
             try {
                 val audioConstraints = MediaConstraints().apply {
                     mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
@@ -155,18 +149,28 @@ class WebRtcManager private constructor(private val context: Context) {
                 peerConnection?.addTrack(audioTrack, listOf("ARDAMS"))
             } catch (e: Exception) { Log.e("WebRTC", "Audio bind error", e) }
 
-            Log.d("WebRTC", "Hardware bound successfully in video room!")
+            Log.d("WebRTC", "Video room prepared and bound!")
             onBound()
         } catch (e: Exception) {
             Log.e("WebRTC", "Error preparing video room", e)
         }
     }
 
+    // --- Service Bridge Methods (Fix for Compilation) ---
+    fun startScreenCapture(mediaProjectionIntent: Intent) {
+        lastMediaProjectionIntent = mediaProjectionIntent
+        prepareVideoRoom(isScreen = true, frontCamera = false) {}
+    }
+
+    fun startCameraCapture(frontFacing: Boolean) {
+        prepareVideoRoom(isScreen = false, frontCamera = frontFacing) {}
+    }
+
     fun handleRemoteOffer(sdp: String) {
         val sessionDescription = SessionDescription(SessionDescription.Type.OFFER, sdp)
         peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
             override fun onSetSuccess() {
-                Log.d("WebRTC", "Remote Offer set! Generating synchronized answer...")
+                Log.d("WebRTC", "Remote Offer set! Generating answer...")
                 peerConnection?.createAnswer(object : SimpleSdpObserver() {
                     override fun onCreateSuccess(desc: SessionDescription?) {
                         desc?.let {
