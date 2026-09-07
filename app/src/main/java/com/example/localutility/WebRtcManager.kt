@@ -60,7 +60,6 @@ class WebRtcManager private constructor(private val context: Context) {
     }
 
     private fun createPeerConnection() {
-        // High-Performance Free STUN and TURN Servers for 5G Bypass
         val iceServers = listOf(
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
             PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
@@ -96,7 +95,7 @@ class WebRtcManager private constructor(private val context: Context) {
             }
             override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
             override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
-                Log.d("WebRTC", "IceConnectionState changed to: $state")
+                Log.d("WebRTC", "IceConnectionState: $state")
             }
             override fun onIceConnectionReceivingChange(receiving: Boolean) {}
             override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
@@ -107,6 +106,16 @@ class WebRtcManager private constructor(private val context: Context) {
             override fun onRenegotiationNeeded() {}
             override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {}
         })
+
+        // Pre-allocate Video Transceiver so the video channel is ALWAYS open in SDP
+        try {
+            peerConnection?.addTransceiver(
+                MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO,
+                RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.SEND_ONLY)
+            )
+        } catch (e: Exception) {
+            Log.e("WebRTC", "Transceiver allocation error", e)
+        }
     }
 
     private fun startAudioCapture() {
@@ -138,12 +147,22 @@ class WebRtcManager private constructor(private val context: Context) {
             currentVideoCapturer?.startCapture(1280, 720, 30)
 
             val newTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
+            newTrack?.setEnabled(true)
 
-            val sender = peerConnection?.senders?.find { it.track()?.kind() == "video" }
-            if (sender != null) {
-                sender.setTrack(newTrack, true)
+            // Inject the new camera track into the pre-allocated transceiver
+            val transceiver = peerConnection?.transceivers?.find {
+                it.mediaType == MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO
+            }
+
+            if (transceiver != null) {
+                transceiver.sender.setTrack(newTrack, true)
             } else {
-                peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
+                val sender = peerConnection?.senders?.find { it.track()?.kind() == "video" }
+                if (sender != null) {
+                    sender.setTrack(newTrack, true)
+                } else {
+                    peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
+                }
             }
             videoTrack = newTrack
         } catch (e: Exception) {

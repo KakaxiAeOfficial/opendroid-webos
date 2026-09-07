@@ -26,7 +26,7 @@
             <div class="w-14 h-14 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 shadow-lg">📱</div>
             <h2 class="text-xl font-bold text-gray-900">Connect to Device</h2>
             <p class="text-xs text-gray-500 mt-1 mb-4">Enter the 6-digit code shown on your phone screen:</p>
-            <input type="text" id="pairing-code-input" placeholder="e.g. 811093" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
+            <input type="text" id="pairing-code-input" placeholder="e.g. 932941" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
             <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow transition-all">Connect 5G Stream</button>
             <div class="mt-3">
                 <button onclick="connectLocal()" class="text-xs text-gray-400 hover:text-gray-600 underline">Or connect via Local Wi-Fi</button>
@@ -100,16 +100,17 @@
             <button onclick="wm.closeWindow('camera-window')" class="text-red-400 hover:text-red-500">✖</button>
         </div>
         <div class="flex-1 relative bg-black flex flex-col">
-            <video id="camera-video" class="flex-1 w-full object-contain" autoplay playsinline></video>
+            <!-- Autoplay fix: muted & playsinline attributes are mandatory for Chrome autoplay -->
+            <video id="camera-video" class="flex-1 w-full object-contain" autoplay playsinline muted></video>
             <div class="bg-gray-900 p-3 flex flex-col gap-3 border-t border-gray-700">
                 <div class="flex justify-between">
-                    <button onclick="startCameraStream('back')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Start Camera</button>
+                    <button onclick="startCameraStream('back')" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 font-semibold">Start Camera</button>
                     <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 text-white px-3 py-1 rounded text-sm hover:bg-gray-600">🔄 Switch</button>
                     <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700">💡 Flash</button>
                 </div>
                 <div class="flex items-center gap-2 text-white text-sm">
                     <span>🔊 Audio:</span>
-                    <input type="range" id="mic-volume" min="0" max="1" step="0.1" value="1" class="flex-1" onchange="document.getElementById('camera-video').volume = this.value">
+                    <input type="range" id="mic-volume" min="0" max="1" step="0.1" value="0" class="flex-1" onchange="adjustAudioVolume(this.value)">
                 </div>
             </div>
         </div>
@@ -240,9 +241,11 @@
             } else if (data.type === 'NOTIFICATION') {
                 showNotification(data);
             } else if (data.type === 'answer' && pc) {
-                pc.setRemoteDescription(new RTCSessionDescription(data));
+                pc.setRemoteDescription(new RTCSessionDescription(data))
+                  .then(() => console.log('SDP Answer applied successfully'))
+                  .catch(e => console.error('Set remote description error:', e));
             } else if (data.type === 'candidate' && pc) {
-                pc.addIceCandidate(new RTCIceCandidate(data));
+                pc.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error(e));
             } else if (data.type === 'SMS_LIST') {
                 renderSms(data.data);
             } else if (data.type === 'CONTACTS_LIST') {
@@ -253,15 +256,23 @@
             }
         }
 
-        // --- WebRTC with STUN & Free TURN Relay ---
+        // --- WebRTC Pipeline ---
         let pc = null;
+        let incomingStream = new MediaStream();
         const screenVideo = document.getElementById('screen-video');
         const cameraVideo = document.getElementById('camera-video');
+
+        screenVideo.srcObject = incomingStream;
+        cameraVideo.srcObject = incomingStream;
 
         async function initPeerConnection() {
             if (pc) {
                 try { pc.close(); } catch(e) {}
             }
+
+            incomingStream = new MediaStream();
+            screenVideo.srcObject = incomingStream;
+            cameraVideo.srcObject = incomingStream;
 
             pc = new RTCPeerConnection({
                 iceServers: [
@@ -290,17 +301,11 @@
             pc.addTransceiver('audio', { direction: 'recvonly' });
 
             pc.ontrack = (event) => {
-                if (event.streams && event.streams[0]) {
-                    const stream = event.streams[0];
-                    if (screenVideo.srcObject !== stream) {
-                        screenVideo.srcObject = stream;
-                        screenVideo.play().catch(e => console.log('Autoplay handled', e));
-                    }
-                    if (cameraVideo.srcObject !== stream) {
-                        cameraVideo.srcObject = stream;
-                        cameraVideo.play().catch(e => console.log('Autoplay handled', e));
-                    }
-                }
+                console.log('WebRTC ontrack:', event.track.kind);
+                incomingStream.addTrack(event.track);
+
+                screenVideo.play().catch(e => console.log('Screen play handled', e));
+                cameraVideo.play().catch(e => console.log('Camera play handled', e));
             };
 
             pc.onicecandidate = (event) => {
@@ -326,8 +331,18 @@
 
         async function startCameraStream(facing) {
             sendCommand({ action: 'START_CAMERA', facing: facing });
-            if (!pc || pc.connectionState === 'closed') {
+            // Allow 300ms for hardware sensor power-up
+            setTimeout(async () => {
                 await startWebRTC();
+            }, 300);
+        }
+
+        function adjustAudioVolume(val) {
+            cameraVideo.volume = parseFloat(val);
+            if (parseFloat(val) > 0) {
+                cameraVideo.muted = false;
+            } else {
+                cameraVideo.muted = true;
             }
         }
 
@@ -504,7 +519,7 @@
             setTimeout(() => {
                 mapInstance = L.map('map').setView([loc.lat, loc.lng], 16);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapInstance);
-                mapMarker = L.marker([loc.lat, loc.lng]).addTo(mapInstance).bindPopup('Phone Live Location').openPopup();
+                mapMarker = L.marker([loc.lat, loc.lng]).addTo(mapInstance).bindPopup('Phone Location').openPopup();
                 mapInstance.invalidateSize();
             }, 100);
         }
