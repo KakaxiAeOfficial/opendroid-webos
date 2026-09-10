@@ -34,7 +34,7 @@ class CameraStreamService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Camera Active")
-            .setContentText("Streaming video to Web Controller")
+            .setContentText("Streaming live camera to Web Controller")
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setOngoing(true)
             .build()
@@ -46,15 +46,14 @@ class CameraStreamService : Service() {
                 startForeground(NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
-            Log.e("CameraStreamService", "FGS start safe catch: ${e.message}")
+            Log.e("CameraStreamService", "FGS start safe fallback: ${e.message}")
             try {
                 startForeground(NOTIFICATION_ID, notification)
             } catch (e2: Exception) {
-                Log.e("CameraStreamService", "Fallback FGS error", e2)
+                Log.e("CameraStreamService", "Fatal FGS fallback error", e2)
             }
         }
 
-        // NOTE: Duplicate webRtcManager call removed here to prevent Camera2 deadlocks & ANR freeze
         return START_NOT_STICKY
     }
 

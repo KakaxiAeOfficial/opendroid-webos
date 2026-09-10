@@ -30,9 +30,6 @@ class WebRtcManager private constructor(private val context: Context) {
     private var videoSource: VideoSource? = null
     private var videoTrack: VideoTrack? = null
 
-    private var audioSource: AudioSource? = null
-    private var audioTrack: AudioTrack? = null
-
     var onSendMessage: ((String) -> Unit)? = null
     var isFrontCamera = false
     var lastMediaProjectionIntent: Intent? = null
@@ -57,9 +54,9 @@ class WebRtcManager private constructor(private val context: Context) {
             .createPeerConnectionFactory()
     }
 
-    // --- Thread-Safe Synchronized Video & Audio Room Engine ---
+    // --- Dedicated Camera Video Engine ---
     @Synchronized
-    fun prepareVideoRoom(isScreen: Boolean, frontCamera: Boolean, onBound: () -> Unit) {
+    fun startCameraSession(frontFacing: Boolean, onBound: () -> Unit) {
         try {
             stopCapture()
 
@@ -109,74 +106,54 @@ class WebRtcManager private constructor(private val context: Context) {
                 override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {}
             })
 
-            surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", rootEglBase.eglBaseContext)
-            videoSource = peerConnectionFactory?.createVideoSource(isScreen)
+            // Camera2 Capturer on dedicated thread
+            surfaceTextureHelper = SurfaceTextureHelper.create("CameraCaptureThread", rootEglBase.eglBaseContext)
+            videoSource = peerConnectionFactory?.createVideoSource(false)
 
-            if (isScreen && lastMediaProjectionIntent != null) {
-                currentVideoCapturer = ScreenCapturerAndroid(lastMediaProjectionIntent, object : MediaProjection.Callback() {})
+            isFrontCamera = frontFacing
+            val enumerator = Camera2Enumerator(context)
+            var targetDevice: String? = null
+            for (name in enumerator.deviceNames) {
+                if (enumerator.isFrontFacing(name) == frontFacing) {
+                    targetDevice = name
+                    break
+                }
+            }
+            if (targetDevice == null) targetDevice = enumerator.deviceNames.firstOrNull()
+
+            targetDevice?.let {
+                currentVideoCapturer = enumerator.createCapturer(it, null)
                 currentVideoCapturer?.initialize(surfaceTextureHelper, context, videoSource!!.capturerObserver)
                 currentVideoCapturer?.startCapture(1280, 720, 30)
-            } else {
-                isFrontCamera = frontCamera
-                val enumerator = Camera2Enumerator(context)
-                var targetDevice: String? = null
-                for (name in enumerator.deviceNames) {
-                    if (enumerator.isFrontFacing(name) == frontCamera) {
-                        targetDevice = name
-                        break
-                    }
-                }
-                if (targetDevice == null) targetDevice = enumerator.deviceNames.firstOrNull()
-                targetDevice?.let {
-                    currentVideoCapturer = enumerator.createCapturer(it, null)
-                    currentVideoCapturer?.initialize(surfaceTextureHelper, context, videoSource!!.capturerObserver)
-                    currentVideoCapturer?.startCapture(1280, 720, 30)
-                }
             }
 
             val newTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
             newTrack?.setEnabled(true)
             videoTrack = newTrack
+
             peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
 
-            // Audio Track Setup
-            try {
-                val audioConstraints = MediaConstraints().apply {
-                    mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
-                    mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
-                    mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
-                }
-                audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
-                audioTrack = peerConnectionFactory?.createAudioTrack("ARDAMSa0", audioSource)
-                audioTrack?.setEnabled(true)
-                audioTrack?.setVolume(1.0)
-                peerConnection?.addTrack(audioTrack, listOf("ARDAMS"))
-                Log.d("WebRTC", "Audio track added to peer connection")
-            } catch (e: Exception) {
-                Log.e("WebRTC", "Audio init error", e)
-            }
-
-            Log.d("WebRTC", "Video & Audio tracks successfully bound in room!")
+            Log.d("WebRTC", "Camera hardware and track successfully bound!")
             onBound()
         } catch (e: Exception) {
-            Log.e("WebRTC", "Error preparing video room", e)
+            Log.e("WebRTC", "Error in startCameraSession", e)
         }
     }
 
+    // --- Screen Sharing Compatibility Wrappers ---
     fun startScreenCapture(mediaProjectionIntent: Intent) {
         lastMediaProjectionIntent = mediaProjectionIntent
-        prepareVideoRoom(isScreen = true, frontCamera = false) {}
     }
 
     fun startCameraCapture(frontFacing: Boolean) {
-        prepareVideoRoom(isScreen = false, frontCamera = frontFacing) {}
+        startCameraSession(frontFacing) {}
     }
 
     fun handleRemoteOffer(sdp: String) {
         val sessionDescription = SessionDescription(SessionDescription.Type.OFFER, sdp)
         peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
             override fun onSetSuccess() {
-                Log.d("WebRTC", "Remote Offer set! Generating answer with Video & Audio...")
+                Log.d("WebRTC", "Remote Offer set! Generating answer for camera...")
                 peerConnection?.createAnswer(object : SimpleSdpObserver() {
                     override fun onCreateSuccess(desc: SessionDescription?) {
                         desc?.let {
@@ -232,8 +209,6 @@ class WebRtcManager private constructor(private val context: Context) {
             surfaceTextureHelper = null
             videoSource = null
             videoTrack = null
-            audioTrack = null
-            audioSource = null
         } catch (e: Exception) {
             Log.e("WebRTC", "stopCapture error", e)
         }

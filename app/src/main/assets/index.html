@@ -50,9 +50,6 @@
 </head>
 <body class="h-screen w-screen text-gray-800 font-sans relative">
 
-    <!-- Dedicated Background Audio Receiver for Live Microphone -->
-    <audio id="remote-audio" autoplay playsinline></audio>
-
     <!-- Connect / Pairing Modal -->
     <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center">
@@ -169,6 +166,34 @@
         </div>
     </div>
 
+    <!-- Window: Remote Camera (Target 1 Focus) -->
+    <div id="camera-window" class="window hidden" style="width: 440px; height: 580px; top: 70px; left: 360px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📷</span>
+                <span class="font-semibold text-xs">Remote Camera Feed</span>
+            </div>
+            <button onclick="closeCameraRoom()" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
+        </div>
+        <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
+            <!-- Camera Status Banner -->
+            <div id="camera-status-bar" class="bg-gray-900/90 text-yellow-400 text-[11px] py-1.5 px-3 text-center border-b border-gray-800 font-mono">
+                Click Start Camera below
+            </div>
+
+            <video id="camera-video" class="flex-1 w-full h-full object-contain" autoplay playsinline muted></video>
+            
+            <!-- Controls -->
+            <div class="bg-gray-900 p-3 flex flex-col gap-2.5 border-t border-gray-700 z-10 text-xs">
+                <div class="flex justify-between items-center gap-2">
+                    <button onclick="startCameraStream('back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow">Start Camera</button>
+                    <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3.5 py-2 rounded-lg">🔄 Switch</button>
+                    <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3.5 py-2 rounded-lg">💡 Flash</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Window: Screen Mirroring -->
     <div id="screen-window" class="window hidden" style="width: 360px; height: 680px; top: 60px; left: 330px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -176,53 +201,14 @@
                 <span class="text-xs">📱</span>
                 <span class="font-semibold text-xs">Screen Mirroring</span>
             </div>
-            <button onclick="closeVideoRoom('screen-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+            <button onclick="wm.closeWindow('screen-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
         </div>
         <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
-            <div id="screen-status-bar" class="bg-gray-900/90 text-yellow-400 text-[10px] py-1 px-2 text-center border-b border-gray-800 font-mono">
-                Click below to start screen stream
-            </div>
             <video id="screen-video" class="flex-1 w-full h-full" style="object-fit: fill; cursor: crosshair;" autoplay playsinline muted></video>
-            
             <div class="bg-gray-900 h-11 flex justify-around items-center border-t border-gray-700 z-10">
                 <button onclick="sendGlobalAction('BACK')" class="text-white text-lg hover:text-gray-300 px-4">◀</button>
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
-            </div>
-
-            <div id="screen-overlay" class="absolute inset-0 flex items-center justify-center text-white bg-black/70 z-20">
-                <button onclick="requestVideoRoom('SCREEN', 'back')" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-lg transition-all">Start Live Screen</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Window: Remote Camera -->
-    <div id="camera-window" class="window hidden" style="width: 420px; height: 560px; top: 70px; left: 360px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <span class="text-xs">📷</span>
-                <span class="font-semibold text-xs">Remote Camera & Mic</span>
-            </div>
-            <button onclick="closeVideoRoom('camera-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
-        </div>
-        <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
-            <div id="camera-status-bar" class="bg-gray-900/90 text-yellow-400 text-[10px] py-1 px-2 text-center border-b border-gray-800 font-mono">
-                Click Start Camera below
-            </div>
-
-            <video id="camera-video" class="flex-1 w-full object-contain" autoplay playsinline muted></video>
-            
-            <div class="bg-gray-900 p-3 flex flex-col gap-2.5 border-t border-gray-700 z-10 text-xs">
-                <div class="flex justify-between items-center gap-2">
-                    <button onclick="requestVideoRoom('CAMERA', 'back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow">Start Camera</button>
-                    <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3 py-1.5 rounded-lg">🔄 Switch</button>
-                    <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3 py-1.5 rounded-lg">💡 Flash</button>
-                </div>
-                <div class="flex items-center gap-2 text-white text-[11px]">
-                    <span>🔊 Mic Volume:</span>
-                    <input type="range" id="mic-volume" min="0" max="1" step="0.05" value="0.8" class="flex-1" oninput="adjustAudioVolume(this.value)">
-                    <span id="mic-volume-label" class="w-8 font-mono text-right text-gray-300">80%</span>
-                </div>
             </div>
         </div>
     </div>
@@ -350,10 +336,7 @@
     <!-- Window: Clipboard Sync -->
     <div id="clipboard-window" class="window hidden" style="width: 380px; height: 300px; top: 150px; left: 410px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <span class="text-xs">📋</span>
-                <span class="font-semibold text-xs">Clipboard Sync</span>
-            </div>
+            <span class="font-semibold text-xs">📋 Clipboard Sync</span>
             <button onclick="wm.closeWindow('clipboard-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
         </div>
         <div class="flex-1 p-3 bg-gray-50 flex flex-col gap-2">
@@ -429,8 +412,6 @@
         let allInstalledApps = [];
         let currentDirPath = '';
         let parentDirPath = '';
-        let currentActiveMode = 'CAMERA';
-        let currentAudioVolume = 0.8;
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -504,16 +485,16 @@
                     document.getElementById('device-battery-detail').textContent = `${data.percent}% (${data.charging ? 'Charging' : 'On Battery'})`;
                     document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
                 }
-            } else if (data.type === 'ROOM_READY') {
-                updateVideoStatus(data.mode, "Phone Ready. Connecting WebRTC...");
-                executeWebRtcOffer(data.mode);
+            } else if (data.type === 'CAMERA_READY') {
+                updateCameraStatus("Phone Camera Bound! Negotiating WebRTC...");
+                executeCameraOffer();
             } else if (data.type === 'answer' && pc) {
-                updateVideoStatus(currentActiveMode, "SDP Answer received. Verifying connection...");
+                updateCameraStatus("SDP Answer received. Verifying connection...");
                 pc.setRemoteDescription(new RTCSessionDescription(data))
-                  .then(() => console.log("WebRTC Remote Description applied successfully"))
+                  .then(() => console.log("WebRTC Remote Description applied"))
                   .catch(e => {
                       console.error("setRemoteDescription error:", e);
-                      updateVideoStatus(currentActiveMode, "SDP Error: " + e.message);
+                      updateCameraStatus("SDP Error: " + e.message);
                   });
             } else if (data.type === 'candidate' && pc) {
                 pc.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error("addIceCandidate error:", e));
@@ -544,40 +525,33 @@
             }
         }
 
-        // --- Synchronized WebRTC Video & Audio Engine ---
+        // --- Target 1: WebRTC Dedicated Camera Engine ---
         let pc = null;
-        const screenVideo = document.getElementById('screen-video');
         const cameraVideo = document.getElementById('camera-video');
 
-        function updateVideoStatus(mode, statusText) {
-            const bar = mode === 'SCREEN' ? document.getElementById('screen-status-bar') : document.getElementById('camera-status-bar');
+        function updateCameraStatus(statusText) {
+            const bar = document.getElementById('camera-status-bar');
             if (bar) {
                 bar.textContent = statusText;
                 if (statusText.includes("Live") || statusText.includes("connected")) {
-                    bar.className = "bg-green-950 text-green-400 text-[10px] py-1 px-2 text-center border-b border-green-800 font-mono font-bold";
-                } else if (statusText.includes("failed") || statusText.includes("Error")) {
-                    bar.className = "bg-red-950 text-red-400 text-[10px] py-1 px-2 text-center border-b border-red-800 font-mono font-bold";
+                    bar.className = "bg-green-950 text-green-400 text-[11px] py-1.5 px-3 text-center border-b border-green-800 font-mono font-bold";
+                } else if (statusText.includes("Failed") || statusText.includes("Error")) {
+                    bar.className = "bg-red-950 text-red-400 text-[11px] py-1.5 px-3 text-center border-b border-red-800 font-mono font-bold";
                 } else {
-                    bar.className = "bg-gray-900/90 text-yellow-400 text-[10px] py-1 px-2 text-center border-b border-gray-800 font-mono";
+                    bar.className = "bg-gray-900/90 text-yellow-400 text-[11px] py-1.5 px-3 text-center border-b border-gray-800 font-mono";
                 }
             }
         }
 
-        function requestVideoRoom(mode, facing) {
-            currentActiveMode = mode;
-            if (mode === 'SCREEN') {
-                document.getElementById('screen-overlay').classList.add('hidden');
-            }
-            updateVideoStatus(mode, "Requesting Phone to bind video & audio hardware...");
-            sendCommand({ action: 'START_VIDEO_ROOM', mode: mode, facing: facing });
+        function startCameraStream(facing) {
+            updateCameraStatus("Requesting phone to bind camera...");
+            sendCommand({ action: 'START_CAMERA_STREAM', facing: facing });
         }
 
-        async function executeWebRtcOffer(mode) {
+        async function executeCameraOffer() {
             if (pc) {
                 try { pc.close(); } catch(e) {}
             }
-
-            const targetVideo = mode === 'SCREEN' ? screenVideo : cameraVideo;
 
             pc = new RTCPeerConnection({
                 iceServers: [
@@ -602,27 +576,13 @@
             });
 
             pc.addTransceiver('video', { direction: 'recvonly' });
-            pc.addTransceiver('audio', { direction: 'recvonly' });
 
-            // CRITICAL FIX: Separate video and audio tracks so they don't overwrite each other
             pc.ontrack = (event) => {
-                console.log("WebRTC ontrack received kind:", event.track.kind);
-                
+                console.log("WebRTC video track received:", event.track.kind);
                 if (event.track.kind === 'video') {
-                    // Route video track specifically to the target video element
-                    targetVideo.srcObject = new MediaStream([event.track]);
-                    targetVideo.play().catch(e => console.log('Video play handled:', e));
-                    updateVideoStatus(mode, "🟢 Stream Live & Synchronized");
-                } else if (event.track.kind === 'audio') {
-                    // Route audio track specifically to the dedicated background audio element
-                    const audioEl = document.getElementById('remote-audio');
-                    if (audioEl) {
-                        audioEl.srcObject = new MediaStream([event.track]);
-                        audioEl.volume = currentAudioVolume;
-                        audioEl.muted = false;
-                        audioEl.play().catch(e => console.log('Audio autoplay prevented by browser policy:', e));
-                        console.log("Audio track attached to remote-audio element!");
-                    }
+                    cameraVideo.srcObject = new MediaStream([event.track]);
+                    cameraVideo.play().catch(e => console.log('Camera play handled:', e));
+                    updateCameraStatus("🟢 Camera Stream Live (30 FPS)");
                 }
             };
 
@@ -640,75 +600,28 @@
             pc.oniceconnectionstatechange = () => {
                 console.log("ICE Connection State:", pc.iceConnectionState);
                 if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-                    updateVideoStatus(mode, "🟢 Connected & Live (P2P)");
+                    updateCameraStatus("🟢 Connected & Live (P2P)");
                 } else if (pc.iceConnectionState === 'failed') {
-                    updateVideoStatus(mode, "🔴 Connection Failed (NAT/Firewall block)");
+                    updateCameraStatus("🔴 Connection Failed (Relay Blocked)");
                 } else if (pc.iceConnectionState === 'checking') {
-                    updateVideoStatus(mode, "🟡 Connecting to Relay...");
+                    updateCameraStatus("🟡 Connecting to Relay...");
                 }
             };
 
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            updateVideoStatus(mode, "Offer sent. Awaiting phone answer...");
+            updateCameraStatus("Offer sent. Awaiting phone answer...");
             sendCommand({ type: 'offer', sdp: offer.sdp });
         }
 
-        function closeVideoRoom(windowId) {
-            wm.closeWindow(windowId);
-            sendCommand({ action: 'STOP_VIDEO_ROOM' });
+        function closeCameraRoom() {
+            wm.closeWindow('camera-window');
+            sendCommand({ action: 'STOP_CAMERA_STREAM' });
             if (pc) {
                 try { pc.close(); pc = null; } catch(e) {}
             }
-            const audioEl = document.getElementById('remote-audio');
-            if (audioEl) audioEl.srcObject = null;
-
-            if (windowId === 'screen-window') {
-                document.getElementById('screen-overlay').classList.remove('hidden');
-                document.getElementById('screen-status-bar').textContent = "Click below to start screen stream";
-            }
-        }
-
-        function adjustAudioVolume(val) {
-            currentAudioVolume = parseFloat(val);
-            const audioEl = document.getElementById('remote-audio');
-            if (audioEl) {
-                audioEl.volume = currentAudioVolume;
-                audioEl.muted = (currentAudioVolume === 0);
-                if (currentAudioVolume > 0 && audioEl.paused && audioEl.srcObject) {
-                    audioEl.play().catch(e => console.log('Audio resume play handled:', e));
-                }
-            }
-            const label = document.getElementById('mic-volume-label');
-            if (label) label.textContent = `${Math.round(currentAudioVolume * 100)}%`;
-        }
-
-        // --- Mouse Touch Control (Screen Mirroring) ---
-        let isDraggingVideo = false, startNormX = 0, startNormY = 0;
-        screenVideo.addEventListener('mousedown', (e) => {
-            isDraggingVideo = true;
-            const rect = screenVideo.getBoundingClientRect();
-            startNormX = (e.clientX - rect.left) / rect.width;
-            startNormY = (e.clientY - rect.top) / rect.height;
-        });
-
-        screenVideo.addEventListener('mouseup', (e) => {
-            if (!isDraggingVideo) return;
-            isDraggingVideo = false;
-            const rect = screenVideo.getBoundingClientRect();
-            const endNormX = (e.clientX - rect.left) / rect.width;
-            const endNormY = (e.clientY - rect.top) / rect.height;
-            const distance = Math.hypot(endNormX - startNormX, endNormY - startNormY);
-
-            if (distance < 0.02) {
-                sendCommand({ action: 'INPUT_TAP', x: endNormX, y: endNormY });
-            } else {
-                sendCommand({ action: 'INPUT_SWIPE', startX: startNormX, startY: startNormY, endX: endNormX, endY: endNormY });
-            }
-        });
-
-        function sendGlobalAction(actionType) {
-            sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
+            cameraVideo.srcObject = null;
+            updateCameraStatus("Click Start Camera below");
         }
 
         // --- Window Manager Engine ---

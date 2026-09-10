@@ -75,7 +75,7 @@ class LocalFileServerService : Service() {
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         
-        // Connect WebRTC output to Cloud MQTT
+        // Connect WebRTC output directly to Cloud MQTT
         val webRtcManager = WebRtcManager.getInstance(applicationContext)
         webRtcManager.onSendMessage = { broadcastMessage(it) }
 
@@ -243,38 +243,33 @@ class LocalFileServerService : Service() {
             "HANDSHAKE" -> {
                 sendFullSyncData()
             }
-            // --- Synchronized Video Room Handshake ---
-            "START_VIDEO_ROOM" -> {
-                val mode = json.optString("mode", "CAMERA") // "CAMERA" or "SCREEN"
+            // --- Target 1: Synchronized Camera Video Room ---
+            "START_CAMERA_STREAM" -> {
                 val facing = json.optString("facing", "back")
 
-                if (mode == "SCREEN") {
-                    webRtcManager.prepareVideoRoom(isScreen = true, frontCamera = false) {
-                        broadcastMessage(JSONObject().apply {
-                            put("type", "ROOM_READY")
-                            put("mode", "SCREEN")
-                        }.toString())
-                    }
-                } else {
-                    val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
-                        putExtra("facing", facing)
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-                    else startService(intent)
+                // 1. Start Safe Notification Service
+                val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
+                    putExtra("facing", facing)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
+                else startService(intent)
 
-                    webRtcManager.prepareVideoRoom(isScreen = false, frontCamera = (facing == "front")) {
-                        broadcastMessage(JSONObject().apply {
-                            put("type", "ROOM_READY")
-                            put("mode", "CAMERA")
-                        }.toString())
-                    }
+                // 2. Start Camera2 Hardware and Bind Track cleanly
+                webRtcManager.startCameraSession(frontFacing = (facing == "front")) {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CAMERA_READY")
+                    }.toString())
                 }
             }
-            "STOP_VIDEO_ROOM" -> {
+            "STOP_CAMERA_STREAM" -> {
                 webRtcManager.stopCapture()
+                val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java)
+                stopService(intent)
             }
             "SWITCH_CAMERA" -> webRtcManager.switchCamera()
             "TOGGLE_FLASHLIGHT" -> CameraStreamService.instance?.toggleFlashlight()
+
+            // --- Existing Working Actions ---
             "INPUT_TAP" -> {
                 RemoteInputService.instance?.dispatchTap(
                     json.getDouble("x").toFloat(),
