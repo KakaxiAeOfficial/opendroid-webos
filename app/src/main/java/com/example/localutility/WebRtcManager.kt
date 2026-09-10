@@ -34,6 +34,10 @@ class WebRtcManager private constructor(private val context: Context) {
     var isFrontCamera = false
     var lastMediaProjectionIntent: Intent? = null
 
+    // Candidate queue to prevent dropping
+    private val queuedRemoteCandidates = ArrayList<IceCandidate>()
+    private var isRemoteDescriptionSet = false
+
     init {
         initWebRtc()
     }
@@ -54,26 +58,28 @@ class WebRtcManager private constructor(private val context: Context) {
             .createPeerConnectionFactory()
     }
 
-    // --- Dedicated Camera Video Engine ---
     @Synchronized
     fun startCameraSession(frontFacing: Boolean, onBound: () -> Unit) {
         try {
             stopCapture()
 
+            queuedRemoteCandidates.clear()
+            isRemoteDescriptionSet = false
+
             val iceServers = listOf(
                 PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
                 PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
-                PeerConnection.IceServer.builder("turn:staticauth.openrelay.metered.ca:80")
+                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:80")
                     .setUsername("openrelayproject")
-                    .setPassword("openrelayprojectsecret")
+                    .setPassword("openrelayproject")
                     .createIceServer(),
-                PeerConnection.IceServer.builder("turn:staticauth.openrelay.metered.ca:443")
+                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443")
                     .setUsername("openrelayproject")
-                    .setPassword("openrelayprojectsecret")
+                    .setPassword("openrelayproject")
                     .createIceServer(),
-                PeerConnection.IceServer.builder("turn:staticauth.openrelay.metered.ca:443?transport=tcp")
+                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443?transport=tcp")
                     .setUsername("openrelayproject")
-                    .setPassword("openrelayprojectsecret")
+                    .setPassword("openrelayproject")
                     .createIceServer()
             )
 
@@ -106,7 +112,6 @@ class WebRtcManager private constructor(private val context: Context) {
                 override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {}
             })
 
-            // Camera2 Capturer on dedicated thread
             surfaceTextureHelper = SurfaceTextureHelper.create("CameraCaptureThread", rootEglBase.eglBaseContext)
             videoSource = peerConnectionFactory?.createVideoSource(false)
 
@@ -133,14 +138,13 @@ class WebRtcManager private constructor(private val context: Context) {
 
             peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
 
-            Log.d("WebRTC", "Camera hardware and track successfully bound!")
+            Log.d("WebRTC", "Camera hardware bound cleanly!")
             onBound()
         } catch (e: Exception) {
             Log.e("WebRTC", "Error in startCameraSession", e)
         }
     }
 
-    // --- Screen Sharing Compatibility Wrappers ---
     fun startScreenCapture(mediaProjectionIntent: Intent) {
         lastMediaProjectionIntent = mediaProjectionIntent
     }
@@ -153,7 +157,15 @@ class WebRtcManager private constructor(private val context: Context) {
         val sessionDescription = SessionDescription(SessionDescription.Type.OFFER, sdp)
         peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
             override fun onSetSuccess() {
-                Log.d("WebRTC", "Remote Offer set! Generating answer for camera...")
+                isRemoteDescriptionSet = true
+                Log.d("WebRTC", "Remote Offer set! Draining ${queuedRemoteCandidates.size} candidates...")
+                
+                // Drain any candidates received before offer was set
+                for (cand in queuedRemoteCandidates) {
+                    peerConnection?.addIceCandidate(cand)
+                }
+                queuedRemoteCandidates.clear()
+
                 peerConnection?.createAnswer(object : SimpleSdpObserver() {
                     override fun onCreateSuccess(desc: SessionDescription?) {
                         desc?.let {
@@ -162,7 +174,7 @@ class WebRtcManager private constructor(private val context: Context) {
                                 put("type", "answer")
                                 put("sdp", it.description)
                             }
-                            Log.d("WebRTC", "Dispatching Answer to Web Browser")
+                            Log.d("WebRTC", "Dispatching Answer to PC")
                             onSendMessage?.invoke(json.toString())
                         }
                     }
@@ -181,7 +193,11 @@ class WebRtcManager private constructor(private val context: Context) {
         try {
             if (sdp.isNotEmpty()) {
                 val candidate = IceCandidate(sdpMid, sdpMLineIndex, sdp)
-                peerConnection?.addIceCandidate(candidate)
+                if (isRemoteDescriptionSet) {
+                    peerConnection?.addIceCandidate(candidate)
+                } else {
+                    queuedRemoteCandidates.add(candidate)
+                }
             }
         } catch (e: Exception) {
             Log.e("WebRTC", "addIceCandidate error", e)
@@ -200,6 +216,8 @@ class WebRtcManager private constructor(private val context: Context) {
     @Synchronized
     fun stopCapture() {
         try {
+            queuedRemoteCandidates.clear()
+            isRemoteDescriptionSet = false
             currentVideoCapturer?.stopCapture()
             currentVideoCapturer?.dispose()
             surfaceTextureHelper?.dispose()

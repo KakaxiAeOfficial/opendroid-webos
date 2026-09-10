@@ -166,7 +166,7 @@
         </div>
     </div>
 
-    <!-- Window: Remote Camera (Target 1 Focus) -->
+    <!-- Window: Remote Camera -->
     <div id="camera-window" class="window hidden" style="width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -413,6 +413,10 @@
         let currentDirPath = '';
         let parentDirPath = '';
 
+        // WebRTC Candidate Queue to prevent packet dropping
+        let candidateQueue = [];
+        let isRemoteDescriptionSet = false;
+
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
             if (code.length !== 6) {
@@ -467,7 +471,7 @@
             }
         }
 
-        function handleIncomingData(data) {
+        async function handleIncomingData(data) {
             if (data.type === 'HANDSHAKE_ACK' || data.type === 'BATTERY') {
                 if (handshakeInterval) {
                     clearInterval(handshakeInterval);
@@ -489,15 +493,26 @@
                 updateCameraStatus("Phone Camera Bound! Negotiating WebRTC...");
                 executeCameraOffer();
             } else if (data.type === 'answer' && pc) {
-                updateCameraStatus("SDP Answer received. Verifying connection...");
-                pc.setRemoteDescription(new RTCSessionDescription(data))
-                  .then(() => console.log("WebRTC Remote Description applied"))
-                  .catch(e => {
-                      console.error("setRemoteDescription error:", e);
-                      updateCameraStatus("SDP Error: " + e.message);
-                  });
+                updateCameraStatus("SDP Answer received. Applying connection...");
+                try {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data));
+                    isRemoteDescriptionSet = true;
+                    console.log("Remote Description set! Draining " + candidateQueue.length + " queued candidates...");
+                    while (candidateQueue.length > 0) {
+                        const cand = candidateQueue.shift();
+                        await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(e => console.error("Queued addIceCandidate error:", e));
+                    }
+                } catch (e) {
+                    console.error("setRemoteDescription error:", e);
+                    updateCameraStatus("SDP Error: " + e.message);
+                }
             } else if (data.type === 'candidate' && pc) {
-                pc.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error("addIceCandidate error:", e));
+                if (isRemoteDescriptionSet) {
+                    pc.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error("addIceCandidate error:", e));
+                } else {
+                    console.log("Queuing ICE candidate received before answer...");
+                    candidateQueue.push(data);
+                }
             } else if (data.type === 'SMS_LIST') {
                 renderSms(data.data);
             } else if (data.type === 'CONTACTS_LIST') {
@@ -525,7 +540,7 @@
             }
         }
 
-        // --- Target 1: WebRTC Dedicated Camera Engine ---
+        // --- Target 1: WebRTC Dedicated Camera Engine with Candidate Queue ---
         let pc = null;
         const cameraVideo = document.getElementById('camera-video');
 
@@ -533,7 +548,7 @@
             const bar = document.getElementById('camera-status-bar');
             if (bar) {
                 bar.textContent = statusText;
-                if (statusText.includes("Live") || statusText.includes("connected")) {
+                if (statusText.includes("Live") || statusText.includes("Connected")) {
                     bar.className = "bg-green-950 text-green-400 text-[11px] py-1.5 px-3 text-center border-b border-green-800 font-mono font-bold";
                 } else if (statusText.includes("Failed") || statusText.includes("Error")) {
                     bar.className = "bg-red-950 text-red-400 text-[11px] py-1.5 px-3 text-center border-b border-red-800 font-mono font-bold";
@@ -553,24 +568,28 @@
                 try { pc.close(); } catch(e) {}
             }
 
+            candidateQueue = [];
+            isRemoteDescriptionSet = false;
+
+            // Verified OpenRelay TURN configuration
             pc = new RTCPeerConnection({
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
                     {
-                        urls: 'turn:staticauth.openrelay.metered.ca:80',
+                        urls: 'turn:openrelay.metered.ca:80',
                         username: 'openrelayproject',
-                        credential: 'openrelayprojectsecret'
+                        credential: 'openrelayproject'
                     },
                     {
-                        urls: 'turn:staticauth.openrelay.metered.ca:443',
+                        urls: 'turn:openrelay.metered.ca:443',
                         username: 'openrelayproject',
-                        credential: 'openrelayprojectsecret'
+                        credential: 'openrelayproject'
                     },
                     {
-                        urls: 'turn:staticauth.openrelay.metered.ca:443?transport=tcp',
+                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
                         username: 'openrelayproject',
-                        credential: 'openrelayprojectsecret'
+                        credential: 'openrelayproject'
                     }
                 ]
             });
