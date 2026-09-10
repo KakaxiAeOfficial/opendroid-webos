@@ -58,6 +58,7 @@ class LocalFileServerService : Service() {
         var currentPairingCode: String = "123456"
         var isCloudConnected: Boolean = false
         var onCloudStatusChanged: ((Boolean) -> Unit)? = null
+        var instance: LocalFileServerService? = null
     }
 
     private val batteryReceiver = object : BroadcastReceiver() {
@@ -68,6 +69,7 @@ class LocalFileServerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
         currentPairingCode = prefs.getString("pairing_code", currentPairingCode) ?: currentPairingCode
 
@@ -212,13 +214,14 @@ class LocalFileServerService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    private fun broadcastMessage(msg: String) {
+    // Standard Reliable Messages (QoS 1)
+    fun broadcastMessage(msg: String) {
         wsMessageChannel.trySend(msg)
         mqttSendChannel.trySend(msg)
     }
 
     // Direct Camera Frame Stream (QoS 0)
-    private fun sendDirectCameraFrame(base64Frame: String) {
+    fun sendDirectCameraFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "CAMERA_FRAME")
             put("frame", base64Frame)
@@ -236,7 +239,7 @@ class LocalFileServerService : Service() {
     }
 
     // Direct Screen Mirror Frame Stream (QoS 0)
-    private fun sendDirectScreenFrame(base64Frame: String) {
+    fun sendDirectScreenFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "SCREEN_FRAME")
             put("frame", base64Frame)
@@ -270,7 +273,7 @@ class LocalFileServerService : Service() {
                 sendFullSyncData()
             }
 
-            // --- Target 1: Direct Camera Stream ---
+            // --- Direct Camera Stream ---
             "START_CAMERA_STREAM" -> {
                 val facing = json.optString("facing", "back")
                 val isFront = (facing == "front")
@@ -290,9 +293,13 @@ class LocalFileServerService : Service() {
             "SWITCH_CAMERA" -> cameraStreamer.switchCamera()
             "TOGGLE_FLASHLIGHT" -> cameraStreamer.toggleTorch()
 
-            // --- Target 2: Direct Screen Mirror Stream ---
+            // --- Direct Screen Mirror Stream ---
             "START_SCREEN_STREAM" -> {
-                if (screenStreamer.lastProjectionIntent != null) {
+                if (screenStreamer.isStreaming) {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "SCREEN_STREAM_STARTED")
+                    }.toString())
+                } else if (screenStreamer.lastProjectionIntent != null) {
                     screenStreamer.startStreaming { frameBase64 ->
                         sendDirectScreenFrame(frameBase64)
                     }
@@ -456,6 +463,7 @@ class LocalFileServerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        instance = null
         unregisterReceiver(batteryReceiver)
         currentRingtone?.stop()
         DirectCameraStreamer.getInstance(applicationContext).stopStreaming()

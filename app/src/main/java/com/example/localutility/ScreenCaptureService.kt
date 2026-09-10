@@ -33,8 +33,11 @@ class ScreenCaptureService : Service() {
             intent?.getParcelableExtra(EXTRA_RESULT_DATA)
         }
 
+        // Android 14 compliant: Start screen stream inside the mediaProjection service directly
         resultData?.let {
-            DirectScreenStreamer.getInstance(applicationContext).lastProjectionIntent = it
+            DirectScreenStreamer.getInstance(applicationContext).startStreaming(it) { base64Frame ->
+                LocalFileServerService.instance?.sendDirectScreenFrame(base64Frame)
+            }
         }
 
         return START_NOT_STICKY
@@ -43,7 +46,7 @@ class ScreenCaptureService : Service() {
     private fun startForegroundService() {
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screen Sharing Active")
-            .setContentText("Screen mirroring is ready for Web Controller")
+            .setContentText("Screen mirroring is streaming to Web Controller")
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setOngoing(true)
             .build()

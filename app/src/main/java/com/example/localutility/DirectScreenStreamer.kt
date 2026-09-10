@@ -59,6 +59,12 @@ class DirectScreenStreamer private constructor(private val context: Context) {
     }
 
     @SuppressLint("WrongConstant")
+    fun startStreaming(intent: Intent, onFrame: (String) -> Unit) {
+        lastProjectionIntent = intent
+        startStreaming(onFrame)
+    }
+
+    @SuppressLint("WrongConstant")
     fun startStreaming(onFrame: (String) -> Unit) {
         val intent = lastProjectionIntent ?: return
         stopStreaming()
@@ -71,8 +77,16 @@ class DirectScreenStreamer private constructor(private val context: Context) {
             val mpManager = context.getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             mediaProjection = mpManager.getMediaProjection(android.app.Activity.RESULT_OK, intent.clone() as Intent)
 
+            // Android 14 Mandatory Callback Registration
+            mediaProjection?.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    Log.d("DirectScreen", "MediaProjection stopped by system")
+                    stopStreaming()
+                }
+            }, backgroundHandler)
+
             val metrics = context.resources.displayMetrics
-            // Proportional 540p streaming width for ultra-smooth 5G bandwidth
+            // Proportional 540p streaming resolution
             val targetWidth = 540
             val targetHeight = (540f * (metrics.heightPixels.toFloat() / metrics.widthPixels.toFloat())).toInt()
             val density = metrics.densityDpi
@@ -82,7 +96,7 @@ class DirectScreenStreamer private constructor(private val context: Context) {
                     val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
                     try {
                         val now = System.currentTimeMillis()
-                        // Throttle to ~12 FPS to maintain smooth stream without overloading network
+                        // 12 FPS throttle for smooth 5G data flow
                         if (now - lastFrameTime >= 80) {
                             lastFrameTime = now
 
