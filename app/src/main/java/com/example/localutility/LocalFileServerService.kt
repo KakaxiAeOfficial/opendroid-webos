@@ -212,14 +212,13 @@ class LocalFileServerService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    // Standard Reliable Messages (QoS 1)
     private fun broadcastMessage(msg: String) {
         wsMessageChannel.trySend(msg)
         mqttSendChannel.trySend(msg)
     }
 
-    // Live High-Speed Video Frame Stream (QoS 0 - Zero Latency, Non-Blocking)
-    private fun sendDirectFrame(base64Frame: String) {
+    // Direct Camera Frame Stream (QoS 0)
+    private fun sendDirectCameraFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "CAMERA_FRAME")
             put("frame", base64Frame)
@@ -236,9 +235,28 @@ class LocalFileServerService : Service() {
         }
     }
 
+    // Direct Screen Mirror Frame Stream (QoS 0)
+    private fun sendDirectScreenFrame(base64Frame: String) {
+        val json = JSONObject().apply {
+            put("type", "SCREEN_FRAME")
+            put("frame", base64Frame)
+        }.toString()
+
+        wsMessageChannel.trySend(json)
+        if (mqttClient?.isConnected == true) {
+            try {
+                val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
+                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+            } catch (e: Exception) {
+                Log.e("DirectScreen", "Screen frame publish error", e)
+            }
+        }
+    }
+
     private fun handleIncomingJson(json: JSONObject) {
         val teleManager = TelephonyAndLocationManager(applicationContext)
         val cameraStreamer = DirectCameraStreamer.getInstance(applicationContext)
+        val screenStreamer = DirectScreenStreamer.getInstance(applicationContext)
 
         when (json.optString("type")) {
             "ping" -> {
@@ -252,12 +270,12 @@ class LocalFileServerService : Service() {
                 sendFullSyncData()
             }
 
-            // --- Direct Camera Streamer (Target 1) ---
+            // --- Target 1: Direct Camera Stream ---
             "START_CAMERA_STREAM" -> {
                 val facing = json.optString("facing", "back")
                 val isFront = (facing == "front")
                 cameraStreamer.startStreaming(isFront) { frameBase64 ->
-                    sendDirectFrame(frameBase64)
+                    sendDirectCameraFrame(frameBase64)
                 }
                 broadcastMessage(JSONObject().apply {
                     put("type", "CAMERA_STREAM_STARTED")
@@ -269,14 +287,32 @@ class LocalFileServerService : Service() {
                     put("type", "CAMERA_STREAM_STOPPED")
                 }.toString())
             }
-            "SWITCH_CAMERA" -> {
-                cameraStreamer.switchCamera()
+            "SWITCH_CAMERA" -> cameraStreamer.switchCamera()
+            "TOGGLE_FLASHLIGHT" -> cameraStreamer.toggleTorch()
+
+            // --- Target 2: Direct Screen Mirror Stream ---
+            "START_SCREEN_STREAM" -> {
+                if (screenStreamer.lastProjectionIntent != null) {
+                    screenStreamer.startStreaming { frameBase64 ->
+                        sendDirectScreenFrame(frameBase64)
+                    }
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "SCREEN_STREAM_STARTED")
+                    }.toString())
+                } else {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "SCREEN_PERMISSION_REQUIRED")
+                    }.toString())
+                }
             }
-            "TOGGLE_FLASHLIGHT" -> {
-                cameraStreamer.toggleTorch()
+            "STOP_SCREEN_STREAM" -> {
+                screenStreamer.stopStreaming()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "SCREEN_STREAM_STOPPED")
+                }.toString())
             }
 
-            // --- System Utilities & Control ---
+            // --- System Utilities & Touch Injection ---
             "INPUT_TAP" -> {
                 RemoteInputService.instance?.dispatchTap(
                     json.getDouble("x").toFloat(),
@@ -423,6 +459,7 @@ class LocalFileServerService : Service() {
         unregisterReceiver(batteryReceiver)
         currentRingtone?.stop()
         DirectCameraStreamer.getInstance(applicationContext).stopStreaming()
+        DirectScreenStreamer.getInstance(applicationContext).stopStreaming()
         server?.stop(1000, 2000)
         try { mqttClient?.disconnect() } catch (e: Exception) {}
         serviceScope.cancel()

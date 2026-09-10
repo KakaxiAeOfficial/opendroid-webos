@@ -18,12 +18,9 @@ class ScreenCaptureService : Service() {
         private const val CHANNEL_ID = "ScreenCaptureChannel"
     }
 
-    private lateinit var webRtcManager: WebRtcManager
-
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        webRtcManager = WebRtcManager.getInstance(applicationContext)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -37,7 +34,7 @@ class ScreenCaptureService : Service() {
         }
 
         resultData?.let {
-            webRtcManager.startScreenCapture(it)
+            DirectScreenStreamer.getInstance(applicationContext).lastProjectionIntent = it
         }
 
         return START_NOT_STICKY
@@ -46,7 +43,7 @@ class ScreenCaptureService : Service() {
     private fun startForegroundService() {
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Screen Sharing Active")
-            .setContentText("Your screen is being shared over the local network.")
+            .setContentText("Screen mirroring is ready for Web Controller")
             .setSmallIcon(android.R.drawable.ic_menu_camera)
             .setOngoing(true)
             .build()
@@ -63,7 +60,7 @@ class ScreenCaptureService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Screen Capture Service",
-                NotificationManager.IMPORTANCE_HIGH
+                NotificationManager.IMPORTANCE_LOW
             )
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
@@ -71,7 +68,7 @@ class ScreenCaptureService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        webRtcManager.stopCapture()
+        DirectScreenStreamer.getInstance(applicationContext).stopStreaming()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

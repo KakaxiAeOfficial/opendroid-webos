@@ -166,7 +166,7 @@
         </div>
     </div>
 
-    <!-- Window: Remote Camera (Target 1: Direct Frame Streaming) -->
+    <!-- Window: Remote Camera (Target 1: Direct Frame Stream) -->
     <div id="camera-window" class="window hidden" style="width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -176,12 +176,10 @@
             <button onclick="closeCameraRoom()" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
         </div>
         <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
-            <!-- Camera Status Banner -->
             <div id="camera-status-bar" class="bg-gray-900/90 text-yellow-400 text-[11px] py-1.5 px-3 text-center border-b border-gray-800 font-mono">
                 Click Start Camera below
             </div>
 
-            <!-- Direct Live Image Frame Receiver -->
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden">
                 <img id="camera-frame-view" class="w-full h-full object-contain hidden" alt="Camera Feed" />
                 <div id="camera-placeholder" class="text-gray-600 text-xs text-center p-4">
@@ -189,7 +187,6 @@
                 </div>
             </div>
             
-            <!-- Controls -->
             <div class="bg-gray-900 p-3 flex flex-col gap-2.5 border-t border-gray-700 z-10 text-xs">
                 <div class="flex justify-between items-center gap-2">
                     <button id="cam-toggle-btn" onclick="startCameraStream('back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow transition-colors">Start Camera</button>
@@ -200,21 +197,38 @@
         </div>
     </div>
 
-    <!-- Window: Screen Mirroring -->
+    <!-- Window: Screen Mirroring (Target 2: Direct Frame Stream with Touch Injection) -->
     <div id="screen-window" class="window hidden" style="width: 360px; height: 680px; top: 60px; left: 330px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📱</span>
-                <span class="font-semibold text-xs">Screen Mirroring</span>
+                <span class="font-semibold text-xs">Live Screen Mirroring</span>
             </div>
-            <button onclick="wm.closeWindow('screen-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+            <button onclick="closeScreenRoom()" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
         </div>
         <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
-            <video id="screen-video" class="flex-1 w-full h-full" style="object-fit: fill; cursor: crosshair;" autoplay playsinline muted></video>
+            <div id="screen-status-bar" class="bg-gray-900/90 text-yellow-400 text-[11px] py-1.5 px-3 text-center border-b border-gray-800 font-mono">
+                Click Start Screen Mirror below
+            </div>
+
+            <!-- Direct Live Screen Frame Display with Mouse Click Listeners -->
+            <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden select-none">
+                <img id="screen-frame-view" class="w-full h-full object-fill cursor-crosshair hidden" alt="Screen Mirror" />
+                <div id="screen-placeholder" class="text-gray-500 text-xs text-center p-4">
+                    Screen mirror is stopped. Click "Start Screen Mirror" below.
+                </div>
+            </div>
+            
+            <!-- Android Navigation Bar (Back, Home, Recents) -->
             <div class="bg-gray-900 h-11 flex justify-around items-center border-t border-gray-700 z-10">
                 <button onclick="sendGlobalAction('BACK')" class="text-white text-lg hover:text-gray-300 px-4">◀</button>
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
+            </div>
+
+            <!-- Screen Stream Toggle Button -->
+            <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10">
+                <button id="screen-toggle-btn" onclick="startScreenStream()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors">Start Screen Mirror</button>
             </div>
         </div>
     </div>
@@ -419,6 +433,7 @@
         let currentDirPath = '';
         let parentDirPath = '';
         let isCameraStreaming = false;
+        let isScreenStreaming = false;
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -493,7 +508,7 @@
                     document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
                 }
             } 
-            // --- Target 1: Direct Camera Frame Stream Handler ---
+            // --- Target 1: Camera Direct Stream ---
             else if (data.type === 'CAMERA_FRAME') {
                 const img = document.getElementById('camera-frame-view');
                 const placeholder = document.getElementById('camera-placeholder');
@@ -526,6 +541,42 @@
                 if (img) img.classList.add('hidden');
                 if (placeholder) placeholder.classList.remove('hidden');
             }
+            // --- Target 2: Live Screen Mirroring Direct Stream ---
+            else if (data.type === 'SCREEN_FRAME') {
+                const img = document.getElementById('screen-frame-view');
+                const placeholder = document.getElementById('screen-placeholder');
+                if (img) {
+                    img.src = 'data:image/jpeg;base64,' + data.frame;
+                    img.classList.remove('hidden');
+                    if (placeholder) placeholder.classList.add('hidden');
+                    updateScreenStatus("🟢 Live Screen Mirroring (30 FPS)");
+                }
+            } else if (data.type === 'SCREEN_STREAM_STARTED') {
+                isScreenStreaming = true;
+                updateScreenStatus("🟢 Screen Capture Active");
+                const btn = document.getElementById('screen-toggle-btn');
+                if (btn) {
+                    btn.textContent = "Stop Screen Mirror";
+                    btn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors";
+                    btn.onclick = () => stopScreenStream();
+                }
+            } else if (data.type === 'SCREEN_STREAM_STOPPED') {
+                isScreenStreaming = false;
+                updateScreenStatus("Screen Mirror Stopped");
+                const btn = document.getElementById('screen-toggle-btn');
+                if (btn) {
+                    btn.textContent = "Start Screen Mirror";
+                    btn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors";
+                    btn.onclick = () => startScreenStream();
+                }
+                const img = document.getElementById('screen-frame-view');
+                const placeholder = document.getElementById('screen-placeholder');
+                if (img) img.classList.add('hidden');
+                if (placeholder) placeholder.classList.remove('hidden');
+            } else if (data.type === 'SCREEN_PERMISSION_REQUIRED') {
+                updateScreenStatus("⚠️ Tap 'Start Screen Share' inside Phone App first!");
+                alert("Please click 'Start Screen Share' inside the OpenDroid app on your phone and tap 'Start' to allow screen projection.");
+            }
             // --- General Features ---
             else if (data.type === 'SMS_LIST') {
                 renderSms(data.data);
@@ -554,7 +605,7 @@
             }
         }
 
-        // --- Target 1: Direct Camera Controls ---
+        // --- Camera Controls ---
         function updateCameraStatus(statusText) {
             const bar = document.getElementById('camera-status-bar');
             if (bar) {
@@ -579,6 +630,63 @@
         function closeCameraRoom() {
             wm.closeWindow('camera-window');
             stopCameraStream();
+        }
+
+        // --- Screen Mirror Controls & Touch Injection ---
+        function updateScreenStatus(statusText) {
+            const bar = document.getElementById('screen-status-bar');
+            if (bar) {
+                bar.textContent = statusText;
+                if (statusText.includes("Live") || statusText.includes("Active")) {
+                    bar.className = "bg-green-950 text-green-400 text-[11px] py-1.5 px-3 text-center border-b border-green-800 font-mono font-bold";
+                } else {
+                    bar.className = "bg-gray-900/90 text-yellow-400 text-[11px] py-1.5 px-3 text-center border-b border-gray-800 font-mono";
+                }
+            }
+        }
+
+        function startScreenStream() {
+            updateScreenStatus("🟡 Connecting Screen Stream...");
+            sendCommand({ action: 'START_SCREEN_STREAM' });
+        }
+
+        function stopScreenStream() {
+            sendCommand({ action: 'STOP_SCREEN_STREAM' });
+        }
+
+        function closeScreenRoom() {
+            wm.closeWindow('screen-window');
+            stopScreenStream();
+        }
+
+        // Mouse Touch Control on Screen Mirror Image
+        let isDraggingScreen = false, startNormX = 0, startNormY = 0;
+        const screenImg = document.getElementById('screen-frame-view');
+
+        screenImg.addEventListener('mousedown', (e) => {
+            isDraggingScreen = true;
+            const rect = screenImg.getBoundingClientRect();
+            startNormX = (e.clientX - rect.left) / rect.width;
+            startNormY = (e.clientY - rect.top) / rect.height;
+        });
+
+        screenImg.addEventListener('mouseup', (e) => {
+            if (!isDraggingScreen) return;
+            isDraggingScreen = false;
+            const rect = screenImg.getBoundingClientRect();
+            const endNormX = (e.clientX - rect.left) / rect.width;
+            const endNormY = (e.clientY - rect.top) / rect.height;
+            const distance = Math.hypot(endNormX - startNormX, endNormY - startNormY);
+
+            if (distance < 0.02) {
+                sendCommand({ action: 'INPUT_TAP', x: endNormX, y: endNormY });
+            } else {
+                sendCommand({ action: 'INPUT_SWIPE', startX: startNormX, startY: startNormY, endX: endNormX, endY: endNormY });
+            }
+        });
+
+        function sendGlobalAction(actionType) {
+            sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
         }
 
         // --- Window Manager Engine ---
