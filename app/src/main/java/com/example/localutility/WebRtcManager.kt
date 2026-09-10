@@ -57,7 +57,7 @@ class WebRtcManager private constructor(private val context: Context) {
             .createPeerConnectionFactory()
     }
 
-    // --- Fresh Synchronized Video Room Engine ---
+    // --- Fresh Synchronized Video & Audio Room Engine ---
     fun prepareVideoRoom(isScreen: Boolean, frontCamera: Boolean, onBound: () -> Unit) {
         try {
             stopCapture()
@@ -108,6 +108,7 @@ class WebRtcManager private constructor(private val context: Context) {
                 override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {}
             })
 
+            // 1. Hardware Video Capturer & Track
             surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", rootEglBase.eglBaseContext)
             videoSource = peerConnectionFactory?.createVideoSource(isScreen)
 
@@ -136,27 +137,32 @@ class WebRtcManager private constructor(private val context: Context) {
             val newTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
             newTrack?.setEnabled(true)
             videoTrack = newTrack
-
             peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
 
+            // 2. Hardware Microphone Audio Track (Activated & Unmuted)
             try {
                 val audioConstraints = MediaConstraints().apply {
                     mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
                     mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
+                    mandatory.add(MediaConstraints.KeyValuePair("googAutoGainControl", "true"))
                 }
                 audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
                 audioTrack = peerConnectionFactory?.createAudioTrack("ARDAMSa0", audioSource)
+                audioTrack?.setEnabled(true)
+                audioTrack?.setVolume(1.0)
                 peerConnection?.addTrack(audioTrack, listOf("ARDAMS"))
-            } catch (e: Exception) { Log.e("WebRTC", "Audio bind error", e) }
+                Log.d("WebRTC", "Microphone audio track created, enabled and bound successfully!")
+            } catch (e: Exception) {
+                Log.e("WebRTC", "Audio bind error", e)
+            }
 
-            Log.d("WebRTC", "Video room prepared and bound!")
+            Log.d("WebRTC", "Video and Audio hardware bound in room!")
             onBound()
         } catch (e: Exception) {
             Log.e("WebRTC", "Error preparing video room", e)
         }
     }
 
-    // --- Service Bridge Methods (Fix for Compilation) ---
     fun startScreenCapture(mediaProjectionIntent: Intent) {
         lastMediaProjectionIntent = mediaProjectionIntent
         prepareVideoRoom(isScreen = true, frontCamera = false) {}
@@ -170,7 +176,7 @@ class WebRtcManager private constructor(private val context: Context) {
         val sessionDescription = SessionDescription(SessionDescription.Type.OFFER, sdp)
         peerConnection?.setRemoteDescription(object : SimpleSdpObserver() {
             override fun onSetSuccess() {
-                Log.d("WebRTC", "Remote Offer set! Generating answer...")
+                Log.d("WebRTC", "Remote Offer set! Generating answer with Video & Audio...")
                 peerConnection?.createAnswer(object : SimpleSdpObserver() {
                     override fun onCreateSuccess(desc: SessionDescription?) {
                         desc?.let {
@@ -225,6 +231,8 @@ class WebRtcManager private constructor(private val context: Context) {
             surfaceTextureHelper = null
             videoSource = null
             videoTrack = null
+            audioTrack = null
+            audioSource = null
         } catch (e: Exception) {
             Log.e("WebRTC", "stopCapture error", e)
         }
