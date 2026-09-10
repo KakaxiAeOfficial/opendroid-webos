@@ -74,10 +74,6 @@ class LocalFileServerService : Service() {
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        
-        // Connect WebRTC output directly to Cloud MQTT
-        val webRtcManager = WebRtcManager.getInstance(applicationContext)
-        webRtcManager.onSendMessage = { broadcastMessage(it) }
 
         startMqttWorker()
         initCloudBridge()
@@ -216,23 +212,35 @@ class LocalFileServerService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
+    // Standard Reliable Messages (QoS 1)
     private fun broadcastMessage(msg: String) {
         wsMessageChannel.trySend(msg)
         mqttSendChannel.trySend(msg)
     }
 
+    // Live High-Speed Video Frame Stream (QoS 0 - Zero Latency, Non-Blocking)
+    private fun sendDirectFrame(base64Frame: String) {
+        val json = JSONObject().apply {
+            put("type", "CAMERA_FRAME")
+            put("frame", base64Frame)
+        }.toString()
+
+        wsMessageChannel.trySend(json)
+        if (mqttClient?.isConnected == true) {
+            try {
+                val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
+                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+            } catch (e: Exception) {
+                Log.e("DirectCamera", "Frame publish error", e)
+            }
+        }
+    }
+
     private fun handleIncomingJson(json: JSONObject) {
-        val webRtcManager = WebRtcManager.getInstance(applicationContext)
         val teleManager = TelephonyAndLocationManager(applicationContext)
+        val cameraStreamer = DirectCameraStreamer.getInstance(applicationContext)
 
         when (json.optString("type")) {
-            "offer" -> webRtcManager.handleRemoteOffer(json.getString("sdp"))
-            "candidate" -> {
-                val sdpMid = json.optString("sdpMid", "")
-                val sdpMLineIndex = json.optInt("sdpMLineIndex", 0)
-                val candidate = json.optString("candidate", "")
-                webRtcManager.handleRemoteIceCandidate(sdpMid, sdpMLineIndex, candidate)
-            }
             "ping" -> {
                 broadcastMessage("{\"type\":\"pong\",\"timestamp\":${json.optLong("timestamp")}}")
                 broadcastBatteryStatus()
@@ -243,33 +251,32 @@ class LocalFileServerService : Service() {
             "HANDSHAKE" -> {
                 sendFullSyncData()
             }
-            // --- Target 1: Synchronized Camera Video Room ---
+
+            // --- Direct Camera Streamer (Target 1) ---
             "START_CAMERA_STREAM" -> {
                 val facing = json.optString("facing", "back")
-
-                // 1. Start Safe Notification Service
-                val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
-                    putExtra("facing", facing)
+                val isFront = (facing == "front")
+                cameraStreamer.startStreaming(isFront) { frameBase64 ->
+                    sendDirectFrame(frameBase64)
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
-                else startService(intent)
-
-                // 2. Start Camera2 Hardware and Bind Track cleanly
-                webRtcManager.startCameraSession(frontFacing = (facing == "front")) {
-                    broadcastMessage(JSONObject().apply {
-                        put("type", "CAMERA_READY")
-                    }.toString())
-                }
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CAMERA_STREAM_STARTED")
+                }.toString())
             }
             "STOP_CAMERA_STREAM" -> {
-                webRtcManager.stopCapture()
-                val intent = Intent(this@LocalFileServerService, CameraStreamService::class.java)
-                stopService(intent)
+                cameraStreamer.stopStreaming()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CAMERA_STREAM_STOPPED")
+                }.toString())
             }
-            "SWITCH_CAMERA" -> webRtcManager.switchCamera()
-            "TOGGLE_FLASHLIGHT" -> CameraStreamService.instance?.toggleFlashlight()
+            "SWITCH_CAMERA" -> {
+                cameraStreamer.switchCamera()
+            }
+            "TOGGLE_FLASHLIGHT" -> {
+                cameraStreamer.toggleTorch()
+            }
 
-            // --- Existing Working Actions ---
+            // --- System Utilities & Control ---
             "INPUT_TAP" -> {
                 RemoteInputService.instance?.dispatchTap(
                     json.getDouble("x").toFloat(),
@@ -415,6 +422,7 @@ class LocalFileServerService : Service() {
         super.onDestroy()
         unregisterReceiver(batteryReceiver)
         currentRingtone?.stop()
+        DirectCameraStreamer.getInstance(applicationContext).stopStreaming()
         server?.stop(1000, 2000)
         try { mqttClient?.disconnect() } catch (e: Exception) {}
         serviceScope.cancel()

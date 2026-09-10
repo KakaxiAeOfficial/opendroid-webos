@@ -166,12 +166,12 @@
         </div>
     </div>
 
-    <!-- Window: Remote Camera -->
+    <!-- Window: Remote Camera (Target 1: Direct Frame Streaming) -->
     <div id="camera-window" class="window hidden" style="width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📷</span>
-                <span class="font-semibold text-xs">Remote Camera Feed</span>
+                <span class="font-semibold text-xs">Direct Camera Stream</span>
             </div>
             <button onclick="closeCameraRoom()" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
         </div>
@@ -181,14 +181,20 @@
                 Click Start Camera below
             </div>
 
-            <video id="camera-video" class="flex-1 w-full h-full object-contain" autoplay playsinline muted></video>
+            <!-- Direct Live Image Frame Receiver -->
+            <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden">
+                <img id="camera-frame-view" class="w-full h-full object-contain hidden" alt="Camera Feed" />
+                <div id="camera-placeholder" class="text-gray-600 text-xs text-center p-4">
+                    Camera is currently stopped. Click "Start Camera" to stream.
+                </div>
+            </div>
             
             <!-- Controls -->
             <div class="bg-gray-900 p-3 flex flex-col gap-2.5 border-t border-gray-700 z-10 text-xs">
                 <div class="flex justify-between items-center gap-2">
-                    <button onclick="startCameraStream('back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow">Start Camera</button>
-                    <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3.5 py-2 rounded-lg">🔄 Switch</button>
-                    <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3.5 py-2 rounded-lg">💡 Flash</button>
+                    <button id="cam-toggle-btn" onclick="startCameraStream('back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow transition-colors">Start Camera</button>
+                    <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3.5 py-2 rounded-lg transition-colors">🔄 Switch</button>
+                    <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3.5 py-2 rounded-lg transition-colors">💡 Flash</button>
                 </div>
             </div>
         </div>
@@ -412,10 +418,7 @@
         let allInstalledApps = [];
         let currentDirPath = '';
         let parentDirPath = '';
-
-        // WebRTC Candidate Queue to prevent packet dropping
-        let candidateQueue = [];
-        let isRemoteDescriptionSet = false;
+        let isCameraStreaming = false;
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -471,7 +474,7 @@
             }
         }
 
-        async function handleIncomingData(data) {
+        function handleIncomingData(data) {
             if (data.type === 'HANDSHAKE_ACK' || data.type === 'BATTERY') {
                 if (handshakeInterval) {
                     clearInterval(handshakeInterval);
@@ -489,31 +492,42 @@
                     document.getElementById('device-battery-detail').textContent = `${data.percent}% (${data.charging ? 'Charging' : 'On Battery'})`;
                     document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
                 }
-            } else if (data.type === 'CAMERA_READY') {
-                updateCameraStatus("Phone Camera Bound! Negotiating WebRTC...");
-                executeCameraOffer();
-            } else if (data.type === 'answer' && pc) {
-                updateCameraStatus("SDP Answer received. Applying connection...");
-                try {
-                    await pc.setRemoteDescription(new RTCSessionDescription(data));
-                    isRemoteDescriptionSet = true;
-                    console.log("Remote Description set! Draining " + candidateQueue.length + " queued candidates...");
-                    while (candidateQueue.length > 0) {
-                        const cand = candidateQueue.shift();
-                        await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(e => console.error("Queued addIceCandidate error:", e));
-                    }
-                } catch (e) {
-                    console.error("setRemoteDescription error:", e);
-                    updateCameraStatus("SDP Error: " + e.message);
+            } 
+            // --- Target 1: Direct Camera Frame Stream Handler ---
+            else if (data.type === 'CAMERA_FRAME') {
+                const img = document.getElementById('camera-frame-view');
+                const placeholder = document.getElementById('camera-placeholder');
+                if (img) {
+                    img.src = 'data:image/jpeg;base64,' + data.frame;
+                    img.classList.remove('hidden');
+                    if (placeholder) placeholder.classList.add('hidden');
+                    updateCameraStatus("🟢 Live Camera Stream (30 FPS)");
                 }
-            } else if (data.type === 'candidate' && pc) {
-                if (isRemoteDescriptionSet) {
-                    pc.addIceCandidate(new RTCIceCandidate(data)).catch(e => console.error("addIceCandidate error:", e));
-                } else {
-                    console.log("Queuing ICE candidate received before answer...");
-                    candidateQueue.push(data);
+            } else if (data.type === 'CAMERA_STREAM_STARTED') {
+                isCameraStreaming = true;
+                updateCameraStatus("🟢 Camera Hardware Active");
+                const btn = document.getElementById('cam-toggle-btn');
+                if (btn) {
+                    btn.textContent = "Stop Camera";
+                    btn.className = "flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg shadow transition-colors";
+                    btn.onclick = () => stopCameraStream();
                 }
-            } else if (data.type === 'SMS_LIST') {
+            } else if (data.type === 'CAMERA_STREAM_STOPPED') {
+                isCameraStreaming = false;
+                updateCameraStatus("Camera Stopped");
+                const btn = document.getElementById('cam-toggle-btn');
+                if (btn) {
+                    btn.textContent = "Start Camera";
+                    btn.className = "flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow transition-colors";
+                    btn.onclick = () => startCameraStream('back');
+                }
+                const img = document.getElementById('camera-frame-view');
+                const placeholder = document.getElementById('camera-placeholder');
+                if (img) img.classList.add('hidden');
+                if (placeholder) placeholder.classList.remove('hidden');
+            }
+            // --- General Features ---
+            else if (data.type === 'SMS_LIST') {
                 renderSms(data.data);
             } else if (data.type === 'CONTACTS_LIST') {
                 renderContacts(data.data);
@@ -540,18 +554,13 @@
             }
         }
 
-        // --- Target 1: WebRTC Dedicated Camera Engine with Candidate Queue ---
-        let pc = null;
-        const cameraVideo = document.getElementById('camera-video');
-
+        // --- Target 1: Direct Camera Controls ---
         function updateCameraStatus(statusText) {
             const bar = document.getElementById('camera-status-bar');
             if (bar) {
                 bar.textContent = statusText;
-                if (statusText.includes("Live") || statusText.includes("Connected")) {
+                if (statusText.includes("Live") || statusText.includes("Active")) {
                     bar.className = "bg-green-950 text-green-400 text-[11px] py-1.5 px-3 text-center border-b border-green-800 font-mono font-bold";
-                } else if (statusText.includes("Failed") || statusText.includes("Error")) {
-                    bar.className = "bg-red-950 text-red-400 text-[11px] py-1.5 px-3 text-center border-b border-red-800 font-mono font-bold";
                 } else {
                     bar.className = "bg-gray-900/90 text-yellow-400 text-[11px] py-1.5 px-3 text-center border-b border-gray-800 font-mono";
                 }
@@ -559,88 +568,17 @@
         }
 
         function startCameraStream(facing) {
-            updateCameraStatus("Requesting phone to bind camera...");
+            updateCameraStatus("🟡 Starting Camera Hardware on Phone...");
             sendCommand({ action: 'START_CAMERA_STREAM', facing: facing });
         }
 
-        async function executeCameraOffer() {
-            if (pc) {
-                try { pc.close(); } catch(e) {}
-            }
-
-            candidateQueue = [];
-            isRemoteDescriptionSet = false;
-
-            // Verified OpenRelay TURN configuration
-            pc = new RTCPeerConnection({
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    {
-                        urls: 'turn:openrelay.metered.ca:80',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    },
-                    {
-                        urls: 'turn:openrelay.metered.ca:443',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    },
-                    {
-                        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    }
-                ]
-            });
-
-            pc.addTransceiver('video', { direction: 'recvonly' });
-
-            pc.ontrack = (event) => {
-                console.log("WebRTC video track received:", event.track.kind);
-                if (event.track.kind === 'video') {
-                    cameraVideo.srcObject = new MediaStream([event.track]);
-                    cameraVideo.play().catch(e => console.log('Camera play handled:', e));
-                    updateCameraStatus("🟢 Camera Stream Live (30 FPS)");
-                }
-            };
-
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    sendCommand({
-                        type: 'candidate',
-                        sdpMLineIndex: event.candidate.sdpMLineIndex,
-                        sdpMid: event.candidate.sdpMid,
-                        candidate: event.candidate.candidate
-                    });
-                }
-            };
-
-            pc.oniceconnectionstatechange = () => {
-                console.log("ICE Connection State:", pc.iceConnectionState);
-                if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-                    updateCameraStatus("🟢 Connected & Live (P2P)");
-                } else if (pc.iceConnectionState === 'failed') {
-                    updateCameraStatus("🔴 Connection Failed (Relay Blocked)");
-                } else if (pc.iceConnectionState === 'checking') {
-                    updateCameraStatus("🟡 Connecting to Relay...");
-                }
-            };
-
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            updateCameraStatus("Offer sent. Awaiting phone answer...");
-            sendCommand({ type: 'offer', sdp: offer.sdp });
+        function stopCameraStream() {
+            sendCommand({ action: 'STOP_CAMERA_STREAM' });
         }
 
         function closeCameraRoom() {
             wm.closeWindow('camera-window');
-            sendCommand({ action: 'STOP_CAMERA_STREAM' });
-            if (pc) {
-                try { pc.close(); pc = null; } catch(e) {}
-            }
-            cameraVideo.srcObject = null;
-            updateCameraStatus("Click Start Camera below");
+            stopCameraStream();
         }
 
         // --- Window Manager Engine ---
