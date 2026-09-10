@@ -15,7 +15,6 @@ import androidx.core.app.NotificationCompat
 
 class CameraStreamService : Service() {
 
-    private lateinit var webRtcManager: WebRtcManager
     private lateinit var cameraManager: CameraManager
     private var isTorchOn = false
 
@@ -28,7 +27,6 @@ class CameraStreamService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        webRtcManager = WebRtcManager.getInstance(applicationContext)
         cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         createNotificationChannel()
     }
@@ -43,7 +41,6 @@ class CameraStreamService : Service() {
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Fixed: Use safe camera type without triggering Android 14 background microphone crash
                 startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA)
             } else {
                 startForeground(NOTIFICATION_ID, notification)
@@ -57,9 +54,7 @@ class CameraStreamService : Service() {
             }
         }
 
-        val facing = intent?.getStringExtra("facing") ?: "back"
-        webRtcManager.startCameraCapture(facing == "front")
-
+        // NOTE: Duplicate webRtcManager call removed here to prevent Camera2 deadlocks & ANR freeze
         return START_NOT_STICKY
     }
 

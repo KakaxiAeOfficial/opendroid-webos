@@ -57,7 +57,8 @@ class WebRtcManager private constructor(private val context: Context) {
             .createPeerConnectionFactory()
     }
 
-    // --- Fresh Synchronized Video & Audio Room Engine ---
+    // --- Thread-Safe Synchronized Video & Audio Room Engine ---
+    @Synchronized
     fun prepareVideoRoom(isScreen: Boolean, frontCamera: Boolean, onBound: () -> Unit) {
         try {
             stopCapture()
@@ -108,7 +109,6 @@ class WebRtcManager private constructor(private val context: Context) {
                 override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {}
             })
 
-            // 1. Hardware Video Capturer & Track
             surfaceTextureHelper = SurfaceTextureHelper.create("CaptureThread", rootEglBase.eglBaseContext)
             videoSource = peerConnectionFactory?.createVideoSource(isScreen)
 
@@ -139,7 +139,7 @@ class WebRtcManager private constructor(private val context: Context) {
             videoTrack = newTrack
             peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
 
-            // 2. Hardware Microphone Audio Track (Activated & Unmuted)
+            // Audio Track Setup
             try {
                 val audioConstraints = MediaConstraints().apply {
                     mandatory.add(MediaConstraints.KeyValuePair("googEchoCancellation", "true"))
@@ -151,12 +151,12 @@ class WebRtcManager private constructor(private val context: Context) {
                 audioTrack?.setEnabled(true)
                 audioTrack?.setVolume(1.0)
                 peerConnection?.addTrack(audioTrack, listOf("ARDAMS"))
-                Log.d("WebRTC", "Microphone audio track created, enabled and bound successfully!")
+                Log.d("WebRTC", "Audio track added to peer connection")
             } catch (e: Exception) {
-                Log.e("WebRTC", "Audio bind error", e)
+                Log.e("WebRTC", "Audio init error", e)
             }
 
-            Log.d("WebRTC", "Video and Audio hardware bound in room!")
+            Log.d("WebRTC", "Video & Audio tracks successfully bound in room!")
             onBound()
         } catch (e: Exception) {
             Log.e("WebRTC", "Error preparing video room", e)
@@ -220,6 +220,7 @@ class WebRtcManager private constructor(private val context: Context) {
         }
     }
 
+    @Synchronized
     fun stopCapture() {
         try {
             currentVideoCapturer?.stopCapture()
