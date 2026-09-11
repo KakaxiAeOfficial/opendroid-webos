@@ -19,10 +19,13 @@ import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.Telephony
 import android.telephony.SmsManager
+import android.util.Base64
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.util.Locale
 
 class TelephonyAndLocationManager(private val context: Context) {
@@ -57,7 +60,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 1. File Explorer Engine (Directory Navigation) ---
+    // --- 1. File Explorer & Directory Navigation ---
     fun getDirectoryContents(targetPath: String?): JSONObject {
         val root = Environment.getExternalStorageDirectory()
         val path = if (!targetPath.isNullOrEmpty()) targetPath else root.absolutePath
@@ -72,12 +75,10 @@ class TelephonyAndLocationManager(private val context: Context) {
             result.put("parentPath", dirToRead.parent ?: root.absolutePath)
 
             val rawList = dirToRead.listFiles() ?: emptyArray()
-
-            // Sort: Folders first, then files alphabetically
             val sortedList = rawList.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase(Locale.US) }))
 
             for (file in sortedList) {
-                if (file.name.startsWith(".")) continue // Skip hidden files
+                if (file.name.startsWith(".")) continue
                 val item = JSONObject().apply {
                     put("name", file.name)
                     put("path", file.absolutePath)
@@ -96,7 +97,66 @@ class TelephonyAndLocationManager(private val context: Context) {
         return result
     }
 
-    // --- 2. Photos Gallery Query ---
+    // --- 2. Chunked File Download (Phone ➜ PC) ---
+    fun readFileChunk(filePath: String, offset: Long, chunkSize: Int = 96 * 1024): JSONObject {
+        val obj = JSONObject()
+        val file = File(filePath)
+        if (!file.exists() || file.isDirectory) {
+            obj.put("error", "File not found or is directory")
+            return obj
+        }
+
+        try {
+            val totalSize = file.length()
+            val stream = FileInputStream(file)
+            stream.skip(offset)
+
+            val buffer = ByteArray(chunkSize)
+            val bytesRead = stream.read(buffer)
+            stream.close()
+
+            if (bytesRead > 0) {
+                val actualData = if (bytesRead == chunkSize) buffer else buffer.copyOf(bytesRead)
+                val base64 = Base64.encodeToString(actualData, Base64.NO_WRAP)
+
+                obj.put("fileName", file.name)
+                obj.put("filePath", filePath)
+                obj.put("data", base64)
+                obj.put("offset", offset)
+                obj.put("totalSize", totalSize)
+                obj.put("isLast", (offset + bytesRead) >= totalSize)
+            } else {
+                obj.put("isLast", true)
+            }
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error reading file chunk", e)
+            obj.put("error", e.message)
+        }
+        return obj
+    }
+
+    // --- 3. Chunked File Upload (PC ➜ Phone) ---
+    fun saveUploadedChunk(fileName: String, base64Data: String, isFirstChunk: Boolean): Boolean {
+        return try {
+            val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!downloadDir.exists()) downloadDir.mkdirs()
+
+            val targetFile = File(downloadDir, fileName)
+            val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+
+            // Append mode if not first chunk
+            val fos = FileOutputStream(targetFile, !isFirstChunk)
+            fos.write(bytes)
+            fos.flush()
+            fos.close()
+            true
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error saving uploaded chunk", e)
+            false
+        }
+    }
+
+    // --- 4. Photos Gallery Query ---
     fun getRecentPhotos(): JSONArray {
         val array = JSONArray()
         try {
@@ -137,7 +197,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 3. Real Storage Calculations ---
+    // --- 5. Real Storage Calculations ---
     fun getStorageStats(): JSONObject {
         val obj = JSONObject()
         try {
@@ -166,7 +226,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 4. Call Logs Query ---
+    // --- 6. Call Logs Query ---
     fun getCallLogs(): JSONArray {
         val array = JSONArray()
         try {
@@ -216,7 +276,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 5. Installed Apps Query ---
+    // --- 7. Installed Apps Query ---
     fun getInstalledApps(): JSONArray {
         val array = JSONArray()
         try {
@@ -244,7 +304,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 6. Clipboard Operations ---
+    // --- 8. Clipboard Operations ---
     fun setClipboardText(text: String) {
         Handler(Looper.getMainLooper()).post {
             try {
@@ -268,7 +328,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 7. SMS Queries ---
+    // --- 9. SMS Queries ---
     fun getRecentSms(): JSONArray {
         val array = JSONArray()
         try {
@@ -314,7 +374,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 8. Contacts Query ---
+    // --- 10. Contacts Query ---
     fun getContacts(): JSONArray {
         val array = JSONArray()
         try {
@@ -338,7 +398,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 9. GPS Location ---
+    // --- 11. GPS Location ---
     @SuppressLint("MissingPermission")
     fun getLocation(): JSONObject {
         val obj = JSONObject()
@@ -362,7 +422,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 10. Make Phone Call ---
+    // --- 12. Make Phone Call ---
     @SuppressLint("MissingPermission")
     fun makeCall(number: String) {
         try {

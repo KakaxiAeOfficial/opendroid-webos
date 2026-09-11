@@ -197,7 +197,7 @@
         </div>
     </div>
 
-    <!-- Window: Screen Mirroring (Target 2 & 3: Direct Stream with Mouse Touch & Gesture Injection) -->
+    <!-- Window: Screen Mirroring (Target 2 & 3: Direct Stream with Mouse Touch) -->
     <div id="screen-window" class="window hidden" style="width: 360px; height: 680px; top: 60px; left: 330px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -211,7 +211,6 @@
                 Click Start Screen Mirror below
             </div>
 
-            <!-- Direct Live Screen Frame Display with Mouse Click Listeners -->
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden select-none">
                 <img id="screen-frame-view" class="w-full h-full object-fill cursor-crosshair hidden" alt="Screen Mirror" />
                 <div id="screen-placeholder" class="text-gray-500 text-xs text-center p-4">
@@ -219,17 +218,56 @@
                 </div>
             </div>
             
-            <!-- Android Navigation Bar (Back, Home, Recents) -->
             <div class="bg-gray-900 h-11 flex justify-around items-center border-t border-gray-700 z-10">
                 <button onclick="sendGlobalAction('BACK')" class="text-white text-lg hover:text-gray-300 px-4">◀</button>
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
             </div>
 
-            <!-- Screen Stream Toggle Button -->
             <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10">
                 <button id="screen-toggle-btn" onclick="startScreenStream()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors">Start Screen Mirror</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Window: Files Explorer (Target 4: Download & Upload Activated) -->
+    <div id="file-window" class="window hidden" style="width: 540px; height: 520px; top: 110px; left: 370px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📁</span>
+                <span class="font-semibold text-xs">Internal Storage</span>
+            </div>
+            <button onclick="wm.closeWindow('file-window')" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
+        </div>
+        <div class="flex-1 bg-white overflow-hidden flex flex-col">
+            <!-- Navigation & Upload Toolbar -->
+            <div class="p-2.5 bg-gray-50 border-b flex items-center gap-2 text-xs">
+                <button onclick="navigateUp()" class="px-2.5 py-1 bg-white border rounded hover:bg-gray-100 font-bold text-gray-700 shadow-sm">⬆ Up</button>
+                <div id="current-dir-path" class="flex-1 font-mono text-[11px] text-gray-600 truncate px-2.5 py-1 bg-white border rounded shadow-inner">/storage/emulated/0</div>
+                
+                <!-- Upload Input & Button -->
+                <input type="file" id="file-upload-input" class="hidden" onchange="handleFileSelected(this.files)">
+                <button onclick="document.getElementById('file-upload-input').click()" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded shadow-sm flex items-center gap-1">
+                    <span>📤</span><span>Upload</span>
+                </button>
+                <button onclick="sendCommand({action: 'FETCH_DIR', path: currentDirPath})" class="text-blue-600 hover:underline px-1">🔄</button>
+            </div>
+
+            <!-- Files & Folders List -->
+            <div id="dir-files-list" class="flex-1 overflow-y-auto divide-y text-xs">
+                <div class="p-4 text-center text-gray-400 text-xs">Loading directory...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live File Transfer Progress Toast (Floating) -->
+    <div id="transfer-progress-toast" class="hidden fixed bottom-6 right-6 bg-gray-900/95 backdrop-blur text-white p-3.5 rounded-xl shadow-2xl z-50 text-xs border border-white/10 w-80 flex flex-col gap-2">
+        <div class="flex justify-between items-center">
+            <span id="transfer-title" class="font-semibold truncate max-w-[200px]">Transferring...</span>
+            <span id="transfer-percentage" class="font-mono text-cyan-400 font-bold">0%</span>
+        </div>
+        <div class="w-full bg-gray-700 h-1.5 rounded-full overflow-hidden">
+            <div id="transfer-bar" class="bg-cyan-400 h-full w-0 transition-all duration-150"></div>
         </div>
     </div>
 
@@ -308,27 +346,6 @@
             </div>
             <div id="apps-list" class="flex-1 overflow-y-auto divide-y text-xs">
                 <div class="p-4 text-center text-gray-400 text-xs">Loading applications...</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Window: Files Explorer -->
-    <div id="file-window" class="window hidden" style="width: 520px; height: 500px; top: 110px; left: 370px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <span class="text-xs">📁</span>
-                <span class="font-semibold text-xs">Internal Storage</span>
-            </div>
-            <button onclick="wm.closeWindow('file-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
-        </div>
-        <div class="flex-1 bg-white overflow-hidden flex flex-col">
-            <div class="p-2.5 bg-gray-50 border-b flex items-center gap-2 text-xs">
-                <button onclick="navigateUp()" class="px-2 py-1 bg-white border rounded hover:bg-gray-100 font-bold text-gray-700 shadow-sm">⬆ Up</button>
-                <div id="current-dir-path" class="flex-1 font-mono text-[11px] text-gray-600 truncate px-2 py-1 bg-white border rounded shadow-inner">/storage/emulated/0</div>
-                <button onclick="sendCommand({action: 'FETCH_DIR', path: currentDirPath})" class="text-blue-600 hover:underline text-xs">🔄 Refresh</button>
-            </div>
-            <div id="dir-files-list" class="flex-1 overflow-y-auto divide-y text-xs">
-                <div class="p-4 text-center text-gray-400 text-xs">Loading directory...</div>
             </div>
         </div>
     </div>
@@ -433,6 +450,10 @@
         let currentDirPath = '';
         let parentDirPath = '';
 
+        // Target 4: Chunked Transfer State
+        let activeDownload = null;
+        let activeUpload = null;
+
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
             if (code.length !== 6) {
@@ -506,7 +527,7 @@
                     document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
                 }
             } 
-            // --- Target 1: Camera Direct Stream Frame Handler ---
+            // --- Camera Direct Stream ---
             else if (data.type === 'CAMERA_FRAME') {
                 const img = document.getElementById('camera-frame-view');
                 const placeholder = document.getElementById('camera-placeholder');
@@ -539,7 +560,7 @@
                 if (img) img.classList.add('hidden');
                 if (placeholder) placeholder.classList.remove('hidden');
             }
-            // --- Target 2: Live Screen Mirroring Frame Handler ---
+            // --- Screen Mirroring Direct Stream ---
             else if (data.type === 'SCREEN_FRAME') {
                 const img = document.getElementById('screen-frame-view');
                 const placeholder = document.getElementById('screen-placeholder');
@@ -575,10 +596,18 @@
                 updateScreenStatus("⚠️ Tap 'Start Screen Share' inside Phone App first!");
                 alert("Please click 'Start Screen Share' inside the OpenDroid app on your phone and tap 'Start now' to allow screen projection.");
             }
-            // --- Target 3: Accessibility Feedback ---
+            // --- Accessibility Feedback ---
             else if (data.type === 'ACCESSIBILITY_REQUIRED') {
                 updateScreenStatus("⚠️ Turn ON Accessibility in Phone Settings!");
                 alert("Touch control requires Accessibility permission:\n\nOn your phone, go to:\nSettings > Accessibility > Installed Apps > OpenDroid Remote Control -> Turn ON.");
+            }
+            // --- Target 4: Chunked File Transfer Handlers ---
+            else if (data.type === 'FILE_DOWNLOAD_CHUNK') {
+                handleDownloadChunk(data.data);
+            } else if (data.type === 'FILE_UPLOAD_CHUNK_ACK') {
+                handleUploadAck();
+            } else if (data.type === 'FILE_UPLOAD_COMPLETE') {
+                handleUploadComplete(data.fileName);
             }
             // --- General Features ---
             else if (data.type === 'SMS_LIST') {
@@ -622,7 +651,6 @@
         }
 
         function startCameraStream(facing) {
-            // Auto-pause screen mirroring on UI if running
             const screenBtn = document.getElementById('screen-toggle-btn');
             if (screenBtn && screenBtn.textContent.includes("Stop")) {
                 updateScreenStatus("Screen Mirror Paused for Camera");
@@ -648,7 +676,7 @@
             stopCameraStream();
         }
 
-        // --- Screen Mirror Controls with Auto-Switch & Mouse Touch Injection ---
+        // --- Screen Mirror Controls with Touch Injection ---
         function updateScreenStatus(statusText) {
             const bar = document.getElementById('screen-status-bar');
             if (bar) {
@@ -662,7 +690,6 @@
         }
 
         function startScreenStream() {
-            // Auto-stop camera on UI if running
             const camBtn = document.getElementById('cam-toggle-btn');
             if (camBtn && camBtn.textContent.includes("Stop")) {
                 updateCameraStatus("Camera Stopped for Screen Mirror");
@@ -688,12 +715,11 @@
             stopScreenStream();
         }
 
-        // --- Target 3: Mouse Touch & Gesture Injection Engine ---
+        // Mouse Touch Control on Screen Mirror Image
         let isDraggingScreen = false;
         let startNormX = 0, startNormY = 0;
         const screenImg = document.getElementById('screen-frame-view');
 
-        // Prevent browser's native image drag behavior
         screenImg.addEventListener('dragstart', (e) => e.preventDefault());
 
         screenImg.addEventListener('mousedown', (e) => {
@@ -713,7 +739,6 @@
 
             const distance = Math.hypot(rawEndX - startNormX, rawEndY - startNormY);
 
-            // Clamp normalized coordinates between 0.0 and 1.0
             const clampedX = Math.max(0, Math.min(1, rawEndX));
             const clampedY = Math.max(0, Math.min(1, rawEndY));
             const clampedStartX = Math.max(0, Math.min(1, startNormX));
@@ -728,6 +753,201 @@
 
         function sendGlobalAction(actionType) {
             sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
+        }
+
+        // --- Target 4: Chunked 5G File Download & Upload Engine ---
+        function showTransferToast(title, percent) {
+            const toast = document.getElementById('transfer-progress-toast');
+            toast.classList.remove('hidden');
+            document.getElementById('transfer-title').textContent = title;
+            document.getElementById('transfer-percentage').textContent = `${Math.round(percent)}%`;
+            document.getElementById('transfer-bar').style.width = `${percent}%`;
+        }
+
+        function hideTransferToast() {
+            setTimeout(() => {
+                document.getElementById('transfer-progress-toast').classList.add('hidden');
+            }, 1200);
+        }
+
+        // 1. Download Flow (Phone ➜ PC)
+        function triggerFileDownload(filePath, fileName) {
+            activeDownload = {
+                path: filePath,
+                name: fileName,
+                chunks: [],
+                totalSize: 0
+            };
+            showTransferToast(`Downloading ${fileName}`, 0);
+            sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: filePath, offset: 0 });
+        }
+
+        function handleDownloadChunk(chunk) {
+            if (!activeDownload) return;
+            if (chunk.error) {
+                alert("Download failed: " + chunk.error);
+                hideTransferToast();
+                activeDownload = null;
+                return;
+            }
+
+            activeDownload.totalSize = chunk.totalSize;
+
+            if (chunk.data) {
+                const byteCharacters = atob(chunk.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                activeDownload.chunks.push(new Uint8Array(byteNumbers));
+            }
+
+            const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
+            const percent = activeDownload.totalSize > 0 ? (currentLoaded / activeDownload.totalSize) * 100 : 100;
+            showTransferToast(`Downloading ${activeDownload.name}`, Math.min(percent, 99));
+
+            if (chunk.isLast) {
+                showTransferToast(`Saving ${activeDownload.name}`, 100);
+                const blob = new Blob(activeDownload.chunks, { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = activeDownload.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                hideTransferToast();
+                activeDownload = null;
+            } else {
+                // Request next sequential chunk (96KB)
+                sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: activeDownload.path, offset: currentLoaded });
+            }
+        }
+
+        // 2. Upload Flow (PC ➜ Phone)
+        function handleFileSelected(files) {
+            if (!files || files.length === 0) return;
+            const file = files[0];
+            const reader = new FileReader();
+
+            showTransferToast(`Reading ${file.name}...`, 0);
+
+            reader.onload = function(e) {
+                const arrayBuffer = e.target.result;
+                const chunkSize = 72 * 1024; // 72KB binary -> ~96KB base64 chunk
+                const totalChunks = Math.ceil(arrayBuffer.byteLength / chunkSize) || 1;
+
+                activeUpload = {
+                    file: file,
+                    buffer: arrayBuffer,
+                    chunkSize: chunkSize,
+                    totalChunks: totalChunks,
+                    currentChunk: 0
+                };
+
+                sendNextUploadChunk();
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function sendNextUploadChunk() {
+            if (!activeUpload) return;
+            const start = activeUpload.currentChunk * activeUpload.chunkSize;
+            const end = Math.min(start + activeUpload.chunkSize, activeUpload.buffer.byteLength);
+            const slice = activeUpload.buffer.slice(start, end);
+
+            // Convert slice to Base64
+            let binary = '';
+            const bytes = new Uint8Array(slice);
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            const base64Data = btoa(binary);
+
+            const isFirst = (activeUpload.currentChunk === 0);
+            const isLast = (activeUpload.currentChunk + 1 >= activeUpload.totalChunks);
+
+            const percent = ((activeUpload.currentChunk + 1) / activeUpload.totalChunks) * 100;
+            showTransferToast(`Uploading ${activeUpload.file.name}`, percent);
+
+            sendCommand({
+                action: 'UPLOAD_FILE_CHUNK',
+                fileName: activeUpload.file.name,
+                data: base64Data,
+                isFirst: isFirst,
+                isLast: isLast
+            });
+        }
+
+        function handleUploadAck() {
+            if (!activeUpload) return;
+            activeUpload.currentChunk++;
+            sendNextUploadChunk();
+        }
+
+        function handleUploadComplete(fileName) {
+            showTransferToast(`Uploaded ${fileName}!`, 100);
+            hideTransferToast();
+            activeUpload = null;
+            // Clear input and refresh current directory
+            document.getElementById('file-upload-input').value = '';
+            sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
+        }
+
+        // --- File Explorer Directory View with Download Buttons ---
+        function renderDirectory(data) {
+            if (!data) return;
+            currentDirPath = data.currentPath || '';
+            parentDirPath = data.parentPath || '';
+            document.getElementById('current-dir-path').textContent = currentDirPath;
+
+            const list = document.getElementById('dir-files-list');
+            list.innerHTML = '';
+
+            const files = data.files || [];
+            if (files.length === 0) {
+                list.innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">Folder is empty</div>';
+                return;
+            }
+
+            files.forEach(item => {
+                const isDir = item.isDirectory;
+                const icon = isDir ? '📁' : '📄';
+                const sizeStr = isDir ? '--' : formatBytes(item.size);
+
+                list.innerHTML += `
+                    <div class="p-2.5 hover:bg-gray-50 flex justify-between items-center select-none">
+                        <div class="flex items-center gap-2.5 min-w-0 pr-2 cursor-pointer flex-1" onclick="${isDir ? `navigateToDir('${item.path.replace(/\\/g, '\\\\')}')` : ''}">
+                            <span class="text-base">${icon}</span>
+                            <span class="truncate font-medium text-gray-800 text-xs">${item.name}</span>
+                        </div>
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <span class="text-[10px] text-gray-400 font-mono">${sizeStr}</span>
+                            ${!isDir ? `<button onclick="triggerFileDownload('${item.path.replace(/\\/g, '\\\\')}', '${item.name}')" class="px-2 py-0.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-[11px] font-semibold border border-blue-200 transition-colors shadow-sm">⬇ Download</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function navigateToDir(path) {
+            sendCommand({ action: 'FETCH_DIR', path: path });
+        }
+
+        function navigateUp() {
+            if (parentDirPath && parentDirPath !== currentDirPath) {
+                sendCommand({ action: 'FETCH_DIR', path: parentDirPath });
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
         // --- Window Manager Engine ---
@@ -864,56 +1084,6 @@
                 app.name.toLowerCase().includes(q) || app.package.toLowerCase().includes(q)
             );
             renderApps(filtered);
-        }
-
-        function renderDirectory(data) {
-            if (!data) return;
-            currentDirPath = data.currentPath || '';
-            parentDirPath = data.parentPath || '';
-            document.getElementById('current-dir-path').textContent = currentDirPath;
-
-            const list = document.getElementById('dir-files-list');
-            list.innerHTML = '';
-
-            const files = data.files || [];
-            if (files.length === 0) {
-                list.innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">Folder is empty</div>';
-                return;
-            }
-
-            files.forEach(item => {
-                const isDir = item.isDirectory;
-                const icon = isDir ? '📁' : '📄';
-                const sizeStr = isDir ? '--' : formatBytes(item.size);
-
-                list.innerHTML += `
-                    <div class="p-2.5 hover:bg-gray-50 flex justify-between items-center cursor-pointer select-none" onclick="${isDir ? `navigateToDir('${item.path.replace(/\\/g, '\\\\')}')` : ''}">
-                        <div class="flex items-center gap-2.5 min-w-0 pr-2">
-                            <span class="text-base">${icon}</span>
-                            <span class="truncate font-medium text-gray-800 text-xs">${item.name}</span>
-                        </div>
-                        <span class="text-[10px] text-gray-400 font-mono flex-shrink-0">${sizeStr}</span>
-                    </div>
-                `;
-            });
-        }
-
-        function navigateToDir(path) {
-            sendCommand({ action: 'FETCH_DIR', path: path });
-        }
-
-        function navigateUp() {
-            if (parentDirPath && parentDirPath !== currentDirPath) {
-                sendCommand({ action: 'FETCH_DIR', path: parentDirPath });
-            }
-        }
-
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
         function renderPhotos(photos) {

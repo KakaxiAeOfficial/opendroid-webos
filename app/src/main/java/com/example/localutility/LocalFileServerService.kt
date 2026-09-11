@@ -342,7 +342,40 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Target 3: Remote Touch & Gestures Injection ---
+            // --- Target 4: Chunked File Download & Upload ---
+            "DOWNLOAD_FILE_CHUNK" -> {
+                val path = json.optString("path", "")
+                val offset = json.optLong("offset", 0L)
+                val chunkResult = teleManager.readFileChunk(path, offset)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "FILE_DOWNLOAD_CHUNK")
+                    put("data", chunkResult)
+                }.toString())
+            }
+
+            "UPLOAD_FILE_CHUNK" -> {
+                val fileName = json.optString("fileName", "uploaded_file")
+                val base64Data = json.optString("data", "")
+                val isFirst = json.optBoolean("isFirst", true)
+                val isLast = json.optBoolean("isLast", false)
+
+                val success = teleManager.saveUploadedChunk(fileName, base64Data, isFirst)
+                if (isLast) {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "FILE_UPLOAD_COMPLETE")
+                        put("fileName", fileName)
+                        put("success", success)
+                    }.toString())
+                } else {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "FILE_UPLOAD_CHUNK_ACK")
+                        put("fileName", fileName)
+                        put("success", success)
+                    }.toString())
+                }
+            }
+
+            // --- Touch & Utilities ---
             "INPUT_TAP" -> {
                 val service = RemoteInputService.instance
                 if (service != null) {
@@ -381,8 +414,6 @@ class LocalFileServerService : Service() {
                     }.toString())
                 }
             }
-
-            // --- General Utilities ---
             "QUICK_REPLY" -> {
                 NotificationMirrorService.instance?.sendQuickReply(
                     json.getString("key"),
