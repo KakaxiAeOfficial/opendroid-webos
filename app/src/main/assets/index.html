@@ -461,7 +461,7 @@
         </div>
     </div>
 
-    <!-- Window: Find Phone (Target 6: Polished GPS Live Map) -->
+    <!-- Window: Find Phone (Target 6: Fixed Tile 403 with CARTO High-Speed Vector Map) -->
     <div id="map-window" class="window hidden" style="width: 560px; height: 480px; top: 100px; left: 390px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -486,7 +486,7 @@
                 </div>
             </div>
 
-            <!-- Leaflet OpenStreetMap Container -->
+            <!-- Leaflet Container -->
             <div id="map-container" class="flex-1 bg-gray-200 relative">
                 <div id="map" class="absolute inset-0"></div>
             </div>
@@ -818,7 +818,7 @@
             }
         }
 
-        // --- Target 6: Live GPS Map Render Engine with Pin & Accuracy Radius ---
+        // --- Target 6: Live GPS Map with High-Speed CARTO Tiles (Zero 403 Blocks) ---
         function renderMap(loc) {
             const statusEl = document.getElementById('map-status');
 
@@ -843,9 +843,12 @@
             try {
                 if (!mapInstance) {
                     mapInstance = L.map('map').setView([lat, lng], 16);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '© OpenStreetMap contributors',
-                        maxZoom: 19
+                    
+                    // CARTO Voyager Tiles (Never blocks file:/// or browser origins)
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                        attribution: '© OpenStreetMap contributors, © CARTO',
+                        subdomains: 'abcd',
+                        maxZoom: 20
                     }).addTo(mapInstance);
 
                     mapMarker = L.marker([lat, lng]).addTo(mapInstance);
