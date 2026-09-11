@@ -8,6 +8,7 @@ import android.content.Intent
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -135,20 +136,31 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 3. Chunked File Upload (PC ➜ Phone) ---
-    fun saveUploadedChunk(fileName: String, base64Data: String, isFirstChunk: Boolean): Boolean {
+    // --- 3. Chunked File Upload (Saves to Current Open Directory) ---
+    fun saveUploadedChunk(targetDirPath: String?, fileName: String, base64Data: String, isFirstChunk: Boolean, isLastChunk: Boolean): Boolean {
         return try {
-            val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (!downloadDir.exists()) downloadDir.mkdirs()
+            val defaultDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            val uploadDir = if (!targetDirPath.isNullOrEmpty()) {
+                val d = File(targetDirPath)
+                if (d.exists() && d.isDirectory) d else defaultDir
+            } else defaultDir
 
-            val targetFile = File(downloadDir, fileName)
+            if (!uploadDir.exists()) uploadDir.mkdirs()
+
+            val targetFile = File(uploadDir, fileName)
             val bytes = Base64.decode(base64Data, Base64.DEFAULT)
 
-            // Append mode if not first chunk
+            // Append if not first chunk
             val fos = FileOutputStream(targetFile, !isFirstChunk)
             fos.write(bytes)
             fos.flush()
             fos.close()
+
+            // When upload completes, notify Android MediaScanner so it indexes immediately
+            if (isLastChunk) {
+                MediaScannerConnection.scanFile(context, arrayOf(targetFile.absolutePath), null, null)
+                Log.d("OpenDroid", "File uploaded successfully to: ${targetFile.absolutePath}")
+            }
             true
         } catch (e: Exception) {
             Log.e("OpenDroid", "Error saving uploaded chunk", e)
@@ -163,6 +175,7 @@ class TelephonyAndLocationManager(private val context: Context) {
             val projection = arrayOf(
                 MediaStore.Images.Media._ID,
                 MediaStore.Images.Media.DISPLAY_NAME,
+                MediaStore.Images.Media.DATA,
                 MediaStore.Images.Media.SIZE,
                 MediaStore.Images.Media.DATE_ADDED
             )
@@ -176,6 +189,7 @@ class TelephonyAndLocationManager(private val context: Context) {
             cursor?.use {
                 val idIdx = it.getColumnIndex(MediaStore.Images.Media._ID)
                 val nameIdx = it.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
+                val dataIdx = it.getColumnIndex(MediaStore.Images.Media.DATA)
                 val sizeIdx = it.getColumnIndex(MediaStore.Images.Media.SIZE)
                 val dateIdx = it.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
 
@@ -184,6 +198,7 @@ class TelephonyAndLocationManager(private val context: Context) {
                     val obj = JSONObject().apply {
                         put("id", if (idIdx >= 0) it.getLong(idIdx) else 0L)
                         put("name", if (nameIdx >= 0) it.getString(nameIdx) else "Photo")
+                        put("path", if (dataIdx >= 0) it.getString(dataIdx) else "")
                         put("size", if (sizeIdx >= 0) it.getLong(sizeIdx) else 0L)
                         put("date", if (dateIdx >= 0) it.getLong(dateIdx) * 1000L else 0L)
                     }

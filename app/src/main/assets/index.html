@@ -64,6 +64,23 @@
         </div>
     </div>
 
+    <!-- On-Demand Image Preview Modal (0% Lag, On-Click Only) -->
+    <div id="image-preview-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="p-3 bg-gray-800 text-white flex justify-between items-center text-xs">
+                <span id="preview-filename" class="font-semibold truncate max-w-md">Image Preview</span>
+                <div class="flex items-center gap-3">
+                    <button id="preview-download-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 rounded text-[11px] font-bold">⬇ Download</button>
+                    <button onclick="closeImagePreview()" class="text-gray-400 hover:text-red-400 text-base font-bold">✕</button>
+                </div>
+            </div>
+            <div class="flex-1 p-3 flex items-center justify-center bg-black/60 overflow-hidden relative">
+                <img id="preview-img" class="max-w-full max-h-[75vh] object-contain rounded shadow" src="" alt="Preview" />
+                <div id="preview-loader" class="text-cyan-400 font-mono text-xs text-center">Loading image preview...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Top Dock Bar -->
     <div class="fixed top-2 left-1/2 -translate-x-1/2 h-10 bg-gray-900/85 backdrop-blur-md text-white flex items-center gap-4 px-4 rounded-full z-50 shadow-xl border border-white/10 text-xs">
         <div class="flex items-center gap-2 pr-3 border-r border-gray-700">
@@ -230,8 +247,8 @@
         </div>
     </div>
 
-    <!-- Window: Files Explorer (Target 4: Download & Upload Activated) -->
-    <div id="file-window" class="window hidden" style="width: 540px; height: 520px; top: 110px; left: 370px;">
+    <!-- Window: Files Explorer (Target 4: Upload to Current Directory + Image Previews) -->
+    <div id="file-window" class="window hidden" style="width: 550px; height: 520px; top: 110px; left: 370px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📁</span>
@@ -245,7 +262,6 @@
                 <button onclick="navigateUp()" class="px-2.5 py-1 bg-white border rounded hover:bg-gray-100 font-bold text-gray-700 shadow-sm">⬆ Up</button>
                 <div id="current-dir-path" class="flex-1 font-mono text-[11px] text-gray-600 truncate px-2.5 py-1 bg-white border rounded shadow-inner">/storage/emulated/0</div>
                 
-                <!-- Upload Input & Button -->
                 <input type="file" id="file-upload-input" class="hidden" onchange="handleFileSelected(this.files)">
                 <button onclick="document.getElementById('file-upload-input').click()" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded shadow-sm flex items-center gap-1">
                     <span>📤</span><span>Upload</span>
@@ -260,7 +276,7 @@
         </div>
     </div>
 
-    <!-- Live File Transfer Progress Toast (Floating) -->
+    <!-- Live File Transfer Progress Toast -->
     <div id="transfer-progress-toast" class="hidden fixed bottom-6 right-6 bg-gray-900/95 backdrop-blur text-white p-3.5 rounded-xl shadow-2xl z-50 text-xs border border-white/10 w-80 flex flex-col gap-2">
         <div class="flex justify-between items-center">
             <span id="transfer-title" class="font-semibold truncate max-w-[200px]">Transferring...</span>
@@ -350,7 +366,7 @@
         </div>
     </div>
 
-    <!-- Window: Photos Gallery -->
+    <!-- Window: Photos Gallery (On-Demand Click Preview) -->
     <div id="photos-window" class="window hidden" style="width: 540px; height: 500px; top: 120px; left: 400px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -361,7 +377,7 @@
         </div>
         <div class="flex-1 bg-white overflow-hidden flex flex-col">
             <div class="p-2.5 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
-                <span>Recent Camera & Gallery Images</span>
+                <span>Click any photo to preview</span>
                 <button onclick="sendCommand({action: 'FETCH_PHOTOS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
             </div>
             <div id="photos-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-3 gap-3 text-xs">
@@ -450,9 +466,10 @@
         let currentDirPath = '';
         let parentDirPath = '';
 
-        // Target 4: Chunked Transfer State
+        // Chunked File Transfer State
         let activeDownload = null;
         let activeUpload = null;
+        let activePreview = null;
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -783,6 +800,11 @@
         }
 
         function handleDownloadChunk(chunk) {
+            if (activePreview && chunk.filePath === activePreview.path) {
+                handlePreviewChunk(chunk);
+                return;
+            }
+
             if (!activeDownload) return;
             if (chunk.error) {
                 alert("Download failed: " + chunk.error);
@@ -820,12 +842,11 @@
                 hideTransferToast();
                 activeDownload = null;
             } else {
-                // Request next sequential chunk (96KB)
                 sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: activeDownload.path, offset: currentLoaded });
             }
         }
 
-        // 2. Upload Flow (PC ➜ Phone)
+        // 2. Upload Flow (PC ➜ Current Opened Directory in Phone)
         function handleFileSelected(files) {
             if (!files || files.length === 0) return;
             const file = files[0];
@@ -835,12 +856,13 @@
 
             reader.onload = function(e) {
                 const arrayBuffer = e.target.result;
-                const chunkSize = 72 * 1024; // 72KB binary -> ~96KB base64 chunk
+                const chunkSize = 72 * 1024;
                 const totalChunks = Math.ceil(arrayBuffer.byteLength / chunkSize) || 1;
 
                 activeUpload = {
                     file: file,
                     buffer: arrayBuffer,
+                    targetPath: currentDirPath, // Saves directly into the folder currently open!
                     chunkSize: chunkSize,
                     totalChunks: totalChunks,
                     currentChunk: 0
@@ -858,7 +880,6 @@
             const end = Math.min(start + activeUpload.chunkSize, activeUpload.buffer.byteLength);
             const slice = activeUpload.buffer.slice(start, end);
 
-            // Convert slice to Base64
             let binary = '';
             const bytes = new Uint8Array(slice);
             for (let i = 0; i < bytes.byteLength; i++) {
@@ -875,6 +896,7 @@
             sendCommand({
                 action: 'UPLOAD_FILE_CHUNK',
                 fileName: activeUpload.file.name,
+                targetPath: activeUpload.targetPath,
                 data: base64Data,
                 isFirst: isFirst,
                 isLast: isLast
@@ -891,12 +913,70 @@
             showTransferToast(`Uploaded ${fileName}!`, 100);
             hideTransferToast();
             activeUpload = null;
-            // Clear input and refresh current directory
             document.getElementById('file-upload-input').value = '';
+            // Refresh current folder so new file appears instantly
             sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
         }
 
-        // --- File Explorer Directory View with Download Buttons ---
+        // --- On-Demand Image Preview Lightbox (0% Background Lag) ---
+        function openImagePreview(filePath, fileName) {
+            activePreview = {
+                path: filePath,
+                name: fileName,
+                chunks: []
+            };
+
+            document.getElementById('preview-filename').textContent = fileName;
+            document.getElementById('preview-download-btn').onclick = () => triggerFileDownload(filePath, fileName);
+            document.getElementById('preview-img').src = '';
+            document.getElementById('preview-loader').textContent = "Loading preview from phone...";
+            document.getElementById('preview-loader').classList.remove('hidden');
+            document.getElementById('image-preview-modal').classList.remove('hidden');
+
+            // Fetch image data on-demand
+            sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: filePath, offset: 0 });
+        }
+
+        function handlePreviewChunk(chunk) {
+            if (!activePreview) return;
+            if (chunk.error) {
+                document.getElementById('preview-loader').textContent = "Failed to load preview: " + chunk.error;
+                return;
+            }
+
+            if (chunk.data) {
+                const byteCharacters = atob(chunk.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                activePreview.chunks.push(new Uint8Array(byteNumbers));
+            }
+
+            const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
+
+            if (chunk.isLast) {
+                const blob = new Blob(activePreview.chunks, { type: 'image/jpeg' });
+                const url = URL.createObjectURL(blob);
+                document.getElementById('preview-img').src = url;
+                document.getElementById('preview-loader').classList.add('hidden');
+            } else {
+                sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: activePreview.path, offset: currentLoaded });
+            }
+        }
+
+        function closeImagePreview() {
+            document.getElementById('image-preview-modal').classList.add('hidden');
+            document.getElementById('preview-img').src = '';
+            activePreview = null;
+        }
+
+        function isImageFile(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(ext);
+        }
+
+        // --- File Explorer Directory View ---
         function renderDirectory(data) {
             if (!data) return;
             currentDirPath = data.currentPath || '';
@@ -914,17 +994,19 @@
 
             files.forEach(item => {
                 const isDir = item.isDirectory;
-                const icon = isDir ? '📁' : '📄';
+                const isImg = !isDir && isImageFile(item.name);
+                const icon = isDir ? '📁' : (isImg ? '🖼️' : '📄');
                 const sizeStr = isDir ? '--' : formatBytes(item.size);
 
                 list.innerHTML += `
                     <div class="p-2.5 hover:bg-gray-50 flex justify-between items-center select-none">
-                        <div class="flex items-center gap-2.5 min-w-0 pr-2 cursor-pointer flex-1" onclick="${isDir ? `navigateToDir('${item.path.replace(/\\/g, '\\\\')}')` : ''}">
+                        <div class="flex items-center gap-2.5 min-w-0 pr-2 cursor-pointer flex-1" onclick="${isDir ? `navigateToDir('${item.path.replace(/\\/g, '\\\\')}')` : (isImg ? `openImagePreview('${item.path.replace(/\\/g, '\\\\')}', '${item.name}')` : '')}">
                             <span class="text-base">${icon}</span>
                             <span class="truncate font-medium text-gray-800 text-xs">${item.name}</span>
                         </div>
-                        <div class="flex items-center gap-3 flex-shrink-0">
+                        <div class="flex items-center gap-2.5 flex-shrink-0">
                             <span class="text-[10px] text-gray-400 font-mono">${sizeStr}</span>
+                            ${isImg ? `<button onclick="openImagePreview('${item.path.replace(/\\/g, '\\\\')}', '${item.name}')" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-[11px] font-semibold border border-emerald-200 shadow-sm">👁 Preview</button>` : ''}
                             ${!isDir ? `<button onclick="triggerFileDownload('${item.path.replace(/\\/g, '\\\\')}', '${item.name}')" class="px-2 py-0.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-[11px] font-semibold border border-blue-200 transition-colors shadow-sm">⬇ Download</button>` : ''}
                         </div>
                     </div>
@@ -948,6 +1030,32 @@
             const sizes = ['B', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // --- Photos Gallery (Click to Preview) ---
+        function renderPhotos(photos) {
+            const grid = document.getElementById('photos-grid');
+            grid.innerHTML = '';
+            if (!photos || photos.length === 0) {
+                grid.innerHTML = '<div class="col-span-3 p-6 text-center text-gray-400 text-xs">No photos found</div>';
+                return;
+            }
+
+            photos.forEach(photo => {
+                const dateStr = new Date(photo.date).toLocaleDateString([], {month: 'short', day: 'numeric'});
+                const sizeStr = formatBytes(photo.size);
+
+                grid.innerHTML += `
+                    <div class="bg-gray-50 border rounded-xl p-2.5 flex flex-col items-center justify-between hover:shadow-md transition-all cursor-pointer hover:border-cyan-400" onclick="openImagePreview('${photo.path.replace(/\\/g, '\\\\')}', '${photo.name}')">
+                        <div class="w-12 h-12 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-xl flex items-center justify-center text-2xl shadow-sm my-1">🖼️</div>
+                        <div class="w-full text-center mt-1">
+                            <div class="font-medium text-gray-800 text-[11px] truncate" title="${photo.name}">${photo.name}</div>
+                            <div class="text-[9px] text-gray-400 mt-0.5">${sizeStr} • ${dateStr}</div>
+                        </div>
+                        <button onclick="event.stopPropagation(); triggerFileDownload('${photo.path.replace(/\\/g, '\\\\')}', '${photo.name}')" class="mt-2 w-full bg-white hover:bg-gray-100 text-gray-700 border text-[10px] font-semibold py-1 rounded shadow-xs">⬇ Download</button>
+                    </div>
+                `;
+            });
         }
 
         // --- Window Manager Engine ---
@@ -1084,30 +1192,6 @@
                 app.name.toLowerCase().includes(q) || app.package.toLowerCase().includes(q)
             );
             renderApps(filtered);
-        }
-
-        function renderPhotos(photos) {
-            const grid = document.getElementById('photos-grid');
-            grid.innerHTML = '';
-            if (!photos || photos.length === 0) {
-                grid.innerHTML = '<div class="col-span-3 p-6 text-center text-gray-400 text-xs">No photos found</div>';
-                return;
-            }
-
-            photos.forEach(photo => {
-                const dateStr = new Date(photo.date).toLocaleDateString([], {month: 'short', day: 'numeric'});
-                const sizeStr = formatBytes(photo.size);
-
-                grid.innerHTML += `
-                    <div class="bg-gray-50 border rounded-xl p-2.5 flex flex-col items-center justify-between hover:shadow-md transition-shadow">
-                        <div class="w-12 h-12 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-xl flex items-center justify-center text-2xl shadow-sm my-1">🖼️</div>
-                        <div class="w-full text-center mt-1">
-                            <div class="font-medium text-gray-800 text-[11px] truncate" title="${photo.name}">${photo.name}</div>
-                            <div class="text-[9px] text-gray-400 mt-0.5">${sizeStr} • ${dateStr}</div>
-                        </div>
-                    </div>
-                `;
-            });
         }
 
         function syncClipboard() {

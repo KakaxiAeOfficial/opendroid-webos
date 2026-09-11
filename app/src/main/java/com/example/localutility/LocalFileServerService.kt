@@ -342,7 +342,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Target 4: Chunked File Download & Upload ---
+            // --- Target 4: Chunked File Download & Upload (Saves in Current Directory) ---
             "DOWNLOAD_FILE_CHUNK" -> {
                 val path = json.optString("path", "")
                 val offset = json.optLong("offset", 0L)
@@ -355,15 +355,17 @@ class LocalFileServerService : Service() {
 
             "UPLOAD_FILE_CHUNK" -> {
                 val fileName = json.optString("fileName", "uploaded_file")
+                val targetDirPath = json.optString("targetPath", "")
                 val base64Data = json.optString("data", "")
                 val isFirst = json.optBoolean("isFirst", true)
                 val isLast = json.optBoolean("isLast", false)
 
-                val success = teleManager.saveUploadedChunk(fileName, base64Data, isFirst)
+                val success = teleManager.saveUploadedChunk(targetDirPath, fileName, base64Data, isFirst, isLast)
                 if (isLast) {
                     broadcastMessage(JSONObject().apply {
                         put("type", "FILE_UPLOAD_COMPLETE")
                         put("fileName", fileName)
+                        put("targetPath", targetDirPath)
                         put("success", success)
                     }.toString())
                 } else {
