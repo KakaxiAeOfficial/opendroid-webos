@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import org.json.JSONObject
 
 class NotificationMirrorService : NotificationListenerService() {
@@ -18,64 +19,79 @@ class NotificationMirrorService : NotificationListenerService() {
         val replyCache = HashMap<String, CachedReply>()
     }
 
-    var onNotificationPosted: ((JSONObject) -> Unit)? = null
-
     override fun onListenerConnected() {
         super.onListenerConnected()
         instance = this
+        Log.d("NotificationMirror", "Notification Listener Connected & Active!")
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
         instance = null
+        Log.d("NotificationMirror", "Notification Listener Disconnected")
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        val extras = sbn.notification.extras
-        val title = extras.getString(Notification.EXTRA_TITLE) ?: return
-        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-        val appName = try {
-            packageManager.getApplicationLabel(
-                packageManager.getApplicationInfo(sbn.packageName, 0)
-            ).toString()
-        } catch (e: Exception) {
-            sbn.packageName
-        }
+        try {
+            // Ignore ongoing system notifications (like our own foreground service)
+            if (sbn.packageName == packageName || sbn.isOngoing) return
 
-        val key = sbn.key
-        var canReply = false
+            val extras = sbn.notification.extras
+            val title = extras.getString(Notification.EXTRA_TITLE) ?: return
+            val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+            if (text.isEmpty()) return
 
-        sbn.notification.actions?.forEach { action ->
-            val remoteInputs = action.remoteInputs
-            if (remoteInputs != null && remoteInputs.isNotEmpty()) {
-                canReply = true
-                replyCache[key] = CachedReply(action.actionIntent, remoteInputs[0])
+            val appName = try {
+                packageManager.getApplicationLabel(
+                    packageManager.getApplicationInfo(sbn.packageName, 0)
+                ).toString()
+            } catch (e: Exception) {
+                sbn.packageName
             }
-        }
 
-        val json = JSONObject().apply {
-            put("type", "NOTIFICATION")
-            put("id", key)
-            put("app", appName)
-            put("title", title)
-            put("text", text)
-            put("canReply", canReply)
-        }
+            val key = sbn.key
+            var canReply = false
 
-        onNotificationPosted?.invoke(json)
+            // Search for direct reply action (WhatsApp, Telegram, SMS, etc.)
+            sbn.notification.actions?.forEach { action ->
+                val remoteInputs = action.remoteInputs
+                if (remoteInputs != null && remoteInputs.isNotEmpty()) {
+                    canReply = true
+                    replyCache[key] = CachedReply(action.actionIntent, remoteInputs[0])
+                }
+            }
+
+            val json = JSONObject().apply {
+                put("type", "NOTIFICATION")
+                put("id", key)
+                put("app", appName)
+                put("title", title)
+                put("text", text)
+                put("canReply", canReply)
+            }
+
+            LocalFileServerService.instance?.broadcastMessage(json.toString())
+            Log.d("NotificationMirror", "Mirrored notification from: $appName")
+        } catch (e: Exception) {
+            Log.e("NotificationMirror", "Error processing notification", e)
+        }
     }
 
-    fun sendQuickReply(key: String, replyText: String) {
-        val cachedReply = replyCache[key] ?: return
-        val intent = Intent()
-        val bundle = Bundle()
-        bundle.putCharSequence(cachedReply.remoteInput.resultKey, replyText)
-        RemoteInput.addResultsToIntent(arrayOf(cachedReply.remoteInput), intent, bundle)
-        try {
+    fun sendQuickReply(key: String, replyText: String): Boolean {
+        val cachedReply = replyCache[key] ?: return false
+        return try {
+            val intent = Intent()
+            val bundle = Bundle()
+            bundle.putCharSequence(cachedReply.remoteInput.resultKey, replyText)
+            RemoteInput.addResultsToIntent(arrayOf(cachedReply.remoteInput), intent, bundle)
+
             cachedReply.pendingIntent.send(this, 0, intent)
             replyCache.remove(key)
+            Log.d("NotificationMirror", "Quick reply sent successfully for key: $key")
+            true
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("NotificationMirror", "Failed to send quick reply", e)
+            false
         }
     }
 }

@@ -64,7 +64,7 @@
         </div>
     </div>
 
-    <!-- On-Demand Image Preview Modal (0% Lag, On-Click Only) -->
+    <!-- On-Demand Image Preview Modal -->
     <div id="image-preview-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
         <div class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
             <div class="p-3 bg-gray-800 text-white flex justify-between items-center text-xs">
@@ -183,7 +183,7 @@
         </div>
     </div>
 
-    <!-- Window: Remote Camera (Target 1: Direct Frame Stream) -->
+    <!-- Window: Remote Camera (Target 1: Direct Frame Stream + Mic Audio) -->
     <div id="camera-window" class="window hidden" style="width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -209,6 +209,12 @@
                     <button id="cam-toggle-btn" onclick="startCameraStream('back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow transition-colors">Start Camera</button>
                     <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3.5 py-2 rounded-lg transition-colors">🔄 Switch</button>
                     <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3.5 py-2 rounded-lg transition-colors">💡 Flash</button>
+                </div>
+                <!-- Ambient Audio Slider (Target 5) -->
+                <div class="flex items-center gap-2 text-white text-[11px] pt-1">
+                    <span>🔊 Mic Audio:</span>
+                    <input type="range" id="mic-volume" min="0" max="1" step="0.05" value="0" class="flex-1" oninput="adjustAudioVolume(this.value)">
+                    <span id="mic-volume-label" class="w-8 font-mono text-right text-gray-300">Off</span>
                 </div>
             </div>
         </div>
@@ -257,7 +263,6 @@
             <button onclick="wm.closeWindow('file-window')" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
         </div>
         <div class="flex-1 bg-white overflow-hidden flex flex-col">
-            <!-- Navigation & Upload Toolbar -->
             <div class="p-2.5 bg-gray-50 border-b flex items-center gap-2 text-xs">
                 <button onclick="navigateUp()" class="px-2.5 py-1 bg-white border rounded hover:bg-gray-100 font-bold text-gray-700 shadow-sm">⬆ Up</button>
                 <div id="current-dir-path" class="flex-1 font-mono text-[11px] text-gray-600 truncate px-2.5 py-1 bg-white border rounded shadow-inner">/storage/emulated/0</div>
@@ -269,7 +274,6 @@
                 <button onclick="sendCommand({action: 'FETCH_DIR', path: currentDirPath})" class="text-blue-600 hover:underline px-1">🔄</button>
             </div>
 
-            <!-- Files & Folders List -->
             <div id="dir-files-list" class="flex-1 overflow-y-auto divide-y text-xs">
                 <div class="p-4 text-center text-gray-400 text-xs">Loading directory...</div>
             </div>
@@ -286,6 +290,9 @@
             <div id="transfer-bar" class="bg-cyan-400 h-full w-0 transition-all duration-150"></div>
         </div>
     </div>
+
+    <!-- Real-Time Notification Mirror Toast Container (Target 5) -->
+    <div id="toast-container" class="fixed top-14 right-6 w-80 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
 
     <!-- Window: Messages -->
     <div id="sms-window" class="window hidden" style="width: 440px; height: 520px; top: 80px; left: 320px;">
@@ -366,7 +373,7 @@
         </div>
     </div>
 
-    <!-- Window: Photos Gallery (On-Demand Click Preview) -->
+    <!-- Window: Photos Gallery -->
     <div id="photos-window" class="window hidden" style="width: 540px; height: 500px; top: 120px; left: 400px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -470,6 +477,78 @@
         let activeDownload = null;
         let activeUpload = null;
         let activePreview = null;
+
+        // Target 5: Web Audio API (PCM 16kHz Scheduler)
+        let audioCtx = null;
+        let gainNode = null;
+        let nextAudioStartTime = 0;
+        let currentAudioVolume = 0;
+
+        function initWebAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                gainNode = audioCtx.createGain();
+                gainNode.gain.value = currentAudioVolume;
+                gainNode.connect(audioCtx.destination);
+            }
+        }
+
+        function playPcmChunk(base64Pcm) {
+            if (currentAudioVolume === 0) return;
+            initWebAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            try {
+                const binary = atob(base64Pcm);
+                const len = binary.length;
+                const buffer = new ArrayBuffer(len);
+                const view = new DataView(buffer);
+                for (let i = 0; i < len; i++) {
+                    view.setUint8(i, binary.charCodeAt(i));
+                }
+
+                const int16 = new Int16Array(buffer);
+                const float32 = new Float32Array(int16.length);
+                for (let i = 0; i < int16.length; i++) {
+                    float32[i] = int16[i] / 32768.0;
+                }
+
+                const audioBuffer = audioCtx.createBuffer(1, float32.length, 16000);
+                audioBuffer.getChannelData(0).set(float32);
+
+                const source = audioCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(gainNode);
+
+                const currentTime = audioCtx.currentTime;
+                if (nextAudioStartTime < currentTime) {
+                    nextAudioStartTime = currentTime + 0.04;
+                }
+                source.start(nextAudioStartTime);
+                nextAudioStartTime += audioBuffer.duration;
+            } catch (e) {
+                console.error("Audio decode error:", e);
+            }
+        }
+
+        function adjustAudioVolume(val) {
+            currentAudioVolume = parseFloat(val);
+            initWebAudio();
+            gainNode.gain.value = currentAudioVolume;
+
+            const label = document.getElementById('mic-volume-label');
+            if (label) {
+                label.textContent = currentAudioVolume > 0 ? `${Math.round(currentAudioVolume * 100)}%` : 'Off';
+            }
+
+            if (currentAudioVolume > 0) {
+                sendCommand({ action: 'START_AUDIO_STREAM' });
+            } else {
+                sendCommand({ action: 'STOP_AUDIO_STREAM' });
+            }
+        }
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -618,7 +697,13 @@
                 updateScreenStatus("⚠️ Turn ON Accessibility in Phone Settings!");
                 alert("Touch control requires Accessibility permission:\n\nOn your phone, go to:\nSettings > Accessibility > Installed Apps > OpenDroid Remote Control -> Turn ON.");
             }
-            // --- Target 4: Chunked File Transfer Handlers ---
+            // --- Target 5: Ambient Audio & Notification Mirroring ---
+            else if (data.type === 'AUDIO_CHUNK') {
+                playPcmChunk(data.data);
+            } else if (data.type === 'NOTIFICATION') {
+                showNotificationToast(data);
+            }
+            // --- Chunked File Transfer Handlers ---
             else if (data.type === 'FILE_DOWNLOAD_CHUNK') {
                 handleDownloadChunk(data.data);
             } else if (data.type === 'FILE_UPLOAD_CHUNK_ACK') {
@@ -651,6 +736,67 @@
                 renderDirectory(data.data);
             } else if (data.type === 'PHOTOS_LIST') {
                 renderPhotos(data.data);
+            }
+        }
+
+        // --- Target 5: Notification Toast System with Inline Quick Reply ---
+        function showNotificationToast(notif) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-gray-900/95 backdrop-blur text-white rounded-xl shadow-2xl p-3.5 border border-white/10 pointer-events-auto transform transition-all duration-300 translate-x-full text-xs';
+            toast.id = `toast-${notif.id}`;
+
+            let html = `
+                <div class="flex justify-between items-start">
+                    <div class="flex items-center gap-1.5 font-bold text-cyan-400 text-[11px]">
+                        <span>🔔</span>
+                        <span>${notif.app}</span>
+                    </div>
+                    <button onclick="this.closest('#toast-${notif.id}').remove()" class="text-gray-400 hover:text-white text-xs font-bold">✕</button>
+                </div>
+                <div class="font-semibold text-gray-100 text-xs mt-1.5">${notif.title}</div>
+                <div class="text-gray-300 text-[11px] mt-0.5 line-clamp-2">${notif.text}</div>
+            `;
+
+            if (notif.canReply) {
+                html += `
+                    <div class="mt-2.5 flex gap-1.5">
+                        <input type="text" id="reply-input-${notif.id}" placeholder="Type reply..." class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1 text-[11px] focus:outline-none focus:border-cyan-400 text-white">
+                        <button onclick="submitQuickReply('${notif.id}')" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold px-3 py-1 rounded-lg text-[11px] transition-colors shadow">Send</button>
+                    </div>
+                `;
+            }
+
+            toast.innerHTML = html;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full');
+            });
+
+            if (!notif.canReply) {
+                setTimeout(() => {
+                    toast.classList.add('opacity-0');
+                    setTimeout(() => toast.remove(), 400);
+                }, 8000);
+            }
+        }
+
+        function submitQuickReply(key) {
+            const input = document.getElementById(`reply-input-${key}`);
+            if (input && input.value.trim() !== '') {
+                const text = input.value.trim();
+                sendCommand({ action: 'QUICK_REPLY', key: key, text: text });
+
+                const btn = input.nextElementSibling;
+                if (btn) {
+                    btn.textContent = "Sent ✓";
+                    btn.className = "bg-green-600 text-white font-bold px-3 py-1 rounded-lg text-[11px]";
+                }
+                setTimeout(() => {
+                    const toast = document.getElementById(`toast-${key}`);
+                    if (toast) toast.remove();
+                }, 1200);
             }
         }
 
@@ -787,7 +933,6 @@
             }, 1200);
         }
 
-        // 1. Download Flow (Phone ➜ PC)
         function triggerFileDownload(filePath, fileName) {
             activeDownload = {
                 path: filePath,
@@ -846,7 +991,6 @@
             }
         }
 
-        // 2. Upload Flow (PC ➜ Current Opened Directory in Phone)
         function handleFileSelected(files) {
             if (!files || files.length === 0) return;
             const file = files[0];
@@ -862,7 +1006,7 @@
                 activeUpload = {
                     file: file,
                     buffer: arrayBuffer,
-                    targetPath: currentDirPath, // Saves directly into the folder currently open!
+                    targetPath: currentDirPath,
                     chunkSize: chunkSize,
                     totalChunks: totalChunks,
                     currentChunk: 0
@@ -914,11 +1058,9 @@
             hideTransferToast();
             activeUpload = null;
             document.getElementById('file-upload-input').value = '';
-            // Refresh current folder so new file appears instantly
             sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
         }
 
-        // --- On-Demand Image Preview Lightbox (0% Background Lag) ---
         function openImagePreview(filePath, fileName) {
             activePreview = {
                 path: filePath,
@@ -933,7 +1075,6 @@
             document.getElementById('preview-loader').classList.remove('hidden');
             document.getElementById('image-preview-modal').classList.remove('hidden');
 
-            // Fetch image data on-demand
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: filePath, offset: 0 });
         }
 
@@ -976,7 +1117,6 @@
             return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(ext);
         }
 
-        // --- File Explorer Directory View ---
         function renderDirectory(data) {
             if (!data) return;
             currentDirPath = data.currentPath || '';
@@ -1032,7 +1172,6 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
-        // --- Photos Gallery (Click to Preview) ---
         function renderPhotos(photos) {
             const grid = document.getElementById('photos-grid');
             grid.innerHTML = '';

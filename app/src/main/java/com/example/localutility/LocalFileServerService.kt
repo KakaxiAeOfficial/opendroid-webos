@@ -215,11 +215,13 @@ class LocalFileServerService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
+    // Standard Reliable Messages (QoS 1)
     fun broadcastMessage(msg: String) {
         wsMessageChannel.trySend(msg)
         mqttSendChannel.trySend(msg)
     }
 
+    // Direct Camera Frame Stream (QoS 0)
     fun sendDirectCameraFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "CAMERA_FRAME")
@@ -237,6 +239,7 @@ class LocalFileServerService : Service() {
         }
     }
 
+    // Direct Screen Mirror Frame Stream (QoS 0)
     fun sendDirectScreenFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "SCREEN_FRAME")
@@ -254,10 +257,29 @@ class LocalFileServerService : Service() {
         }
     }
 
+    // Direct Microphone PCM Audio Chunks (QoS 0)
+    fun sendDirectAudioChunk(base64Pcm: String) {
+        val json = JSONObject().apply {
+            put("type", "AUDIO_CHUNK")
+            put("data", base64Pcm)
+        }.toString()
+
+        wsMessageChannel.trySend(json)
+        if (mqttClient?.isConnected == true) {
+            try {
+                val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
+                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+            } catch (e: Exception) {
+                Log.e("AudioStream", "Audio publish error", e)
+            }
+        }
+    }
+
     private fun handleIncomingJson(json: JSONObject) {
         val teleManager = TelephonyAndLocationManager(applicationContext)
         val cameraStreamer = DirectCameraStreamer.getInstance(applicationContext)
         val screenStreamer = DirectScreenStreamer.getInstance(applicationContext)
+        val audioStreamer = AudioStreamManager.getInstance(applicationContext)
 
         when (json.optString("type")) {
             "ping" -> {
@@ -271,7 +293,7 @@ class LocalFileServerService : Service() {
                 sendFullSyncData()
             }
 
-            // --- Direct Camera Stream ---
+            // --- Camera Stream ---
             "START_CAMERA_STREAM" -> {
                 if (screenStreamer.isStreaming) {
                     screenStreamer.pauseStreaming()
@@ -310,7 +332,7 @@ class LocalFileServerService : Service() {
             "SWITCH_CAMERA" -> cameraStreamer.switchCamera()
             "TOGGLE_FLASHLIGHT" -> cameraStreamer.toggleTorch()
 
-            // --- Direct Screen Mirror Stream ---
+            // --- Screen Mirror Stream ---
             "START_SCREEN_STREAM" -> {
                 if (cameraStreamer.isStreaming) {
                     cameraStreamer.stopStreaming()
@@ -342,7 +364,36 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Target 4: Chunked File Download & Upload (Saves in Current Directory) ---
+            // --- Target 5: Ambient Microphone Stream ---
+            "START_AUDIO_STREAM" -> {
+                audioStreamer.startStreaming { pcmBase64 ->
+                    sendDirectAudioChunk(pcmBase64)
+                }
+                broadcastMessage(JSONObject().apply {
+                    put("type", "AUDIO_STREAM_STARTED")
+                }.toString())
+            }
+
+            "STOP_AUDIO_STREAM" -> {
+                audioStreamer.stopStreaming()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "AUDIO_STREAM_STOPPED")
+                }.toString())
+            }
+
+            // --- Target 5: Notification Quick Reply ---
+            "QUICK_REPLY" -> {
+                val key = json.getString("key")
+                val replyText = json.getString("text")
+                val success = NotificationMirrorService.instance?.sendQuickReply(key, replyText) ?: false
+                broadcastMessage(JSONObject().apply {
+                    put("type", "QUICK_REPLY_STATUS")
+                    put("key", key)
+                    put("success", success)
+                }.toString())
+            }
+
+            // --- File Transfer ---
             "DOWNLOAD_FILE_CHUNK" -> {
                 val path = json.optString("path", "")
                 val offset = json.optLong("offset", 0L)
@@ -377,7 +428,7 @@ class LocalFileServerService : Service() {
                 }
             }
 
-            // --- Touch & Utilities ---
+            // --- Touch & Navigation ---
             "INPUT_TAP" -> {
                 val service = RemoteInputService.instance
                 if (service != null) {
@@ -416,12 +467,8 @@ class LocalFileServerService : Service() {
                     }.toString())
                 }
             }
-            "QUICK_REPLY" -> {
-                NotificationMirrorService.instance?.sendQuickReply(
-                    json.getString("key"),
-                    json.getString("text")
-                )
-            }
+
+            // --- Other Utilities ---
             "RING_SIREN" -> {
                 val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
                 audioManager.setStreamVolume(AudioManager.STREAM_ALARM, audioManager.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
@@ -558,6 +605,7 @@ class LocalFileServerService : Service() {
         currentRingtone?.stop()
         DirectCameraStreamer.getInstance(applicationContext).stopStreaming()
         DirectScreenStreamer.getInstance(applicationContext).stopStreaming()
+        AudioStreamManager.getInstance(applicationContext).stopStreaming()
         try { server?.stop(500, 1000) } catch (e: Exception) {}
         server = null
         isServerStartingOrRunning = false
