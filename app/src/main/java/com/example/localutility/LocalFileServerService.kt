@@ -45,6 +45,7 @@ class LocalFileServerService : Service() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var server: ApplicationEngine? = null
+    private var isServerStartingOrRunning = false
     private lateinit var baseDir: File
     private var currentRingtone: Ringtone? = null
     private val wsMessageChannel = Channel<String>(Channel.UNLIMITED)
@@ -299,10 +300,8 @@ class LocalFileServerService : Service() {
                     broadcastMessage(JSONObject().apply {
                         put("type", "SCREEN_STREAM_STARTED")
                     }.toString())
-                } else if (screenStreamer.lastProjectionIntent != null) {
-                    screenStreamer.startStreaming { frameBase64 ->
-                        sendDirectScreenFrame(frameBase64)
-                    }
+                } else if (screenStreamer.hasProjection()) {
+                    screenStreamer.resumeStreaming()
                     broadcastMessage(JSONObject().apply {
                         put("type", "SCREEN_STREAM_STARTED")
                     }.toString())
@@ -313,13 +312,14 @@ class LocalFileServerService : Service() {
                 }
             }
             "STOP_SCREEN_STREAM" -> {
-                screenStreamer.stopStreaming()
+                // Pause streaming cleanly without destroying MediaProjection session
+                screenStreamer.pauseStreaming()
                 broadcastMessage(JSONObject().apply {
                     put("type", "SCREEN_STREAM_STOPPED")
                 }.toString())
             }
 
-            // --- System Utilities & Touch Injection ---
+            // --- Touch & System Controls ---
             "INPUT_TAP" -> {
                 RemoteInputService.instance?.dispatchTap(
                     json.getDouble("x").toFloat(),
@@ -389,12 +389,24 @@ class LocalFileServerService : Service() {
         }
     }
 
+    // Fixed: Concurrency Guard prevents duplicate binding to port 8888
     private fun startServer() {
-        if (server != null) return
+        synchronized(this) {
+            if (isServerStartingOrRunning || server != null) return
+            isServerStartingOrRunning = true
+        }
+
         serviceScope.launch {
-            server = embeddedServer(CIO, port = PORT) {
-                fileServerModule(baseDir)
-            }.start(wait = false)
+            try {
+                server = embeddedServer(CIO, port = PORT) {
+                    fileServerModule(baseDir)
+                }.start(wait = false)
+            } catch (e: Exception) {
+                Log.e("LocalServer", "Server startup caught", e)
+                synchronized(this@LocalFileServerService) {
+                    isServerStartingOrRunning = false
+                }
+            }
         }
     }
 
@@ -468,7 +480,9 @@ class LocalFileServerService : Service() {
         currentRingtone?.stop()
         DirectCameraStreamer.getInstance(applicationContext).stopStreaming()
         DirectScreenStreamer.getInstance(applicationContext).stopStreaming()
-        server?.stop(1000, 2000)
+        try { server?.stop(500, 1000) } catch (e: Exception) {}
+        server = null
+        isServerStartingOrRunning = false
         try { mqttClient?.disconnect() } catch (e: Exception) {}
         serviceScope.cancel()
     }
