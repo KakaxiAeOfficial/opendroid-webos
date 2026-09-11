@@ -271,9 +271,8 @@ class LocalFileServerService : Service() {
                 sendFullSyncData()
             }
 
-            // --- Direct Camera Stream with Background Security Unblock ---
+            // --- Direct Camera Stream ---
             "START_CAMERA_STREAM" -> {
-                // Auto-Pause screen stream to prevent hardware and bandwidth collision
                 if (screenStreamer.isStreaming) {
                     screenStreamer.pauseStreaming()
                     broadcastMessage(JSONObject().put("type", "SCREEN_STREAM_STOPPED").toString())
@@ -282,7 +281,6 @@ class LocalFileServerService : Service() {
                 val facing = json.optString("facing", "back")
                 val isFront = (facing == "front")
 
-                // Start Camera Foreground Service (Unlocks background camera access on Android 11+)
                 val camServiceIntent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
                     putExtra("facing", facing)
                 }
@@ -314,7 +312,6 @@ class LocalFileServerService : Service() {
 
             // --- Direct Screen Mirror Stream ---
             "START_SCREEN_STREAM" -> {
-                // Auto-Stop camera if running to prioritize screen capture
                 if (cameraStreamer.isStreaming) {
                     cameraStreamer.stopStreaming()
                     val camServiceIntent = Intent(this@LocalFileServerService, CameraStreamService::class.java)
@@ -345,24 +342,47 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Touch & Utilities ---
+            // --- Target 3: Remote Touch & Gestures Injection ---
             "INPUT_TAP" -> {
-                RemoteInputService.instance?.dispatchTap(
-                    json.getDouble("x").toFloat(),
-                    json.getDouble("y").toFloat()
-                )
+                val service = RemoteInputService.instance
+                if (service != null) {
+                    service.dispatchTap(
+                        json.getDouble("x").toFloat(),
+                        json.getDouble("y").toFloat()
+                    )
+                } else {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "ACCESSIBILITY_REQUIRED")
+                    }.toString())
+                }
             }
             "INPUT_SWIPE" -> {
-                RemoteInputService.instance?.dispatchSwipe(
-                    json.getDouble("startX").toFloat(),
-                    json.getDouble("startY").toFloat(),
-                    json.getDouble("endX").toFloat(),
-                    json.getDouble("endY").toFloat()
-                )
+                val service = RemoteInputService.instance
+                if (service != null) {
+                    service.dispatchSwipe(
+                        json.getDouble("startX").toFloat(),
+                        json.getDouble("startY").toFloat(),
+                        json.getDouble("endX").toFloat(),
+                        json.getDouble("endY").toFloat()
+                    )
+                } else {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "ACCESSIBILITY_REQUIRED")
+                    }.toString())
+                }
             }
             "GLOBAL_ACTION" -> {
-                RemoteInputService.instance?.executeGlobalAction(json.getString("actionType"))
+                val service = RemoteInputService.instance
+                if (service != null) {
+                    service.executeGlobalAction(json.getString("actionType"))
+                } else {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "ACCESSIBILITY_REQUIRED")
+                    }.toString())
+                }
             }
+
+            // --- General Utilities ---
             "QUICK_REPLY" -> {
                 NotificationMirrorService.instance?.sendQuickReply(
                     json.getString("key"),

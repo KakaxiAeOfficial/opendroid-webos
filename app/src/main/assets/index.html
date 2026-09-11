@@ -197,7 +197,7 @@
         </div>
     </div>
 
-    <!-- Window: Screen Mirroring (Target 2: Direct Frame Stream with Touch Injection) -->
+    <!-- Window: Screen Mirroring (Target 2 & 3: Direct Stream with Mouse Touch & Gesture Injection) -->
     <div id="screen-window" class="window hidden" style="width: 360px; height: 680px; top: 60px; left: 330px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -211,6 +211,7 @@
                 Click Start Screen Mirror below
             </div>
 
+            <!-- Direct Live Screen Frame Display with Mouse Click Listeners -->
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden select-none">
                 <img id="screen-frame-view" class="w-full h-full object-fill cursor-crosshair hidden" alt="Screen Mirror" />
                 <div id="screen-placeholder" class="text-gray-500 text-xs text-center p-4">
@@ -218,12 +219,14 @@
                 </div>
             </div>
             
+            <!-- Android Navigation Bar (Back, Home, Recents) -->
             <div class="bg-gray-900 h-11 flex justify-around items-center border-t border-gray-700 z-10">
                 <button onclick="sendGlobalAction('BACK')" class="text-white text-lg hover:text-gray-300 px-4">◀</button>
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
             </div>
 
+            <!-- Screen Stream Toggle Button -->
             <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10">
                 <button id="screen-toggle-btn" onclick="startScreenStream()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors">Start Screen Mirror</button>
             </div>
@@ -572,6 +575,11 @@
                 updateScreenStatus("⚠️ Tap 'Start Screen Share' inside Phone App first!");
                 alert("Please click 'Start Screen Share' inside the OpenDroid app on your phone and tap 'Start now' to allow screen projection.");
             }
+            // --- Target 3: Accessibility Feedback ---
+            else if (data.type === 'ACCESSIBILITY_REQUIRED') {
+                updateScreenStatus("⚠️ Turn ON Accessibility in Phone Settings!");
+                alert("Touch control requires Accessibility permission:\n\nOn your phone, go to:\nSettings > Accessibility > Installed Apps > OpenDroid Remote Control -> Turn ON.");
+            }
             // --- General Features ---
             else if (data.type === 'SMS_LIST') {
                 renderSms(data.data);
@@ -614,7 +622,7 @@
         }
 
         function startCameraStream(facing) {
-            // Auto-pause screen mirroring on UI if running to allow clean camera hardware lock
+            // Auto-pause screen mirroring on UI if running
             const screenBtn = document.getElementById('screen-toggle-btn');
             if (screenBtn && screenBtn.textContent.includes("Stop")) {
                 updateScreenStatus("Screen Mirror Paused for Camera");
@@ -640,7 +648,7 @@
             stopCameraStream();
         }
 
-        // --- Screen Mirror Controls with Auto-Switch & Touch Injection ---
+        // --- Screen Mirror Controls with Auto-Switch & Mouse Touch Injection ---
         function updateScreenStatus(statusText) {
             const bar = document.getElementById('screen-status-bar');
             if (bar) {
@@ -654,7 +662,7 @@
         }
 
         function startScreenStream() {
-            // Auto-stop camera on UI if running to prioritize screen capture
+            // Auto-stop camera on UI if running
             const camBtn = document.getElementById('cam-toggle-btn');
             if (camBtn && camBtn.textContent.includes("Stop")) {
                 updateCameraStatus("Camera Stopped for Screen Mirror");
@@ -680,9 +688,13 @@
             stopScreenStream();
         }
 
-        // Mouse Touch Control on Screen Mirror Image
-        let isDraggingScreen = false, startNormX = 0, startNormY = 0;
+        // --- Target 3: Mouse Touch & Gesture Injection Engine ---
+        let isDraggingScreen = false;
+        let startNormX = 0, startNormY = 0;
         const screenImg = document.getElementById('screen-frame-view');
+
+        // Prevent browser's native image drag behavior
+        screenImg.addEventListener('dragstart', (e) => e.preventDefault());
 
         screenImg.addEventListener('mousedown', (e) => {
             isDraggingScreen = true;
@@ -691,18 +703,26 @@
             startNormY = (e.clientY - rect.top) / rect.height;
         });
 
-        screenImg.addEventListener('mouseup', (e) => {
+        document.addEventListener('mouseup', (e) => {
             if (!isDraggingScreen) return;
             isDraggingScreen = false;
+
             const rect = screenImg.getBoundingClientRect();
-            const endNormX = (e.clientX - rect.left) / rect.width;
-            const endNormY = (e.clientY - rect.top) / rect.height;
-            const distance = Math.hypot(endNormX - startNormX, endNormY - startNormY);
+            const rawEndX = (e.clientX - rect.left) / rect.width;
+            const rawEndY = (e.clientY - rect.top) / rect.height;
+
+            const distance = Math.hypot(rawEndX - startNormX, rawEndY - startNormY);
+
+            // Clamp normalized coordinates between 0.0 and 1.0
+            const clampedX = Math.max(0, Math.min(1, rawEndX));
+            const clampedY = Math.max(0, Math.min(1, rawEndY));
+            const clampedStartX = Math.max(0, Math.min(1, startNormX));
+            const clampedStartY = Math.max(0, Math.min(1, startNormY));
 
             if (distance < 0.02) {
-                sendCommand({ action: 'INPUT_TAP', x: endNormX, y: endNormY });
+                sendCommand({ action: 'INPUT_TAP', x: clampedX, y: clampedY });
             } else {
-                sendCommand({ action: 'INPUT_SWIPE', startX: startNormX, startY: startNormY, endX: endNormX, endY: endNormY });
+                sendCommand({ action: 'INPUT_SWIPE', startX: clampedStartX, startY: clampedStartY, endX: clampedX, endY: clampedY });
             }
         });
 
