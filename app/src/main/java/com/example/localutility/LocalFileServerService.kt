@@ -215,13 +215,11 @@ class LocalFileServerService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    // Standard Reliable Messages (QoS 1)
     fun broadcastMessage(msg: String) {
         wsMessageChannel.trySend(msg)
         mqttSendChannel.trySend(msg)
     }
 
-    // Direct Camera Frame Stream (QoS 0)
     fun sendDirectCameraFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "CAMERA_FRAME")
@@ -239,7 +237,6 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // Direct Screen Mirror Frame Stream (QoS 0)
     fun sendDirectScreenFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "SCREEN_FRAME")
@@ -274,10 +271,27 @@ class LocalFileServerService : Service() {
                 sendFullSyncData()
             }
 
-            // --- Direct Camera Stream ---
+            // --- Direct Camera Stream with Background Security Unblock ---
             "START_CAMERA_STREAM" -> {
+                // Auto-Pause screen stream to prevent hardware and bandwidth collision
+                if (screenStreamer.isStreaming) {
+                    screenStreamer.pauseStreaming()
+                    broadcastMessage(JSONObject().put("type", "SCREEN_STREAM_STOPPED").toString())
+                }
+
                 val facing = json.optString("facing", "back")
                 val isFront = (facing == "front")
+
+                // Start Camera Foreground Service (Unlocks background camera access on Android 11+)
+                val camServiceIntent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
+                    putExtra("facing", facing)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(camServiceIntent)
+                } else {
+                    startService(camServiceIntent)
+                }
+
                 cameraStreamer.startStreaming(isFront) { frameBase64 ->
                     sendDirectCameraFrame(frameBase64)
                 }
@@ -285,17 +299,29 @@ class LocalFileServerService : Service() {
                     put("type", "CAMERA_STREAM_STARTED")
                 }.toString())
             }
+
             "STOP_CAMERA_STREAM" -> {
                 cameraStreamer.stopStreaming()
+                val camServiceIntent = Intent(this@LocalFileServerService, CameraStreamService::class.java)
+                stopService(camServiceIntent)
                 broadcastMessage(JSONObject().apply {
                     put("type", "CAMERA_STREAM_STOPPED")
                 }.toString())
             }
+
             "SWITCH_CAMERA" -> cameraStreamer.switchCamera()
             "TOGGLE_FLASHLIGHT" -> cameraStreamer.toggleTorch()
 
             // --- Direct Screen Mirror Stream ---
             "START_SCREEN_STREAM" -> {
+                // Auto-Stop camera if running to prioritize screen capture
+                if (cameraStreamer.isStreaming) {
+                    cameraStreamer.stopStreaming()
+                    val camServiceIntent = Intent(this@LocalFileServerService, CameraStreamService::class.java)
+                    stopService(camServiceIntent)
+                    broadcastMessage(JSONObject().put("type", "CAMERA_STREAM_STOPPED").toString())
+                }
+
                 if (screenStreamer.isStreaming) {
                     broadcastMessage(JSONObject().apply {
                         put("type", "SCREEN_STREAM_STARTED")
@@ -311,15 +337,15 @@ class LocalFileServerService : Service() {
                     }.toString())
                 }
             }
+
             "STOP_SCREEN_STREAM" -> {
-                // Pause streaming cleanly without destroying MediaProjection session
                 screenStreamer.pauseStreaming()
                 broadcastMessage(JSONObject().apply {
                     put("type", "SCREEN_STREAM_STOPPED")
                 }.toString())
             }
 
-            // --- Touch & System Controls ---
+            // --- Touch & Utilities ---
             "INPUT_TAP" -> {
                 RemoteInputService.instance?.dispatchTap(
                     json.getDouble("x").toFloat(),
@@ -389,7 +415,6 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // Fixed: Concurrency Guard prevents duplicate binding to port 8888
     private fun startServer() {
         synchronized(this) {
             if (isServerStartingOrRunning || server != null) return

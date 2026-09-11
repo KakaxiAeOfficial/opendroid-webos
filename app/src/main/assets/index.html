@@ -182,7 +182,7 @@
 
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden">
                 <img id="camera-frame-view" class="w-full h-full object-contain hidden" alt="Camera Feed" />
-                <div id="camera-placeholder" class="text-gray-600 text-xs text-center p-4">
+                <div id="camera-placeholder" class="text-gray-500 text-xs text-center p-4">
                     Camera is currently stopped. Click "Start Camera" to stream.
                 </div>
             </div>
@@ -211,7 +211,6 @@
                 Click Start Screen Mirror below
             </div>
 
-            <!-- Direct Live Screen Frame Display with Mouse Click Listeners -->
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden select-none">
                 <img id="screen-frame-view" class="w-full h-full object-fill cursor-crosshair hidden" alt="Screen Mirror" />
                 <div id="screen-placeholder" class="text-gray-500 text-xs text-center p-4">
@@ -219,14 +218,12 @@
                 </div>
             </div>
             
-            <!-- Android Navigation Bar (Back, Home, Recents) -->
             <div class="bg-gray-900 h-11 flex justify-around items-center border-t border-gray-700 z-10">
                 <button onclick="sendGlobalAction('BACK')" class="text-white text-lg hover:text-gray-300 px-4">◀</button>
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
             </div>
 
-            <!-- Screen Stream Toggle Button -->
             <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10">
                 <button id="screen-toggle-btn" onclick="startScreenStream()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors">Start Screen Mirror</button>
             </div>
@@ -432,8 +429,6 @@
         let allInstalledApps = [];
         let currentDirPath = '';
         let parentDirPath = '';
-        let isCameraStreaming = false;
-        let isScreenStreaming = false;
 
         function connectViaCloud() {
             const code = document.getElementById('pairing-code-input').value.trim();
@@ -508,18 +503,17 @@
                     document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
                 }
             } 
-            // --- Target 1: Camera Direct Stream ---
+            // --- Target 1: Camera Direct Stream Frame Handler ---
             else if (data.type === 'CAMERA_FRAME') {
                 const img = document.getElementById('camera-frame-view');
                 const placeholder = document.getElementById('camera-placeholder');
                 if (img) {
                     img.src = 'data:image/jpeg;base64,' + data.frame;
                     img.classList.remove('hidden');
-                    if (placeholder) placeholder.classList.add('hidden');
-                    updateCameraStatus("🟢 Live Camera Stream (30 FPS)");
                 }
+                if (placeholder) placeholder.classList.add('hidden');
+                updateCameraStatus("🟢 Live Camera Stream (30 FPS)");
             } else if (data.type === 'CAMERA_STREAM_STARTED') {
-                isCameraStreaming = true;
                 updateCameraStatus("🟢 Camera Hardware Active");
                 const btn = document.getElementById('cam-toggle-btn');
                 if (btn) {
@@ -527,8 +521,9 @@
                     btn.className = "flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg shadow transition-colors";
                     btn.onclick = () => stopCameraStream();
                 }
+                const placeholder = document.getElementById('camera-placeholder');
+                if (placeholder) placeholder.classList.add('hidden');
             } else if (data.type === 'CAMERA_STREAM_STOPPED') {
-                isCameraStreaming = false;
                 updateCameraStatus("Camera Stopped");
                 const btn = document.getElementById('cam-toggle-btn');
                 if (btn) {
@@ -541,18 +536,17 @@
                 if (img) img.classList.add('hidden');
                 if (placeholder) placeholder.classList.remove('hidden');
             }
-            // --- Target 2: Live Screen Mirroring Direct Stream ---
+            // --- Target 2: Live Screen Mirroring Frame Handler ---
             else if (data.type === 'SCREEN_FRAME') {
                 const img = document.getElementById('screen-frame-view');
                 const placeholder = document.getElementById('screen-placeholder');
                 if (img) {
                     img.src = 'data:image/jpeg;base64,' + data.frame;
                     img.classList.remove('hidden');
-                    if (placeholder) placeholder.classList.add('hidden');
-                    updateScreenStatus("🟢 Live Screen Mirroring (30 FPS)");
                 }
+                if (placeholder) placeholder.classList.add('hidden');
+                updateScreenStatus("🟢 Live Screen Mirroring (30 FPS)");
             } else if (data.type === 'SCREEN_STREAM_STARTED') {
-                isScreenStreaming = true;
                 updateScreenStatus("🟢 Screen Capture Active");
                 const btn = document.getElementById('screen-toggle-btn');
                 if (btn) {
@@ -560,8 +554,9 @@
                     btn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors";
                     btn.onclick = () => stopScreenStream();
                 }
+                const placeholder = document.getElementById('screen-placeholder');
+                if (placeholder) placeholder.classList.add('hidden');
             } else if (data.type === 'SCREEN_STREAM_STOPPED') {
-                isScreenStreaming = false;
                 updateScreenStatus("Screen Mirror Stopped");
                 const btn = document.getElementById('screen-toggle-btn');
                 if (btn) {
@@ -575,7 +570,7 @@
                 if (placeholder) placeholder.classList.remove('hidden');
             } else if (data.type === 'SCREEN_PERMISSION_REQUIRED') {
                 updateScreenStatus("⚠️ Tap 'Start Screen Share' inside Phone App first!");
-                alert("Please click 'Start Screen Share' inside the OpenDroid app on your phone and tap 'Start' to allow screen projection.");
+                alert("Please click 'Start Screen Share' inside the OpenDroid app on your phone and tap 'Start now' to allow screen projection.");
             }
             // --- General Features ---
             else if (data.type === 'SMS_LIST') {
@@ -605,7 +600,7 @@
             }
         }
 
-        // --- Camera Controls ---
+        // --- Camera Controls with Auto-Switch ---
         function updateCameraStatus(statusText) {
             const bar = document.getElementById('camera-status-bar');
             if (bar) {
@@ -619,6 +614,19 @@
         }
 
         function startCameraStream(facing) {
+            // Auto-pause screen mirroring on UI if running to allow clean camera hardware lock
+            const screenBtn = document.getElementById('screen-toggle-btn');
+            if (screenBtn && screenBtn.textContent.includes("Stop")) {
+                updateScreenStatus("Screen Mirror Paused for Camera");
+                screenBtn.textContent = "Start Screen Mirror";
+                screenBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors";
+                screenBtn.onclick = () => startScreenStream();
+                const screenImg = document.getElementById('screen-frame-view');
+                const screenPlace = document.getElementById('screen-placeholder');
+                if (screenImg) screenImg.classList.add('hidden');
+                if (screenPlace) screenPlace.classList.remove('hidden');
+            }
+
             updateCameraStatus("🟡 Starting Camera Hardware on Phone...");
             sendCommand({ action: 'START_CAMERA_STREAM', facing: facing });
         }
@@ -632,7 +640,7 @@
             stopCameraStream();
         }
 
-        // --- Screen Mirror Controls & Touch Injection ---
+        // --- Screen Mirror Controls with Auto-Switch & Touch Injection ---
         function updateScreenStatus(statusText) {
             const bar = document.getElementById('screen-status-bar');
             if (bar) {
@@ -646,6 +654,19 @@
         }
 
         function startScreenStream() {
+            // Auto-stop camera on UI if running to prioritize screen capture
+            const camBtn = document.getElementById('cam-toggle-btn');
+            if (camBtn && camBtn.textContent.includes("Stop")) {
+                updateCameraStatus("Camera Stopped for Screen Mirror");
+                camBtn.textContent = "Start Camera";
+                camBtn.className = "flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow transition-colors";
+                camBtn.onclick = () => startCameraStream('back');
+                const camImg = document.getElementById('camera-frame-view');
+                const camPlace = document.getElementById('camera-placeholder');
+                if (camImg) camImg.classList.add('hidden');
+                if (camPlace) camPlace.classList.remove('hidden');
+            }
+
             updateScreenStatus("🟡 Connecting Screen Stream...");
             sendCommand({ action: 'START_SCREEN_STREAM' });
         }
