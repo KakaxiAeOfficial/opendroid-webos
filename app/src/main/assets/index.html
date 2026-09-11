@@ -461,8 +461,8 @@
         </div>
     </div>
 
-    <!-- Window: Find Phone (Target 6: Clean High-Resolution CARTO Basemaps with Official API Key) -->
-    <div id="map-window" class="window hidden" style="width: 560px; height: 480px; top: 100px; left: 390px;">
+    <!-- Window: Find Phone (Target 6: Clean Custom Branding & 1-Click Coordinates Copy) -->
+    <div id="map-window" class="window hidden" style="width: 580px; height: 500px; top: 90px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📍</span>
@@ -470,11 +470,15 @@
             </div>
             <button onclick="wm.closeWindow('map-window')" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
         </div>
-        <div class="flex-1 bg-white overflow-hidden flex flex-col">
-            <!-- Map Top Coordinates & Control Bar -->
-            <div class="p-2.5 bg-gray-50 border-b flex items-center justify-between text-xs">
-                <div class="flex items-center gap-2 min-w-0 pr-2">
+        <div class="flex-1 bg-white overflow-hidden flex flex-col relative">
+            <!-- Map Top Coordinates & Action Bar -->
+            <div class="p-2.5 bg-gray-50 border-b flex items-center justify-between text-xs gap-2">
+                <div class="flex items-center gap-1.5 min-w-0 flex-1">
                     <span id="map-status" class="font-mono text-[11px] text-gray-600 truncate">Fetching GPS Satellite Signal...</span>
+                    <!-- 1-Click Copy Coordinates Button -->
+                    <button id="copy-coords-btn" onclick="copyCurrentCoords()" class="px-2 py-0.5 bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-300 rounded text-[10px] font-bold transition-all shadow-xs flex-shrink-0">
+                        📋 Copy Coords
+                    </button>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <button onclick="sendCommand({action: 'FETCH_LOCATION'})" class="px-2.5 py-1 bg-white hover:bg-gray-100 border rounded text-[11px] font-semibold text-gray-700 shadow-sm flex items-center gap-1">
@@ -489,6 +493,10 @@
             <!-- Leaflet Container -->
             <div id="map-container" class="flex-1 bg-gray-200 relative">
                 <div id="map" class="absolute inset-0"></div>
+                <!-- Custom Clean OpenDroid Watermark (Replaces external flags & links) -->
+                <div class="absolute bottom-1 right-2 z-[400] bg-gray-900/80 backdrop-blur text-white text-[10px] font-mono px-2 py-0.5 rounded shadow pointer-events-none">
+                    OpenDroid GPS Engine by kakaxi_ae • Live
+                </div>
             </div>
         </div>
     </div>
@@ -818,7 +826,7 @@
             }
         }
 
-        // --- Target 6: Live GPS Map with Official CARTO API Key (Watermark Removed) ---
+        // --- Target 6: Live GPS Map (Clean Custom Branding & 1-Click Coordinates Copy) ---
         function renderMap(loc) {
             const statusEl = document.getElementById('map-status');
 
@@ -836,17 +844,17 @@
             const timeStr = loc.timestamp ? new Date(loc.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
 
             if (statusEl) {
-                statusEl.innerHTML = `<span>📍 Lat: <b>${lat.toFixed(5)}</b>, Lng: <b>${lng.toFixed(5)}</b> (±${Math.round(accuracy)}m at ${timeStr})</span>`;
+                statusEl.innerHTML = `<span>Lat: <b>${lat.toFixed(5)}</b>, Lng: <b>${lng.toFixed(5)}</b> (±${Math.round(accuracy)}m at ${timeStr})</span>`;
                 statusEl.className = "font-mono text-[11px] text-green-700 font-medium truncate";
             }
 
             try {
                 if (!mapInstance) {
-                    mapInstance = L.map('map').setView([lat, lng], 16);
+                    // Disabled default attribution to remove foreign flags and external links
+                    mapInstance = L.map('map', { attributionControl: false }).setView([lat, lng], 16);
                     
-                    // CARTO Voyager Tiles with Verified API Key (Clean map without watermark)
+                    // CARTO Voyager Tiles with Official API Key (No watermark)
                     L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_3hei_1_76590e9ed91b1cc0943b2f71', {
-                        attribution: '© OpenStreetMap contributors, © CARTO',
                         maxZoom: 20
                     }).addTo(mapInstance);
 
@@ -868,7 +876,18 @@
                 }
 
                 if (mapMarker) {
-                    mapMarker.bindPopup(`<b>Phone Live Location</b><br>Accuracy: ±${Math.round(accuracy)}m<br>Time: ${timeStr}`).openPopup();
+                    const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+                    mapMarker.bindPopup(`
+                        <div class="text-xs font-sans">
+                            <div class="font-bold text-gray-800 text-sm mb-1">📍 OpenDroid Live Location</div>
+                            <div class="font-mono text-[11px] text-gray-600">${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+                            <div class="text-[10px] text-gray-500 mt-0.5">Accuracy: ±${Math.round(accuracy)}m • ${timeStr}</div>
+                            <div class="mt-2 flex gap-1.5">
+                                <button onclick="copyCurrentCoords()" class="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded font-bold shadow-xs">📋 Copy</button>
+                                <a href="${googleMapsUrl}" target="_blank" class="px-2 py-0.5 bg-gray-100 border text-gray-700 text-[10px] rounded font-semibold hover:bg-gray-200">Google Maps ↗</a>
+                            </div>
+                        </div>
+                    `).openPopup();
                 }
 
                 setTimeout(() => {
@@ -877,6 +896,32 @@
             } catch (e) {
                 console.error("Leaflet render error:", e);
             }
+        }
+
+        // 1-Click Copy Coordinates Function
+        function copyCurrentCoords() {
+            if (!latestLocation || !latestLocation.lat || !latestLocation.lng) {
+                alert("GPS location not available yet!");
+                return;
+            }
+
+            const lat = parseFloat(latestLocation.lat).toFixed(6);
+            const lng = parseFloat(latestLocation.lng).toFixed(6);
+            const textToCopy = `${lat}, ${lng}\nGoogle Maps: https://www.google.com/maps?q=${lat},${lng}`;
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const btn = document.getElementById('copy-coords-btn');
+                if (btn) {
+                    btn.textContent = "Copied ✓";
+                    btn.className = "px-2 py-0.5 bg-green-600 text-white border border-green-700 rounded text-[10px] font-bold transition-all shadow-xs flex-shrink-0";
+                    setTimeout(() => {
+                        btn.textContent = "📋 Copy Coords";
+                        btn.className = "px-2 py-0.5 bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-300 rounded text-[10px] font-bold transition-all shadow-xs flex-shrink-0";
+                    }, 2000);
+                }
+            }).catch(err => {
+                prompt("Copy coordinates:", `${lat}, ${lng}`);
+            });
         }
 
         // --- Notification Toast System ---
