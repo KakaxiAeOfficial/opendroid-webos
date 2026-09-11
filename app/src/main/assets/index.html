@@ -81,7 +81,7 @@
         </div>
     </div>
 
-    <!-- Top Dock Bar -->
+    <!-- Top Dock Bar with Independent Mic Toggle -->
     <div class="fixed top-2 left-1/2 -translate-x-1/2 h-10 bg-gray-900/85 backdrop-blur-md text-white flex items-center gap-4 px-4 rounded-full z-50 shadow-xl border border-white/10 text-xs">
         <div class="flex items-center gap-2 pr-3 border-r border-gray-700">
             <div class="w-6 h-6 bg-gradient-to-tr from-cyan-400 to-blue-500 rounded-md flex items-center justify-center font-black text-xs text-white shadow">O</div>
@@ -93,8 +93,15 @@
             <span class="absolute right-2 text-gray-400 text-xs">🔍</span>
         </div>
 
-        <div class="flex items-center gap-4 pl-3 border-l border-gray-700">
+        <div class="flex items-center gap-3.5 pl-3 border-l border-gray-700">
             <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
+            
+            <!-- Independent Mic Listening Button on Dock -->
+            <button id="dock-mic-btn" onclick="toggleGlobalMic()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px]">
+                <span id="dock-mic-icon">🔇</span>
+                <span id="dock-mic-label">Mic Off</span>
+            </button>
+
             <button id="siren-btn" onclick="toggleSiren()" class="hover:text-red-400 transition-colors font-medium flex items-center gap-1">
                 <span>🔔</span>
                 <span>Ring</span>
@@ -183,7 +190,7 @@
         </div>
     </div>
 
-    <!-- Window: Remote Camera (Target 1: Direct Frame Stream + Mic Audio) -->
+    <!-- Window: Remote Camera (Direct Frame Stream + Mic Audio) -->
     <div id="camera-window" class="window hidden" style="width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -210,18 +217,17 @@
                     <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3.5 py-2 rounded-lg transition-colors">🔄 Switch</button>
                     <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3.5 py-2 rounded-lg transition-colors">💡 Flash</button>
                 </div>
-                <!-- Ambient Audio Slider (Target 5) -->
                 <div class="flex items-center gap-2 text-white text-[11px] pt-1">
                     <span>🔊 Mic Audio:</span>
-                    <input type="range" id="mic-volume" min="0" max="1" step="0.05" value="0" class="flex-1" oninput="adjustAudioVolume(this.value)">
-                    <span id="mic-volume-label" class="w-8 font-mono text-right text-gray-300">Off</span>
+                    <input type="range" id="cam-mic-volume" min="0" max="1" step="0.05" value="0" class="flex-1" oninput="adjustAudioVolume(this.value)">
+                    <span id="cam-mic-volume-label" class="w-8 font-mono text-right text-gray-300">Off</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Window: Screen Mirroring (Target 2 & 3: Direct Stream with Mouse Touch) -->
-    <div id="screen-window" class="window hidden" style="width: 360px; height: 680px; top: 60px; left: 330px;">
+    <!-- Window: Screen Mirroring (Target 2 & 3: Direct Stream with Mouse Touch + Dedicated Mic Toggle) -->
+    <div id="screen-window" class="window hidden" style="width: 360px; height: 710px; top: 50px; left: 330px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📱</span>
@@ -241,14 +247,22 @@
                 </div>
             </div>
             
+            <!-- Android Navigation Bar (Back, Home, Recents) -->
             <div class="bg-gray-900 h-11 flex justify-around items-center border-t border-gray-700 z-10">
                 <button onclick="sendGlobalAction('BACK')" class="text-white text-lg hover:text-gray-300 px-4">◀</button>
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
             </div>
 
-            <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10">
-                <button id="screen-toggle-btn" onclick="startScreenStream()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors">Start Screen Mirror</button>
+            <!-- Screen Mirror Controls & Mic Toggle Bar -->
+            <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10 flex flex-col gap-2 text-xs">
+                <div class="flex items-center justify-between gap-2">
+                    <button id="screen-toggle-btn" onclick="startScreenStream()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow text-xs transition-colors">Start Screen Mirror</button>
+                    <!-- Dedicated Mic Button on Screen Mirror Window -->
+                    <button id="screen-mic-btn" onclick="toggleScreenMic()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                        <span>🎙️</span><span>Mic Off</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -478,23 +492,23 @@
         let activeUpload = null;
         let activePreview = null;
 
-        // Target 5: Web Audio API (PCM 16kHz Scheduler)
+        // Target 5: Web Audio API (PCM 16kHz Streaming Engine)
         let audioCtx = null;
         let gainNode = null;
         let nextAudioStartTime = 0;
-        let currentAudioVolume = 0;
+        let isGlobalMicActive = false;
 
         function initWebAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
                 gainNode = audioCtx.createGain();
-                gainNode.gain.value = currentAudioVolume;
+                gainNode.gain.value = 0.8;
                 gainNode.connect(audioCtx.destination);
             }
         }
 
         function playPcmChunk(base64Pcm) {
-            if (currentAudioVolume === 0) return;
+            if (!isGlobalMicActive) return;
             initWebAudio();
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
@@ -533,19 +547,61 @@
             }
         }
 
+        // Independent Mic Switch Controls (Top Dock & Windows)
+        function toggleGlobalMic() {
+            setMicState(!isGlobalMicActive);
+        }
+
+        function toggleScreenMic() {
+            setMicState(!isGlobalMicActive);
+        }
+
         function adjustAudioVolume(val) {
-            currentAudioVolume = parseFloat(val);
-            initWebAudio();
-            gainNode.gain.value = currentAudioVolume;
-
-            const label = document.getElementById('mic-volume-label');
-            if (label) {
-                label.textContent = currentAudioVolume > 0 ? `${Math.round(currentAudioVolume * 100)}%` : 'Off';
+            const vol = parseFloat(val);
+            if (vol > 0) {
+                setMicState(true, vol);
+            } else {
+                setMicState(false, 0);
             }
+        }
 
-            if (currentAudioVolume > 0) {
+        function setMicState(enable, volume = 0.8) {
+            isGlobalMicActive = enable;
+            initWebAudio();
+            gainNode.gain.value = enable ? volume : 0;
+
+            const dockIcon = document.getElementById('dock-mic-icon');
+            const dockLabel = document.getElementById('dock-mic-label');
+            const dockBtn = document.getElementById('dock-mic-btn');
+            const screenBtn = document.getElementById('screen-mic-btn');
+            const camSlider = document.getElementById('cam-mic-volume');
+            const camLabel = document.getElementById('cam-mic-volume-label');
+
+            if (enable) {
+                if (dockIcon) dockIcon.textContent = "🎙️";
+                if (dockLabel) dockLabel.textContent = "Mic Live";
+                if (dockBtn) dockBtn.className = "bg-green-600 hover:bg-green-700 px-2.5 py-1 rounded-full text-white transition-all flex items-center gap-1.5 border border-green-500 font-medium text-[11px] shadow-sm animate-pulse";
+                
+                if (screenBtn) {
+                    screenBtn.className = "px-3 py-1.5 bg-green-600 hover:bg-green-700 border border-green-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm";
+                    screenBtn.innerHTML = "<span>🎙️</span><span>Mic Live</span>";
+                }
+                if (camSlider) camSlider.value = volume;
+                if (camLabel) camLabel.textContent = `${Math.round(volume * 100)}%`;
+
                 sendCommand({ action: 'START_AUDIO_STREAM' });
             } else {
+                if (dockIcon) dockIcon.textContent = "🔇";
+                if (dockLabel) dockLabel.textContent = "Mic Off";
+                if (dockBtn) dockBtn.className = "bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px]";
+                
+                if (screenBtn) {
+                    screenBtn.className = "px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm";
+                    screenBtn.innerHTML = "<span>🎙️</span><span>Mic Off</span>";
+                }
+                if (camSlider) camSlider.value = 0;
+                if (camLabel) camLabel.textContent = "Off";
+
                 sendCommand({ action: 'STOP_AUDIO_STREAM' });
             }
         }
@@ -697,13 +753,15 @@
                 updateScreenStatus("⚠️ Turn ON Accessibility in Phone Settings!");
                 alert("Touch control requires Accessibility permission:\n\nOn your phone, go to:\nSettings > Accessibility > Installed Apps > OpenDroid Remote Control -> Turn ON.");
             }
-            // --- Target 5: Ambient Audio & Notification Mirroring ---
+            // --- Target 5: Direct Microphone Audio Stream ---
             else if (data.type === 'AUDIO_CHUNK') {
                 playPcmChunk(data.data);
-            } else if (data.type === 'NOTIFICATION') {
+            }
+            // --- Target 5: Mirrored Notifications Toast ---
+            else if (data.type === 'NOTIFICATION') {
                 showNotificationToast(data);
             }
-            // --- Chunked File Transfer Handlers ---
+            // --- File Transfer Handlers ---
             else if (data.type === 'FILE_DOWNLOAD_CHUNK') {
                 handleDownloadChunk(data.data);
             } else if (data.type === 'FILE_UPLOAD_CHUNK_ACK') {
@@ -778,7 +836,7 @@
                 setTimeout(() => {
                     toast.classList.add('opacity-0');
                     setTimeout(() => toast.remove(), 400);
-                }, 8000);
+                }, 9000);
             }
         }
 
@@ -818,7 +876,7 @@
             if (screenBtn && screenBtn.textContent.includes("Stop")) {
                 updateScreenStatus("Screen Mirror Paused for Camera");
                 screenBtn.textContent = "Start Screen Mirror";
-                screenBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow text-xs transition-colors";
+                screenBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow text-xs transition-colors";
                 screenBtn.onclick = () => startScreenStream();
                 const screenImg = document.getElementById('screen-frame-view');
                 const screenPlace = document.getElementById('screen-placeholder');
@@ -918,7 +976,7 @@
             sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
         }
 
-        // --- Target 4: Chunked 5G File Download & Upload Engine ---
+        // --- File Transfer Engine ---
         function showTransferToast(title, percent) {
             const toast = document.getElementById('transfer-progress-toast');
             toast.classList.remove('hidden');

@@ -33,13 +33,23 @@ class NotificationMirrorService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         try {
-            // Ignore ongoing system notifications (like our own foreground service)
+            // Ignore ongoing system notifications (like our own foreground services or hotspot)
             if (sbn.packageName == packageName || sbn.isOngoing) return
 
             val extras = sbn.notification.extras
-            val title = extras.getString(Notification.EXTRA_TITLE) ?: return
-            val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-            if (text.isEmpty()) return
+            
+            // Safe extraction for all formats (CharSequence handles SpannableString from WhatsApp/Telecom)
+            val titleCharSeq = extras.getCharSequence(Notification.EXTRA_TITLE)
+                ?: extras.getCharSequence(Notification.EXTRA_TITLE_BIG)
+                ?: sbn.notification.tickerText
+            val title = titleCharSeq?.toString() ?: ""
+
+            val textCharSeq = extras.getCharSequence(Notification.EXTRA_TEXT)
+                ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)
+                ?: extras.getCharSequence(Notification.EXTRA_SUB_TEXT)
+            val text = textCharSeq?.toString() ?: ""
+
+            if (title.isEmpty() && text.isEmpty()) return
 
             val appName = try {
                 packageManager.getApplicationLabel(
@@ -52,7 +62,7 @@ class NotificationMirrorService : NotificationListenerService() {
             val key = sbn.key
             var canReply = false
 
-            // Search for direct reply action (WhatsApp, Telegram, SMS, etc.)
+            // Search for direct reply action (WhatsApp, Telegram, Messages)
             sbn.notification.actions?.forEach { action ->
                 val remoteInputs = action.remoteInputs
                 if (remoteInputs != null && remoteInputs.isNotEmpty()) {
@@ -65,13 +75,13 @@ class NotificationMirrorService : NotificationListenerService() {
                 put("type", "NOTIFICATION")
                 put("id", key)
                 put("app", appName)
-                put("title", title)
+                put("title", if (title.isNotEmpty()) title else appName)
                 put("text", text)
                 put("canReply", canReply)
             }
 
             LocalFileServerService.instance?.broadcastMessage(json.toString())
-            Log.d("NotificationMirror", "Mirrored notification from: $appName")
+            Log.d("NotificationMirror", "Successfully mirrored notification from: $appName ($title)")
         } catch (e: Exception) {
             Log.e("NotificationMirror", "Error processing notification", e)
         }
@@ -87,7 +97,7 @@ class NotificationMirrorService : NotificationListenerService() {
 
             cachedReply.pendingIntent.send(this, 0, intent)
             replyCache.remove(key)
-            Log.d("NotificationMirror", "Quick reply sent successfully for key: $key")
+            Log.d("NotificationMirror", "Quick reply sent for key: $key")
             true
         } catch (e: Exception) {
             Log.e("NotificationMirror", "Failed to send quick reply", e)

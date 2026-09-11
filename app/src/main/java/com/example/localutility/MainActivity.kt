@@ -6,6 +6,7 @@ import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationManagerCompat
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.util.Collections
@@ -29,6 +31,7 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var nsdManager: NsdDiscoveryManager
     private lateinit var mediaProjectionManager: MediaProjectionManager
+    private val isNotifAccessState = mutableStateOf(false)
 
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -63,7 +66,6 @@ class MainActivity : ComponentActivity() {
         nsdManager = NsdDiscoveryManager(this)
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        // Runtime Permissions (Added READ_CALL_LOG)
         requestPermissionsLauncher.launch(
             arrayOf(
                 android.Manifest.permission.CAMERA,
@@ -91,6 +93,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var cloudOnline by remember { mutableStateOf(LocalFileServerService.isCloudConnected) }
+            val isNotifGranted by isNotifAccessState
 
             DisposableEffect(Unit) {
                 LocalFileServerService.onCloudStatusChanged = { isOnline ->
@@ -120,7 +123,7 @@ class MainActivity : ComponentActivity() {
                             color = MaterialTheme.colorScheme.primary
                         )
                         
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         Surface(
                             shape = RoundedCornerShape(16.dp),
@@ -136,7 +139,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(18.dp))
 
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -160,22 +163,49 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(30.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
+                        // Button 1: Start Screen Share
                         Button(
                             onClick = {
                                 val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
                                 screenCaptureLauncher.launch(captureIntent)
                             },
-                            modifier = Modifier.fillMaxWidth(0.85f),
+                            modifier = Modifier.fillMaxWidth(0.9f),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Start Screen Share", fontSize = 16.sp)
+                            Text("Start Screen Share", fontSize = 15.sp)
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Button 2: Direct 1-Click Notification Access
+                        OutlinedButton(
+                            onClick = {
+                                startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                            },
+                            modifier = Modifier.fillMaxWidth(0.9f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (isNotifGranted) "Notification Access: Allowed ✓" else "Grant Notification Access (1-Click)",
+                                fontSize = 13.sp,
+                                color = if (isNotifGranted) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        isNotifAccessState.value = checkNotificationAccess()
+    }
+
+    private fun checkNotificationAccess(): Boolean {
+        return NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
     }
 
     override fun onDestroy() {
