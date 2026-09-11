@@ -81,7 +81,7 @@
         </div>
     </div>
 
-    <!-- Top Dock Bar with Independent Mic Toggle -->
+    <!-- Top Dock Bar -->
     <div class="fixed top-2 left-1/2 -translate-x-1/2 h-10 bg-gray-900/85 backdrop-blur-md text-white flex items-center gap-4 px-4 rounded-full z-50 shadow-xl border border-white/10 text-xs">
         <div class="flex items-center gap-2 pr-3 border-r border-gray-700">
             <div class="w-6 h-6 bg-gradient-to-tr from-cyan-400 to-blue-500 rounded-md flex items-center justify-center font-black text-xs text-white shadow">O</div>
@@ -96,7 +96,6 @@
         <div class="flex items-center gap-3.5 pl-3 border-l border-gray-700">
             <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
             
-            <!-- Independent Mic Listening Button on Dock -->
             <button id="dock-mic-btn" onclick="toggleGlobalMic()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px]">
                 <span id="dock-mic-icon">🔇</span>
                 <span id="dock-mic-label">Mic Off</span>
@@ -190,7 +189,7 @@
         </div>
     </div>
 
-    <!-- Window: Remote Camera (Direct Frame Stream + Mic Audio) -->
+    <!-- Window: Remote Camera -->
     <div id="camera-window" class="window hidden" style="width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -226,7 +225,7 @@
         </div>
     </div>
 
-    <!-- Window: Screen Mirroring (Target 2 & 3: Direct Stream with Mouse Touch + Dedicated Mic Toggle) -->
+    <!-- Window: Screen Mirroring -->
     <div id="screen-window" class="window hidden" style="width: 360px; height: 710px; top: 50px; left: 330px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -247,18 +246,15 @@
                 </div>
             </div>
             
-            <!-- Android Navigation Bar (Back, Home, Recents) -->
             <div class="bg-gray-900 h-11 flex justify-around items-center border-t border-gray-700 z-10">
                 <button onclick="sendGlobalAction('BACK')" class="text-white text-lg hover:text-gray-300 px-4">◀</button>
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
             </div>
 
-            <!-- Screen Mirror Controls & Mic Toggle Bar -->
             <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10 flex flex-col gap-2 text-xs">
                 <div class="flex items-center justify-between gap-2">
                     <button id="screen-toggle-btn" onclick="startScreenStream()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow text-xs transition-colors">Start Screen Mirror</button>
-                    <!-- Dedicated Mic Button on Screen Mirror Window -->
                     <button id="screen-mic-btn" onclick="toggleScreenMic()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm">
                         <span>🎙️</span><span>Mic Off</span>
                     </button>
@@ -267,7 +263,7 @@
         </div>
     </div>
 
-    <!-- Window: Files Explorer (Target 4: Upload to Current Directory + Image Previews) -->
+    <!-- Window: Files Explorer -->
     <div id="file-window" class="window hidden" style="width: 550px; height: 520px; top: 110px; left: 370px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
@@ -305,7 +301,7 @@
         </div>
     </div>
 
-    <!-- Real-Time Notification Mirror Toast Container (Target 5) -->
+    <!-- Real-Time Notification Mirror Toast Container -->
     <div id="toast-container" class="fixed top-14 right-6 w-80 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
 
     <!-- Window: Messages -->
@@ -465,14 +461,35 @@
         </div>
     </div>
 
-    <!-- Window: Find Phone (GPS Map) -->
-    <div id="map-window" class="window hidden" style="width: 520px; height: 420px; top: 130px; left: 420px;">
+    <!-- Window: Find Phone (Target 6: Polished GPS Live Map) -->
+    <div id="map-window" class="window hidden" style="width: 560px; height: 480px; top: 100px; left: 390px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <span class="font-semibold text-xs">📍 Live GPS Location</span>
-            <button onclick="wm.closeWindow('map-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
+            <div class="flex items-center gap-2">
+                <span class="text-xs">📍</span>
+                <span class="font-semibold text-xs">Find Phone - Live Satellite GPS</span>
+            </div>
+            <button onclick="wm.closeWindow('map-window')" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
         </div>
-        <div id="map-container" class="flex-1 bg-gray-200 relative">
-            <div id="map" class="absolute inset-0"></div>
+        <div class="flex-1 bg-white overflow-hidden flex flex-col">
+            <!-- Map Top Coordinates & Control Bar -->
+            <div class="p-2.5 bg-gray-50 border-b flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2 min-w-0 pr-2">
+                    <span id="map-status" class="font-mono text-[11px] text-gray-600 truncate">Fetching GPS Satellite Signal...</span>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button onclick="sendCommand({action: 'FETCH_LOCATION'})" class="px-2.5 py-1 bg-white hover:bg-gray-100 border rounded text-[11px] font-semibold text-gray-700 shadow-sm flex items-center gap-1">
+                        <span>🔄</span><span>Refresh</span>
+                    </button>
+                    <button onclick="toggleSiren()" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1">
+                        <span>🔔</span><span>Ring Alarm</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Leaflet OpenStreetMap Container -->
+            <div id="map-container" class="flex-1 bg-gray-200 relative">
+                <div id="map" class="absolute inset-0"></div>
+            </div>
         </div>
     </div>
 
@@ -497,6 +514,11 @@
         let gainNode = null;
         let nextAudioStartTime = 0;
         let isGlobalMicActive = false;
+
+        // Target 6: Leaflet Map Instances
+        let mapInstance = null;
+        let mapMarker = null;
+        let mapCircle = null;
 
         function initWebAudio() {
             if (!audioCtx) {
@@ -547,7 +569,6 @@
             }
         }
 
-        // Independent Mic Switch Controls (Top Dock & Windows)
         function toggleGlobalMic() {
             setMicState(!isGlobalMicActive);
         }
@@ -753,15 +774,18 @@
                 updateScreenStatus("⚠️ Turn ON Accessibility in Phone Settings!");
                 alert("Touch control requires Accessibility permission:\n\nOn your phone, go to:\nSettings > Accessibility > Installed Apps > OpenDroid Remote Control -> Turn ON.");
             }
-            // --- Target 5: Direct Microphone Audio Stream ---
+            // --- Target 5: Audio & Notifications ---
             else if (data.type === 'AUDIO_CHUNK') {
                 playPcmChunk(data.data);
-            }
-            // --- Target 5: Mirrored Notifications Toast ---
-            else if (data.type === 'NOTIFICATION') {
+            } else if (data.type === 'NOTIFICATION') {
                 showNotificationToast(data);
             }
-            // --- File Transfer Handlers ---
+            // --- Target 6: Live GPS Location Receiver ---
+            else if (data.type === 'LOCATION') {
+                latestLocation = data;
+                renderMap(data);
+            }
+            // --- Target 4: File Transfer Handlers ---
             else if (data.type === 'FILE_DOWNLOAD_CHUNK') {
                 handleDownloadChunk(data.data);
             } else if (data.type === 'FILE_UPLOAD_CHUNK_ACK') {
@@ -774,9 +798,6 @@
                 renderSms(data.data);
             } else if (data.type === 'CONTACTS_LIST') {
                 renderContacts(data.data);
-            } else if (data.type === 'LOCATION') {
-                latestLocation = data;
-                renderMap(data);
             } else if (data.type === 'STORAGE_STATS') {
                 renderStorage(data.data);
             } else if (data.type === 'CALL_LOGS_LIST') {
@@ -797,7 +818,66 @@
             }
         }
 
-        // --- Target 5: Notification Toast System with Inline Quick Reply ---
+        // --- Target 6: Live GPS Map Render Engine with Pin & Accuracy Radius ---
+        function renderMap(loc) {
+            const statusEl = document.getElementById('map-status');
+
+            if (!loc || loc.error || !loc.lat || !loc.lng) {
+                if (statusEl) {
+                    statusEl.textContent = loc?.error || "Searching GPS Satellite Signal...";
+                    statusEl.className = "font-mono text-[11px] text-amber-600 font-medium truncate";
+                }
+                return;
+            }
+
+            const lat = parseFloat(loc.lat);
+            const lng = parseFloat(loc.lng);
+            const accuracy = parseFloat(loc.accuracy) || 20;
+            const timeStr = loc.timestamp ? new Date(loc.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+
+            if (statusEl) {
+                statusEl.innerHTML = `<span>📍 Lat: <b>${lat.toFixed(5)}</b>, Lng: <b>${lng.toFixed(5)}</b> (±${Math.round(accuracy)}m at ${timeStr})</span>`;
+                statusEl.className = "font-mono text-[11px] text-green-700 font-medium truncate";
+            }
+
+            try {
+                if (!mapInstance) {
+                    mapInstance = L.map('map').setView([lat, lng], 16);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors',
+                        maxZoom: 19
+                    }).addTo(mapInstance);
+
+                    mapMarker = L.marker([lat, lng]).addTo(mapInstance);
+                    mapCircle = L.circle([lat, lng], {
+                        radius: accuracy,
+                        color: '#0284c7',
+                        fillColor: '#38bdf8',
+                        fillOpacity: 0.15,
+                        weight: 1.5
+                    }).addTo(mapInstance);
+                } else {
+                    mapInstance.setView([lat, lng], 16);
+                    if (mapMarker) mapMarker.setLatLng([lat, lng]);
+                    if (mapCircle) {
+                        mapCircle.setLatLng([lat, lng]);
+                        mapCircle.setRadius(accuracy);
+                    }
+                }
+
+                if (mapMarker) {
+                    mapMarker.bindPopup(`<b>Phone Live Location</b><br>Accuracy: ±${Math.round(accuracy)}m<br>Time: ${timeStr}`).openPopup();
+                }
+
+                setTimeout(() => {
+                    if (mapInstance) mapInstance.invalidateSize();
+                }, 200);
+            } catch (e) {
+                console.error("Leaflet render error:", e);
+            }
+        }
+
+        // --- Notification Toast System ---
         function showNotificationToast(notif) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -1295,6 +1375,7 @@
                 if(id === 'map-window') {
                     sendCommand({action: 'FETCH_LOCATION'});
                     if (latestLocation) renderMap(latestLocation);
+                    setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 200);
                 }
             }
             closeWindow(id) { 
@@ -1451,21 +1532,6 @@
         function makeCall() {
             const num = document.getElementById('dial-number').value;
             if(num) sendCommand({ action: 'MAKE_CALL', number: num });
-        }
-
-        let mapInstance = null, mapMarker = null;
-        function renderMap(loc) {
-            if (!loc || loc.error || !loc.lat) {
-                document.getElementById('map-container').innerHTML = `<div class="p-4 text-center text-gray-600 mt-20 text-xs">📍 Fetching GPS Location from Phone...</div>`;
-                return;
-            }
-            document.getElementById('map-container').innerHTML = `<div id="map" class="absolute inset-0"></div>`;
-            setTimeout(() => {
-                mapInstance = L.map('map').setView([loc.lat, loc.lng], 16);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapInstance);
-                mapMarker = L.marker([loc.lat, loc.lng]).addTo(mapInstance).bindPopup('Phone Location').openPopup();
-                mapInstance.invalidateSize();
-            }, 100);
         }
     </script>
 </body>

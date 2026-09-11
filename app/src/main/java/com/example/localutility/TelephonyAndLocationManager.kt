@@ -32,36 +32,80 @@ import java.util.Locale
 class TelephonyAndLocationManager(private val context: Context) {
 
     private var latestLocation: Location? = null
+    var onLocationUpdated: ((JSONObject) -> Unit)? = null
 
     init {
         startLocationUpdates()
     }
 
+    // --- 1. Robust Live Satellite & Network GPS Engine ---
     @SuppressLint("MissingPermission")
-    private fun startLocationUpdates() {
+    fun startLocationUpdates() {
         try {
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
             val listener = object : LocationListener {
                 override fun onLocationChanged(loc: Location) {
                     latestLocation = loc
+                    Log.d("OpenDroidGPS", "Live GPS Fix received: Lat ${loc.latitude}, Lng ${loc.longitude}, Acc ${loc.accuracy}m")
+                    onLocationUpdated?.invoke(formatLocationJson(loc))
                 }
                 override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
                 override fun onProviderEnabled(provider: String) {}
                 override fun onProviderDisabled(provider: String) {}
             }
 
+            // Using MainLooper guarantees listener registration succeeds from any background thread
+            val mainLooper = Looper.getMainLooper()
+
             if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 1f, listener)
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 3000L, 2f, listener, mainLooper)
             }
             if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000L, 1f, listener)
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000L, 2f, listener, mainLooper)
+            }
+
+            // Grab instant cached fix if available while GPS locks
+            val lastKnown = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                ?: locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
+
+            if (lastKnown != null) {
+                latestLocation = lastKnown
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("OpenDroidGPS", "Error registering location updates", e)
         }
     }
 
-    // --- 1. File Explorer & Directory Navigation ---
+    private fun formatLocationJson(loc: Location): JSONObject {
+        return JSONObject().apply {
+            put("type", "LOCATION")
+            put("lat", loc.latitude)
+            put("lng", loc.longitude)
+            put("accuracy", loc.accuracy)
+            put("speed", loc.speed)
+            put("altitude", loc.altitude)
+            put("timestamp", loc.time)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun getLocation(): JSONObject {
+        val loc = latestLocation
+        return if (loc != null) {
+            formatLocationJson(loc)
+        } else {
+            // Force re-request updates if not locked yet
+            startLocationUpdates()
+            JSONObject().apply {
+                put("type", "LOCATION")
+                put("error", "GPS satellite searching... Ensure Location is ON on phone.")
+            }
+        }
+    }
+
+    // --- 2. File Explorer & Directory Navigation ---
     fun getDirectoryContents(targetPath: String?): JSONObject {
         val root = Environment.getExternalStorageDirectory()
         val path = if (!targetPath.isNullOrEmpty()) targetPath else root.absolutePath
@@ -98,7 +142,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return result
     }
 
-    // --- 2. Chunked File Download (Phone ➜ PC) ---
+    // --- 3. Chunked File Download ---
     fun readFileChunk(filePath: String, offset: Long, chunkSize: Int = 96 * 1024): JSONObject {
         val obj = JSONObject()
         val file = File(filePath)
@@ -136,7 +180,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 3. Chunked File Upload (Saves to Current Open Directory) ---
+    // --- 4. Chunked File Upload ---
     fun saveUploadedChunk(targetDirPath: String?, fileName: String, base64Data: String, isFirstChunk: Boolean, isLastChunk: Boolean): Boolean {
         return try {
             val defaultDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
@@ -150,13 +194,11 @@ class TelephonyAndLocationManager(private val context: Context) {
             val targetFile = File(uploadDir, fileName)
             val bytes = Base64.decode(base64Data, Base64.DEFAULT)
 
-            // Append if not first chunk
             val fos = FileOutputStream(targetFile, !isFirstChunk)
             fos.write(bytes)
             fos.flush()
             fos.close()
 
-            // When upload completes, notify Android MediaScanner so it indexes immediately
             if (isLastChunk) {
                 MediaScannerConnection.scanFile(context, arrayOf(targetFile.absolutePath), null, null)
                 Log.d("OpenDroid", "File uploaded successfully to: ${targetFile.absolutePath}")
@@ -168,7 +210,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 4. Photos Gallery Query ---
+    // --- 5. Photos Gallery Query ---
     fun getRecentPhotos(): JSONArray {
         val array = JSONArray()
         try {
@@ -212,7 +254,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 5. Real Storage Calculations ---
+    // --- 6. Real Storage Calculations ---
     fun getStorageStats(): JSONObject {
         val obj = JSONObject()
         try {
@@ -241,7 +283,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 6. Call Logs Query ---
+    // --- 7. Call Logs Query ---
     fun getCallLogs(): JSONArray {
         val array = JSONArray()
         try {
@@ -291,7 +333,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 7. Installed Apps Query ---
+    // --- 8. Installed Apps Query ---
     fun getInstalledApps(): JSONArray {
         val array = JSONArray()
         try {
@@ -319,7 +361,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 8. Clipboard Operations ---
+    // --- 9. Clipboard Operations ---
     fun setClipboardText(text: String) {
         Handler(Looper.getMainLooper()).post {
             try {
@@ -343,7 +385,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 9. SMS Queries ---
+    // --- 10. SMS Operations ---
     fun getRecentSms(): JSONArray {
         val array = JSONArray()
         try {
@@ -389,7 +431,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 10. Contacts Query ---
+    // --- 11. Contacts Query ---
     fun getContacts(): JSONArray {
         val array = JSONArray()
         try {
@@ -411,30 +453,6 @@ class TelephonyAndLocationManager(private val context: Context) {
             }
         } catch (e: Exception) { e.printStackTrace() }
         return array
-    }
-
-    // --- 11. GPS Location ---
-    @SuppressLint("MissingPermission")
-    fun getLocation(): JSONObject {
-        val obj = JSONObject()
-        try {
-            val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-            val location = latestLocation 
-                ?: locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER) 
-                ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-
-            if (location != null) {
-                obj.put("lat", location.latitude)
-                obj.put("lng", location.longitude)
-                obj.put("accuracy", location.accuracy)
-                obj.put("timestamp", location.time)
-            } else {
-                obj.put("error", "Location signal searching...")
-            }
-        } catch (e: Exception) {
-            obj.put("error", e.message)
-        }
-        return obj
     }
 
     // --- 12. Make Phone Call ---
