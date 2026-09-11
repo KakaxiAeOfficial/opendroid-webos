@@ -1,11 +1,14 @@
 package com.example.localutility
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -32,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var nsdManager: NsdDiscoveryManager
     private lateinit var mediaProjectionManager: MediaProjectionManager
     private val isNotifAccessState = mutableStateOf(false)
+    private val isBatteryOptimizedState = mutableStateOf(false)
 
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -94,6 +98,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             var cloudOnline by remember { mutableStateOf(LocalFileServerService.isCloudConnected) }
             val isNotifGranted by isNotifAccessState
+            val isBatteryIgnored by isBatteryOptimizedState
 
             DisposableEffect(Unit) {
                 LocalFileServerService.onCloudStatusChanged = { isOnline ->
@@ -163,7 +168,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
                         // Button 1: Start Screen Share
                         Button(
@@ -177,9 +182,9 @@ class MainActivity : ComponentActivity() {
                             Text("Start Screen Share", fontSize = 15.sp)
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        // Button 2: Direct 1-Click Notification Access
+                        // Button 2: 1-Click Notification Access
                         OutlinedButton(
                             onClick = {
                                 startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -193,6 +198,23 @@ class MainActivity : ComponentActivity() {
                                 color = if (isNotifGranted) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Button 3: Target 8 - 1-Click Battery "No Restrictions"
+                        OutlinedButton(
+                            onClick = {
+                                requestIgnoreBatteryOptimizations()
+                            },
+                            modifier = Modifier.fillMaxWidth(0.9f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (isBatteryIgnored) "Battery: No Restrictions ✓" else "Battery: Set No Restrictions (1-Click)",
+                                fontSize = 13.sp,
+                                color = if (isBatteryIgnored) Color(0xFF2E7D32) else Color(0xFFE65100)
+                            )
+                        }
                     }
                 }
             }
@@ -202,10 +224,38 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         isNotifAccessState.value = checkNotificationAccess()
+        isBatteryOptimizedState.value = checkBatteryOptimization()
     }
 
     private fun checkNotificationAccess(): Boolean {
         return NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+    }
+
+    private fun checkBatteryOptimization(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            pm.isIgnoringBatteryOptimizations(packageName)
+        } else true
+    }
+
+    @SuppressLint("BatteryLife")
+    private fun requestIgnoreBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                // Fallback to general battery settings if direct prompt blocked by OEM
+                try {
+                    val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    startActivity(fallbackIntent)
+                } catch (e2: Exception) {
+                    e2.printStackTrace()
+                }
+            }
+        }
     }
 
     override fun onDestroy() {

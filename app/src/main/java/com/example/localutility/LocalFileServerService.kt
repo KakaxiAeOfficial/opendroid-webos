@@ -16,6 +16,7 @@ import android.media.RingtoneManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import io.ktor.http.ContentType
@@ -52,6 +53,7 @@ class LocalFileServerService : Service() {
     private val mqttSendChannel = Channel<String>(Channel.UNLIMITED)
     private var mqttClient: MqttClient? = null
     private lateinit var teleManager: TelephonyAndLocationManager
+    private var wakeLock: PowerManager.WakeLock? = null
 
     companion object {
         private const val PORT = 8888
@@ -79,7 +81,18 @@ class LocalFileServerService : Service() {
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
 
-        // Initialize telephony, storage, and live GPS location manager
+        // Target 8: Partial WakeLock keeps CPU awake while screen is off/locked
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OpenDroid::5GKeepAliveWakeLock").apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+            Log.d("KeepAlive", "Partial WakeLock acquired successfully")
+        } catch (e: Exception) {
+            Log.e("KeepAlive", "Error acquiring WakeLock", e)
+        }
+
         teleManager = TelephonyAndLocationManager(applicationContext)
         teleManager.onLocationUpdated = { locJson ->
             broadcastMessage(locJson.toString())
@@ -394,7 +407,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Target 7: Music & Video Queries (Safe 50-Item Metadata) ---
+            // --- Music & Video Queries ---
             "FETCH_AUDIO" -> {
                 val audioList = teleManager.getAudioTracks()
                 broadcastMessage(JSONObject().apply {
@@ -411,7 +424,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- File Transfer (Chunks also stream audio & video on-demand) ---
+            // --- File Transfer ---
             "DOWNLOAD_FILE_CHUNK" -> {
                 val path = json.optString("path", "")
                 val offset = json.optLong("offset", 0L)
@@ -486,7 +499,7 @@ class LocalFileServerService : Service() {
                 }
             }
 
-            // --- GPS Location Request ---
+            // --- Location Request ---
             "FETCH_LOCATION" -> {
                 broadcastMessage(teleManager.getLocation().toString())
             }
@@ -626,6 +639,17 @@ class LocalFileServerService : Service() {
         DirectCameraStreamer.getInstance(applicationContext).stopStreaming()
         DirectScreenStreamer.getInstance(applicationContext).stopStreaming()
         AudioStreamManager.getInstance(applicationContext).stopStreaming()
+
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+                Log.d("KeepAlive", "Partial WakeLock released")
+            }
+        } catch (e: Exception) {
+            Log.e("KeepAlive", "Error releasing WakeLock", e)
+        }
+        wakeLock = null
+
         try { server?.stop(500, 1000) } catch (e: Exception) {}
         server = null
         isServerStartingOrRunning = false
