@@ -751,7 +751,7 @@
             document.getElementById('pair-modal').classList.add('hidden');
             document.getElementById('ws-status-taskbar').textContent = '● Connecting...';
 
-            mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+            mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt');
             
             mqttClient.on('connect', () => {
                 document.getElementById('ws-status-taskbar').textContent = '● Pinging Phone...';
