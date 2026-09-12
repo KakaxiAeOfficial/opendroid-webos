@@ -883,10 +883,7 @@
             }
             else if (data.type === 'ACCESSIBILITY_REQUIRED') {
                 updateScreenStatus("⚠️ Turn ON Accessibility in Phone Settings!");
-                alert("Touch control requires Accessibility permission:
-
-On your phone, go to:
-Settings > Accessibility > Installed Apps > OpenDroid Remote Control -> Turn ON.");
+                alert("Touch control requires Accessibility permission:\n\nOn your phone, go to:\nSettings > Accessibility > Installed Apps > OpenDroid Remote Control -> Turn ON.");
             }
             else if (data.type === 'AUDIO_CHUNK') {
                 playPcmChunk(data.data);

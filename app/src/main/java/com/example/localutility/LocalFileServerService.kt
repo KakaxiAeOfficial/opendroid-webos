@@ -16,7 +16,9 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -146,47 +148,70 @@ class LocalFileServerService : Service() {
         }
     }
 
+    // Continuous Auto-Retry Loop on IO Dispatcher with MainLooper UI dispatch
     private fun initCloudBridge() {
-        serviceScope.launch {
-            try {
-                val brokerUrl = "tcp://broker.emqx.io:1883"
-                val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
-                mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
+        serviceScope.launch(Dispatchers.IO) {
+            val brokerUrl = "tcp://broker.emqx.io:1883"
 
-                val options = MqttConnectOptions().apply {
-                    isCleanSession = true
-                    connectionTimeout = 15
-                    keepAliveInterval = 30
-                    isAutomaticReconnect = true
-                }
+            while (isActive && (mqttClient == null || mqttClient?.isConnected == false)) {
+                try {
+                    val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
+                    val client = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
-                mqttClient?.setCallback(object : MqttCallbackExtended {
-                    override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        Log.d("CloudBridge", "Connected to EMQX with Code: $currentPairingCode")
-                        isCloudConnected = true
-                        onCloudStatusChanged?.invoke(true)
-                        subscribeToCode(currentPairingCode)
+                    val options = MqttConnectOptions().apply {
+                        isCleanSession = true
+                        connectionTimeout = 10
+                        keepAliveInterval = 30
+                        isAutomaticReconnect = true
                     }
 
-                    override fun connectionLost(cause: Throwable?) {
-                        Log.w("CloudBridge", "Connection lost", cause)
-                        isCloudConnected = false
+                    client.setCallback(object : MqttCallbackExtended {
+                        override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                            Log.d("CloudBridge", "Connected to EMQX with Code: $currentPairingCode")
+                            isCloudConnected = true
+                            Handler(Looper.getMainLooper()).post {
+                                onCloudStatusChanged?.invoke(true)
+                            }
+                            subscribeToCode(currentPairingCode)
+                        }
+
+                        override fun connectionLost(cause: Throwable?) {
+                            Log.w("CloudBridge", "Connection lost, reconnecting...", cause)
+                            isCloudConnected = false
+                            Handler(Looper.getMainLooper()).post {
+                                onCloudStatusChanged?.invoke(false)
+                            }
+                        }
+
+                        override fun messageArrived(topic: String?, message: MqttMessage?) {
+                            message?.let {
+                                val text = String(it.payload)
+                                handleIncomingJson(JSONObject(text))
+                            }
+                        }
+
+                        override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                    })
+
+                    client.connect(options)
+                    mqttClient = client
+
+                    if (client.isConnected) {
+                        isCloudConnected = true
+                        Handler(Looper.getMainLooper()).post {
+                            onCloudStatusChanged?.invoke(true)
+                        }
+                        subscribeToCode(currentPairingCode)
+                        break
+                    }
+                } catch (e: Exception) {
+                    Log.e("CloudBridge", "EMQX Connect Retry in 3s: ${e.message}")
+                    isCloudConnected = false
+                    Handler(Looper.getMainLooper()).post {
                         onCloudStatusChanged?.invoke(false)
                     }
-
-                    override fun messageArrived(topic: String?, message: MqttMessage?) {
-                        message?.let {
-                            val text = String(it.payload)
-                            handleIncomingJson(JSONObject(text))
-                        }
-                    }
-
-                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-                })
-
-                mqttClient?.connect(options)
-            } catch (e: Exception) {
-                Log.e("CloudBridge", "EMQX Connect Error", e)
+                    delay(3000L)
+                }
             }
         }
     }
