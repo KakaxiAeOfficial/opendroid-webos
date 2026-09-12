@@ -148,25 +148,33 @@ class LocalFileServerService : Service() {
         }
     }
 
+    // Dual-Broker Auto-Failover: Tries HiveMQ first, then EMQX
     private fun initCloudBridge() {
         serviceScope.launch(Dispatchers.IO) {
-            val brokerUrl = "tcp://broker.emqx.io:1883"
+            val brokers = listOf(
+                "tcp://broker.hivemq.com:1883",
+                "tcp://broker.emqx.io:1883"
+            )
 
+            var brokerIndex = 0
             while (isActive && (mqttClient == null || mqttClient?.isConnected == false)) {
+                val brokerUrl = brokers[brokerIndex % brokers.size]
+                brokerIndex++
+
                 try {
                     val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
                     val client = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
                     val options = MqttConnectOptions().apply {
                         isCleanSession = true
-                        connectionTimeout = 10
+                        connectionTimeout = 8
                         keepAliveInterval = 30
                         isAutomaticReconnect = true
                     }
 
                     client.setCallback(object : MqttCallbackExtended {
                         override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                            Log.d("CloudBridge", "Connected to EMQX with Code: $currentPairingCode")
+                            Log.d("CloudBridge", "Connected to Broker: $serverURI with Code: $currentPairingCode")
                             isCloudConnected = true
                             Handler(Looper.getMainLooper()).post {
                                 onCloudStatusChanged?.invoke(true)
@@ -201,15 +209,16 @@ class LocalFileServerService : Service() {
                             onCloudStatusChanged?.invoke(true)
                         }
                         subscribeToCode(currentPairingCode)
+                        Log.d("CloudBridge", "Successfully connected to $brokerUrl")
                         break
                     }
                 } catch (e: Exception) {
-                    Log.e("CloudBridge", "EMQX Connect Retry in 3s: ${e.message}")
+                    Log.e("CloudBridge", "Broker $brokerUrl failed: ${e.message}, trying next in 2s...")
                     isCloudConnected = false
                     Handler(Looper.getMainLooper()).post {
                         onCloudStatusChanged?.invoke(false)
                     }
-                    delay(3000L)
+                    delay(2000L)
                 }
             }
         }
