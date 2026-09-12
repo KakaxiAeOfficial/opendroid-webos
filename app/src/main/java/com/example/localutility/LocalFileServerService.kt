@@ -16,9 +16,7 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -148,7 +146,6 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // Dual-Broker Auto-Failover: Tries HiveMQ first, then EMQX
     private fun initCloudBridge() {
         serviceScope.launch(Dispatchers.IO) {
             val brokers = listOf(
@@ -156,10 +153,10 @@ class LocalFileServerService : Service() {
                 "tcp://broker.emqx.io:1883"
             )
 
-            var brokerIndex = 0
+            var index = 0
             while (isActive && (mqttClient == null || mqttClient?.isConnected == false)) {
-                val brokerUrl = brokers[brokerIndex % brokers.size]
-                brokerIndex++
+                val brokerUrl = brokers[index % brokers.size]
+                index++
 
                 try {
                     val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
@@ -174,9 +171,9 @@ class LocalFileServerService : Service() {
 
                     client.setCallback(object : MqttCallbackExtended {
                         override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                            Log.d("CloudBridge", "Connected to Broker: $serverURI with Code: $currentPairingCode")
+                            Log.d("CloudBridge", "Connected to: $serverURI with Code: $currentPairingCode")
                             isCloudConnected = true
-                            Handler(Looper.getMainLooper()).post {
+                            serviceScope.launch(Dispatchers.Main) {
                                 onCloudStatusChanged?.invoke(true)
                             }
                             subscribeToCode(currentPairingCode)
@@ -185,7 +182,7 @@ class LocalFileServerService : Service() {
                         override fun connectionLost(cause: Throwable?) {
                             Log.w("CloudBridge", "Connection lost, reconnecting...", cause)
                             isCloudConnected = false
-                            Handler(Looper.getMainLooper()).post {
+                            serviceScope.launch(Dispatchers.Main) {
                                 onCloudStatusChanged?.invoke(false)
                             }
                         }
@@ -205,7 +202,7 @@ class LocalFileServerService : Service() {
 
                     if (client.isConnected) {
                         isCloudConnected = true
-                        Handler(Looper.getMainLooper()).post {
+                        serviceScope.launch(Dispatchers.Main) {
                             onCloudStatusChanged?.invoke(true)
                         }
                         subscribeToCode(currentPairingCode)
@@ -213,9 +210,9 @@ class LocalFileServerService : Service() {
                         break
                     }
                 } catch (e: Exception) {
-                    Log.e("CloudBridge", "Broker $brokerUrl failed: ${e.message}, trying next in 2s...")
+                    Log.e("CloudBridge", "Connect to $brokerUrl failed: ${e.message}, retrying in 2s...")
                     isCloudConnected = false
-                    Handler(Looper.getMainLooper()).post {
+                    serviceScope.launch(Dispatchers.Main) {
                         onCloudStatusChanged?.invoke(false)
                     }
                     delay(2000L)
