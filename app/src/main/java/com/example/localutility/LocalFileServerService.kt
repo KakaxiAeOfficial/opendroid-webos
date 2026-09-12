@@ -15,7 +15,9 @@ import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.BatteryManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -54,6 +56,7 @@ class LocalFileServerService : Service() {
     private var mqttClient: MqttClient? = null
     private lateinit var teleManager: TelephonyAndLocationManager
     private var wakeLock: PowerManager.WakeLock? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val PORT = 8888
@@ -81,7 +84,7 @@ class LocalFileServerService : Service() {
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
 
-        // Target 8: Partial WakeLock prevents CPU sleep when screen is off or locked
+        // Target 8: Partial WakeLock keeps CPU awake
         try {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OpenDroid::5GKeepAliveWakeLock").apply {
@@ -109,6 +112,8 @@ class LocalFileServerService : Service() {
                 currentPairingCode = it
                 if (mqttClient?.isConnected == true) {
                     subscribeToCode(it)
+                } else {
+                    initCloudBridge()
                 }
             }
         }
@@ -147,47 +152,69 @@ class LocalFileServerService : Service() {
         }
     }
 
+    // --- Automatic Retry Loop (Guarantees Connection) ---
     private fun initCloudBridge() {
         serviceScope.launch {
-            try {
-                val brokerUrl = "tcp://broker.emqx.io:1883"
-                val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
-                mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
+            val brokerUrl = "tcp://broker.emqx.io:1883"
+            while (isActive && (mqttClient == null || mqttClient?.isConnected != true)) {
+                try {
+                    Log.d("CloudBridge", "Attempting connection to $brokerUrl (Code: $currentPairingCode)...")
+                    val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
+                    val client = MqttClient(brokerUrl, clientId, MemoryPersistence())
+                    mqttClient = client
 
-                val options = MqttConnectOptions().apply {
-                    isCleanSession = true
-                    connectionTimeout = 15
-                    keepAliveInterval = 30
-                    isAutomaticReconnect = true
-                }
-
-                mqttClient?.setCallback(object : MqttCallbackExtended {
-                    override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        Log.d("CloudBridge", "Connected to EMQX with Code: $currentPairingCode")
-                        isCloudConnected = true
-                        onCloudStatusChanged?.invoke(true)
-                        subscribeToCode(currentPairingCode)
+                    val options = MqttConnectOptions().apply {
+                        isCleanSession = true
+                        connectionTimeout = 10
+                        keepAliveInterval = 30
+                        isAutomaticReconnect = true
                     }
 
-                    override fun connectionLost(cause: Throwable?) {
-                        Log.w("CloudBridge", "Connection lost", cause)
-                        isCloudConnected = false
+                    client.setCallback(object : MqttCallbackExtended {
+                        override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                            Log.d("CloudBridge", "Connected to EMQX with Code: $currentPairingCode")
+                            isCloudConnected = true
+                            mainHandler.post {
+                                onCloudStatusChanged?.invoke(true)
+                            }
+                            subscribeToCode(currentPairingCode)
+                        }
+
+                        override fun connectionLost(cause: Throwable?) {
+                            Log.w("CloudBridge", "Connection lost", cause)
+                            isCloudConnected = false
+                            mainHandler.post {
+                                onCloudStatusChanged?.invoke(false)
+                            }
+                        }
+
+                        override fun messageArrived(topic: String?, message: MqttMessage?) {
+                            message?.let {
+                                val text = String(it.payload)
+                                handleIncomingJson(JSONObject(text))
+                            }
+                        }
+
+                        override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                    })
+
+                    client.connect(options)
+                    if (client.isConnected) {
+                        isCloudConnected = true
+                        mainHandler.post {
+                            onCloudStatusChanged?.invoke(true)
+                        }
+                        Log.d("CloudBridge", "EMQX connected successfully!")
+                        break
+                    }
+                } catch (e: Exception) {
+                    Log.e("CloudBridge", "Connection attempt failed, retrying in 3s...", e)
+                    isCloudConnected = false
+                    mainHandler.post {
                         onCloudStatusChanged?.invoke(false)
                     }
-
-                    override fun messageArrived(topic: String?, message: MqttMessage?) {
-                        message?.let {
-                            val text = String(it.payload)
-                            handleIncomingJson(JSONObject(text))
-                        }
-                    }
-
-                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-                })
-
-                mqttClient?.connect(options)
-            } catch (e: Exception) {
-                Log.e("CloudBridge", "EMQX Connect Error", e)
+                }
+                delay(3000)
             }
         }
     }

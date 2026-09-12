@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
     private val isNotifAccessState = mutableStateOf(false)
     private val isBatteryOptimizedState = mutableStateOf(false)
+    private val isCloudOnlineState = mutableStateOf(false)
 
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -96,13 +97,14 @@ class MainActivity : ComponentActivity() {
         nsdManager.registerService()
 
         setContent {
-            var cloudOnline by remember { mutableStateOf(LocalFileServerService.isCloudConnected) }
+            val cloudOnline by isCloudOnlineState
             val isNotifGranted by isNotifAccessState
             val isBatteryIgnored by isBatteryOptimizedState
 
             DisposableEffect(Unit) {
+                isCloudOnlineState.value = LocalFileServerService.isCloudConnected
                 LocalFileServerService.onCloudStatusChanged = { isOnline ->
-                    cloudOnline = isOnline
+                    isCloudOnlineState.value = isOnline
                 }
                 onDispose {
                     LocalFileServerService.onCloudStatusChanged = null
@@ -201,7 +203,7 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // Button 3: Target 8 - 1-Click Battery "No Restrictions"
+                        // Button 3: 1-Click Battery "No Restrictions"
                         OutlinedButton(
                             onClick = {
                                 requestIgnoreBatteryOptimizations()
@@ -223,6 +225,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        isCloudOnlineState.value = LocalFileServerService.isCloudConnected
         isNotifAccessState.value = checkNotificationAccess()
         isBatteryOptimizedState.value = checkBatteryOptimization()
     }
