@@ -13,11 +13,10 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -56,7 +55,6 @@ class LocalFileServerService : Service() {
     private var mqttClient: MqttClient? = null
     private lateinit var teleManager: TelephonyAndLocationManager
     private var wakeLock: PowerManager.WakeLock? = null
-    private val mainHandler = Handler(Looper.getMainLooper())
 
     companion object {
         private const val PORT = 8888
@@ -84,7 +82,6 @@ class LocalFileServerService : Service() {
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
 
-        // Target 8: Partial WakeLock keeps CPU awake
         try {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OpenDroid::5GKeepAliveWakeLock").apply {
@@ -96,7 +93,6 @@ class LocalFileServerService : Service() {
             Log.e("KeepAlive", "Error acquiring WakeLock", e)
         }
 
-        // Live location update listener
         teleManager = TelephonyAndLocationManager(applicationContext)
         teleManager.onLocationUpdated = { locJson ->
             broadcastMessage(locJson.toString())
@@ -112,8 +108,6 @@ class LocalFileServerService : Service() {
                 currentPairingCode = it
                 if (mqttClient?.isConnected == true) {
                     subscribeToCode(it)
-                } else {
-                    initCloudBridge()
                 }
             }
         }
@@ -152,69 +146,53 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // --- Automatic Retry Loop (Guarantees Connection) ---
+    // Original Proven EMQX Cloud Bridge
     private fun initCloudBridge() {
         serviceScope.launch {
-            val brokerUrl = "tcp://broker.emqx.io:1883"
-            while (isActive && (mqttClient == null || mqttClient?.isConnected != true)) {
-                try {
-                    Log.d("CloudBridge", "Attempting connection to $brokerUrl (Code: $currentPairingCode)...")
-                    val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
-                    val client = MqttClient(brokerUrl, clientId, MemoryPersistence())
-                    mqttClient = client
+            try {
+                val brokerUrl = "tcp://broker.emqx.io:1883"
+                val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
+                mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
-                    val options = MqttConnectOptions().apply {
-                        isCleanSession = true
-                        connectionTimeout = 10
-                        keepAliveInterval = 30
-                        isAutomaticReconnect = true
-                    }
+                val options = MqttConnectOptions().apply {
+                    isCleanSession = true
+                    connectionTimeout = 15
+                    keepAliveInterval = 30
+                    isAutomaticReconnect = true
+                }
 
-                    client.setCallback(object : MqttCallbackExtended {
-                        override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                            Log.d("CloudBridge", "Connected to EMQX with Code: $currentPairingCode")
-                            isCloudConnected = true
-                            mainHandler.post {
-                                onCloudStatusChanged?.invoke(true)
-                            }
-                            subscribeToCode(currentPairingCode)
-                        }
-
-                        override fun connectionLost(cause: Throwable?) {
-                            Log.w("CloudBridge", "Connection lost", cause)
-                            isCloudConnected = false
-                            mainHandler.post {
-                                onCloudStatusChanged?.invoke(false)
-                            }
-                        }
-
-                        override fun messageArrived(topic: String?, message: MqttMessage?) {
-                            message?.let {
-                                val text = String(it.payload)
-                                handleIncomingJson(JSONObject(text))
-                            }
-                        }
-
-                        override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-                    })
-
-                    client.connect(options)
-                    if (client.isConnected) {
+                mqttClient?.setCallback(object : MqttCallbackExtended {
+                    override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                        Log.d("CloudBridge", "Connected to EMQX with Code: $currentPairingCode")
                         isCloudConnected = true
-                        mainHandler.post {
-                            onCloudStatusChanged?.invoke(true)
-                        }
-                        Log.d("CloudBridge", "EMQX connected successfully!")
-                        break
+                        onCloudStatusChanged?.invoke(true)
+                        subscribeToCode(currentPairingCode)
                     }
-                } catch (e: Exception) {
-                    Log.e("CloudBridge", "Connection attempt failed, retrying in 3s...", e)
-                    isCloudConnected = false
-                    mainHandler.post {
+
+                    override fun connectionLost(cause: Throwable?) {
+                        Log.w("CloudBridge", "Connection lost", cause)
+                        isCloudConnected = false
                         onCloudStatusChanged?.invoke(false)
                     }
+
+                    override fun messageArrived(topic: String?, message: MqttMessage?) {
+                        message?.let {
+                            val text = String(it.payload)
+                            handleIncomingJson(JSONObject(text))
+                        }
+                    }
+
+                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                })
+
+                mqttClient?.connect(options)
+                if (mqttClient?.isConnected == true) {
+                    isCloudConnected = true
+                    onCloudStatusChanged?.invoke(true)
+                    subscribeToCode(currentPairingCode)
                 }
-                delay(3000)
+            } catch (e: Exception) {
+                Log.e("CloudBridge", "EMQX Connect Error", e)
             }
         }
     }
@@ -335,7 +313,39 @@ class LocalFileServerService : Service() {
                 sendFullSyncData()
             }
 
-            // --- Direct Camera Stream ---
+            // --- Step 1.1: Remote URL Launcher ---
+            "OPEN_URL" -> {
+                val rawUrl = json.optString("url", "").trim()
+                if (rawUrl.isNotEmpty()) {
+                    try {
+                        val formattedUrl = if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+                            "https://$rawUrl"
+                        } else rawUrl
+
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(formattedUrl)).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        applicationContext.startActivity(browserIntent)
+
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "OPEN_URL_ACK")
+                            put("url", formattedUrl)
+                            put("success", true)
+                        }.toString())
+                        Log.d("OpenDroid", "Opened URL on device: $formattedUrl")
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Failed to open URL on device", e)
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "OPEN_URL_ACK")
+                            put("url", rawUrl)
+                            put("success", false)
+                            put("error", e.message)
+                        }.toString())
+                    }
+                }
+            }
+
+            // --- Camera Stream ---
             "START_CAMERA_STREAM" -> {
                 if (screenStreamer.isStreaming) {
                     screenStreamer.pauseStreaming()
@@ -374,7 +384,7 @@ class LocalFileServerService : Service() {
             "SWITCH_CAMERA" -> cameraStreamer.switchCamera()
             "TOGGLE_FLASHLIGHT" -> cameraStreamer.toggleTorch()
 
-            // --- Direct Screen Mirror Stream ---
+            // --- Screen Mirror Stream ---
             "START_SCREEN_STREAM" -> {
                 if (cameraStreamer.isStreaming) {
                     cameraStreamer.stopStreaming()
