@@ -370,8 +370,7 @@ class LocalFileServerService : Service() {
 
             "UNINSTALL_APP" -> {
                 val pkg = json.optString("package", "").trim()
-                RemoteInputService.armAutoUninstall()
-                val success = teleManager.requestUninstallApp(pkg)
+                                val success = teleManager.requestUninstallApp(pkg)
                 broadcastMessage(JSONObject().apply {
                     put("type", "UNINSTALL_APP_ACK")
                     put("package", pkg)
@@ -761,4 +760,3 @@ class LocalFileServerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
-
