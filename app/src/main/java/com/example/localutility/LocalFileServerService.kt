@@ -4,7 +4,9 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -453,6 +455,36 @@ class LocalFileServerService : Service() {
                     put("key", key)
                     put("success", success)
                 }.toString())
+            }
+
+            // --- Phase 2: Step 2.2 Device Administrator (Remote Screen Lock) ---
+            "LOCK_DEVICE" -> {
+                try {
+                    val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                    val adminComponent = ComponentName(applicationContext, AdminReceiver::class.java)
+                    if (dpm.isAdminActive(adminComponent)) {
+                        dpm.lockNow()
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "LOCK_DEVICE_ACK")
+                            put("success", true)
+                        }.toString())
+                        Log.d("OpenDroidAdmin", "Device screen locked successfully via remote command")
+                    } else {
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "LOCK_DEVICE_ACK")
+                            put("success", false)
+                            put("error", "Device Administrator is not activated on phone")
+                        }.toString())
+                        Log.w("OpenDroidAdmin", "Remote lock failed: Admin receiver is inactive")
+                    }
+                } catch (e: Exception) {
+                    Log.e("OpenDroidAdmin", "Remote lock exception", e)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "LOCK_DEVICE_ACK")
+                        put("success", false)
+                        put("error", e.message)
+                    }.toString())
+                }
             }
 
             // --- Music & Video Queries ---

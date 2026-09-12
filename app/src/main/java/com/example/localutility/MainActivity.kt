@@ -2,6 +2,8 @@ package com.example.localutility
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
     private val isCameraMicGrantedState = mutableStateOf(false)
     private val isPhoneSmsGrantedState = mutableStateOf(false)
     private val isLocationGrantedState = mutableStateOf(false)
+    private val isAdminActiveState = mutableStateOf(false)
 
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -103,6 +106,7 @@ class MainActivity : ComponentActivity() {
             val isCameraMicGranted by isCameraMicGrantedState
             val isPhoneSmsGranted by isPhoneSmsGrantedState
             val isLocationGranted by isLocationGrantedState
+            val isAdminActive by isAdminActiveState
 
             DisposableEffect(Unit) {
                 cloudOnline = LocalFileServerService.isCloudConnected
@@ -332,6 +336,14 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
 
+                                // 8. Device Administrator (Remote Lock)
+                                PermissionCard(
+                                    title = "Device Administrator (Remote Lock)",
+                                    description = "Allows locking phone screen remotely from PC Find Phone / Security panel.",
+                                    isGranted = isAdminActive,
+                                    onGrantClick = { requestDeviceAdmin() }
+                                )
+
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
@@ -417,6 +429,25 @@ class MainActivity : ComponentActivity() {
         isLocationGrantedState.value = checkPermissions(
             arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION)
         )
+        isAdminActiveState.value = checkDeviceAdmin()
+    }
+
+    private fun checkDeviceAdmin(): Boolean {
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val componentName = ComponentName(this, AdminReceiver::class.java)
+        return dpm.isAdminActive(componentName)
+    }
+
+    private fun requestDeviceAdmin() {
+        val componentName = ComponentName(this, AdminReceiver::class.java)
+        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
+            putExtra(
+                DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                "Allows OpenDroid to remotely lock device screen from Web Controller."
+            )
+        }
+        startActivity(intent)
     }
 
     private fun checkStoragePermission(): Boolean {
