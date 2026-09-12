@@ -904,6 +904,21 @@
                     alert("Lock failed: " + (data.error || "Device Administrator is not activated on phone"));
                 }
             }
+            // --- Phase 1: Step 1.2 Remote App Management ACKs ---
+            else if (data.type === 'LAUNCH_APP_ACK') {
+                if (data.success) {
+                    alert("App launched successfully on phone! 🚀");
+                } else {
+                    alert("Failed to launch app: " + (data.error || "Package launcher intent not found"));
+                }
+            }
+            else if (data.type === 'UNINSTALL_APP_ACK') {
+                if (data.success) {
+                    alert("Uninstall dialog opened on phone screen. Confirm on phone to uninstall 📱");
+                } else {
+                    alert("Failed to trigger uninstall: " + (data.error || "Error"));
+                }
+            }
             // --- Remote URL ACK ---
             else if (data.type === 'OPEN_URL_ACK') {
                 const statusEl = document.getElementById('url-launch-status');
@@ -1761,18 +1776,42 @@
                 return;
             }
             apps.forEach(app => {
+                const pkgEscaped = app.package.replace(/'/g, "\\'");
+                const nameEscaped = app.name.replace(/'/g, "\\'");
                 list.innerHTML += `
                     <div class="p-3 hover:bg-gray-50 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">📱</div>
-                            <div>
-                                <div class="font-semibold text-gray-800 text-xs">${app.name}</div>
-                                <div class="text-[10px] text-gray-400 font-mono">${app.package}</div>
+                        <div class="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs flex-shrink-0">📱</div>
+                            <div class="truncate">
+                                <div class="font-semibold text-gray-800 text-xs truncate" title="${app.name}">${app.name}</div>
+                                <div class="text-[10px] text-gray-400 font-mono truncate">${app.package}</div>
                             </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button onclick="launchRemoteApp('${pkgEscaped}', '${nameEscaped}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold shadow-xs flex items-center gap-1" title="Open on Phone">
+                                <span>🚀</span><span>Open</span>
+                            </button>
+                            ${!app.isSystem ? `
+                                <button onclick="uninstallRemoteApp('${pkgEscaped}', '${nameEscaped}')" class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded text-[11px] font-semibold shadow-xs flex items-center gap-1" title="Uninstall from Phone">
+                                    <span>🗑️</span><span>Uninstall</span>
+                                </button>
+                            ` : `
+                                <span class="px-2 py-0.5 bg-gray-100 text-gray-400 border rounded text-[10px] font-medium select-none">System</span>
+                            `}
                         </div>
                     </div>
                 `;
             });
+        }
+
+        function launchRemoteApp(pkg, name) {
+            sendCommand({ action: 'LAUNCH_APP', package: pkg });
+        }
+
+        function uninstallRemoteApp(pkg, name) {
+            if (confirm(`Open uninstall prompt for "${name}" on phone screen?`)) {
+                sendCommand({ action: 'UNINSTALL_APP', package: pkg });
+            }
         }
 
         function filterApps(query) {

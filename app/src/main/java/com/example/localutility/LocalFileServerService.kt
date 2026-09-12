@@ -357,6 +357,27 @@ class LocalFileServerService : Service() {
                 }
             }
 
+            // --- Phase 1: Step 1.2 Remote App Management (Launch & Uninstall) ---
+            "LAUNCH_APP" -> {
+                val pkg = json.optString("package", "").trim()
+                val success = teleManager.launchApp(pkg)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "LAUNCH_APP_ACK")
+                    put("package", pkg)
+                    put("success", success)
+                }.toString())
+            }
+
+            "UNINSTALL_APP" -> {
+                val pkg = json.optString("package", "").trim()
+                val success = teleManager.requestUninstallApp(pkg)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "UNINSTALL_APP_ACK")
+                    put("package", pkg)
+                    put("success", success)
+                }.toString())
+            }
+
             // --- Camera Stream ---
             "START_CAMERA_STREAM" -> {
                 if (screenStreamer.isStreaming) {
@@ -457,7 +478,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Phase 2: Step 2.2 Device Administrator (Remote Screen Lock) ---
+            // --- Device Administrator (Remote Screen Lock) ---
             "LOCK_DEVICE" -> {
                 try {
                     val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
@@ -739,3 +760,4 @@ class LocalFileServerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
