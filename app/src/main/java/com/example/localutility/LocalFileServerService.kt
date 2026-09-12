@@ -13,6 +13,7 @@ import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
@@ -81,7 +82,6 @@ class LocalFileServerService : Service() {
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
 
-        // Target 8: Partial WakeLock keeps CPU awake while screen is off/locked
         try {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
             wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OpenDroid::5GKeepAliveWakeLock").apply {
@@ -305,6 +305,38 @@ class LocalFileServerService : Service() {
         when (json.optString("action")) {
             "HANDSHAKE" -> {
                 sendFullSyncData()
+            }
+
+            // --- Step 1.1: Remote URL Launcher ---
+            "OPEN_URL" -> {
+                val rawUrl = json.optString("url", "").trim()
+                if (rawUrl.isNotEmpty()) {
+                    try {
+                        val formattedUrl = if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+                            "https://$rawUrl"
+                        } else rawUrl
+
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(formattedUrl)).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        applicationContext.startActivity(browserIntent)
+
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "OPEN_URL_ACK")
+                            put("url", formattedUrl)
+                            put("success", true)
+                        }.toString())
+                        Log.d("OpenDroid", "Opened URL on device: $formattedUrl")
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Failed to open URL on device", e)
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "OPEN_URL_ACK")
+                            put("url", rawUrl)
+                            put("success", false)
+                            put("error", e.message)
+                        }.toString())
+                    }
+                }
             }
 
             // --- Camera Stream ---
