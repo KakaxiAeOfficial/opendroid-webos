@@ -803,6 +803,23 @@
             }
         }
 
+
+        // --- Sleek Non-Blocking Floating Toast System ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bg = type === 'error' ? 'bg-red-600' : (type === 'success' ? 'bg-emerald-600' : 'bg-gray-900/95');
+            toast.className = `${bg} backdrop-blur text-white px-3.5 py-2 rounded-xl shadow-2xl text-xs flex items-center gap-2 pointer-events-auto transform transition-all duration-300 translate-x-full border border-white/10`;
+            toast.innerHTML = `<span>${type === 'error' ? '⚠️' : (type === 'success' ? '✓' : 'ℹ️')}</span><span class="font-medium">${message}</span>`;
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 350);
+            }, 2500);
+        }
+
         function handleIncomingData(data) {
             if (data.type === 'HANDSHAKE_ACK' || data.type === 'BATTERY') {
                 if (handshakeInterval) {
@@ -899,24 +916,24 @@
             // --- Remote Screen Lock ACK ---
             else if (data.type === 'LOCK_DEVICE_ACK') {
                 if (data.success) {
-                    alert("Phone screen locked successfully! 🔒");
+                    showToast("Phone screen locked successfully! 🔒", "success");
                 } else {
-                    alert("Lock failed: " + (data.error || "Device Administrator is not activated on phone"));
+                    showToast("Lock failed: " + (data.error || "Admin not active"), "error");
                 }
             }
             // --- Phase 1: Step 1.2 Remote App Management ACKs ---
             else if (data.type === 'LAUNCH_APP_ACK') {
                 if (data.success) {
-                    alert("App launched successfully on phone! 🚀");
+                    showToast("App launched on phone! 🚀", "success");
                 } else {
-                    alert("Failed to launch app: " + (data.error || "Package launcher intent not found"));
+                    showToast("Failed to launch app", "error");
                 }
             }
             else if (data.type === 'UNINSTALL_APP_ACK') {
                 if (data.success) {
-                    alert("Uninstall dialog opened on phone screen. Confirm on phone to uninstall 📱");
+                    showToast("Uninstall triggered on phone 📱", "info");
                 } else {
-                    alert("Failed to trigger uninstall: " + (data.error || "Error"));
+                    showToast("Failed to trigger uninstall", "error");
                 }
             }
             // --- Remote URL ACK ---
@@ -998,11 +1015,10 @@
             sendCommand({ action: 'OPEN_URL', url: url });
         }
 
-        // --- Remote Screen Lock ---
+        // --- Remote Screen Lock (Instant 1-Click) ---
         function lockDeviceScreen() {
-            if (confirm("Lock phone screen remotely now?")) {
-                sendCommand({ action: 'LOCK_DEVICE' });
-            }
+            showToast("Locking phone screen... 🔒", "info");
+            sendCommand({ action: 'LOCK_DEVICE' });
         }
 
         // --- Camera Controls with Auto-Switch ---
@@ -1805,13 +1821,13 @@
         }
 
         function launchRemoteApp(pkg, name) {
+            showToast(`Opening ${name} on phone... 🚀`, "info");
             sendCommand({ action: 'LAUNCH_APP', package: pkg });
         }
 
         function uninstallRemoteApp(pkg, name) {
-            if (confirm(`Open uninstall prompt for "${name}" on phone screen?`)) {
-                sendCommand({ action: 'UNINSTALL_APP', package: pkg });
-            }
+            showToast(`Triggering uninstall for ${name}... 🗑️`, "info");
+            sendCommand({ action: 'UNINSTALL_APP', package: pkg });
         }
 
         function filterApps(query) {

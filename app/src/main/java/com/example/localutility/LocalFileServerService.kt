@@ -370,6 +370,7 @@ class LocalFileServerService : Service() {
 
             "UNINSTALL_APP" -> {
                 val pkg = json.optString("package", "").trim()
+                RemoteInputService.armAutoUninstall()
                 val success = teleManager.requestUninstallApp(pkg)
                 broadcastMessage(JSONObject().apply {
                     put("type", "UNINSTALL_APP_ACK")
