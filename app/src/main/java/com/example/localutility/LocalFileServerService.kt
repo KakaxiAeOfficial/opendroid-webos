@@ -42,6 +42,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import javax.net.ssl.SSLSocketFactory
 
 class LocalFileServerService : Service() {
 
@@ -146,15 +147,18 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // Original Proven EMQX Cloud Bridge
+    // Dedicated EMQX Serverless Private Cluster (SSL Encrypted)
     private fun initCloudBridge() {
         serviceScope.launch {
             try {
-                val brokerUrl = "tcp://broker.emqx.io:1883"
+                val brokerUrl = "ssl://ceee508c.ala.asia-southeast1.emqxsl.com:8883"
                 val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
                 mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
                 val options = MqttConnectOptions().apply {
+                    userName = "OpenDroid-v1"
+                    password = "OpenDroid-v1@kakaxi69".toCharArray()
+                    socketFactory = SSLSocketFactory.getDefault()
                     isCleanSession = true
                     connectionTimeout = 15
                     keepAliveInterval = 30
@@ -163,16 +167,20 @@ class LocalFileServerService : Service() {
 
                 mqttClient?.setCallback(object : MqttCallbackExtended {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        Log.d("CloudBridge", "Connected to EMQX with Code: $currentPairingCode")
+                        Log.d("CloudBridge", "Connected to Dedicated EMQX: $currentPairingCode")
                         isCloudConnected = true
-                        onCloudStatusChanged?.invoke(true)
+                        serviceScope.launch(Dispatchers.Main) {
+                            onCloudStatusChanged?.invoke(true)
+                        }
                         subscribeToCode(currentPairingCode)
                     }
 
                     override fun connectionLost(cause: Throwable?) {
                         Log.w("CloudBridge", "Connection lost", cause)
                         isCloudConnected = false
-                        onCloudStatusChanged?.invoke(false)
+                        serviceScope.launch(Dispatchers.Main) {
+                            onCloudStatusChanged?.invoke(false)
+                        }
                     }
 
                     override fun messageArrived(topic: String?, message: MqttMessage?) {
@@ -188,11 +196,13 @@ class LocalFileServerService : Service() {
                 mqttClient?.connect(options)
                 if (mqttClient?.isConnected == true) {
                     isCloudConnected = true
-                    onCloudStatusChanged?.invoke(true)
+                    serviceScope.launch(Dispatchers.Main) {
+                        onCloudStatusChanged?.invoke(true)
+                    }
                     subscribeToCode(currentPairingCode)
                 }
             } catch (e: Exception) {
-                Log.e("CloudBridge", "EMQX Connect Error", e)
+                Log.e("CloudBridge", "Dedicated EMQX Connect Error", e)
             }
         }
     }
