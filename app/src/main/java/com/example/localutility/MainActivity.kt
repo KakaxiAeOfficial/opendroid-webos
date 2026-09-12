@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
     private val isNotifAccessState = mutableStateOf(false)
     private val isBatteryOptimizedState = mutableStateOf(false)
+    private val isCloudOnlineState = mutableStateOf(false)
 
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -84,6 +85,12 @@ class MainActivity : ComponentActivity() {
             )
         )
 
+        LocalFileServerService.onCloudStatusChanged = { isOnline ->
+            runOnUiThread {
+                isCloudOnlineState.value = isOnline
+            }
+        }
+
         val fileServiceIntent = Intent(this, LocalFileServerService::class.java).apply {
             putExtra("PAIRING_CODE", code)
         }
@@ -96,18 +103,9 @@ class MainActivity : ComponentActivity() {
         nsdManager.registerService()
 
         setContent {
-            var cloudOnline by remember { mutableStateOf(LocalFileServerService.isCloudConnected) }
+            val cloudOnline by isCloudOnlineState
             val isNotifGranted by isNotifAccessState
             val isBatteryIgnored by isBatteryOptimizedState
-
-            DisposableEffect(Unit) {
-                LocalFileServerService.onCloudStatusChanged = { isOnline ->
-                    cloudOnline = isOnline
-                }
-                onDispose {
-                    LocalFileServerService.onCloudStatusChanged = null
-                }
-            }
 
             MaterialTheme {
                 Surface(
@@ -170,7 +168,6 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(20.dp))
 
-                        // Button 1: Start Screen Share
                         Button(
                             onClick = {
                                 val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
@@ -184,7 +181,6 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // Button 2: 1-Click Notification Access
                         OutlinedButton(
                             onClick = {
                                 startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
@@ -201,7 +197,6 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // Button 3: Target 8 - 1-Click Battery "No Restrictions"
                         OutlinedButton(
                             onClick = {
                                 requestIgnoreBatteryOptimizations()
@@ -225,6 +220,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         isNotifAccessState.value = checkNotificationAccess()
         isBatteryOptimizedState.value = checkBatteryOptimization()
+        isCloudOnlineState.value = LocalFileServerService.isCloudConnected
     }
 
     private fun checkNotificationAccess(): Boolean {
@@ -247,7 +243,6 @@ class MainActivity : ComponentActivity() {
                 }
                 startActivity(intent)
             } catch (e: Exception) {
-                // Fallback to general battery settings if direct prompt blocked by OEM
                 try {
                     val fallbackIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                     startActivity(fallbackIntent)

@@ -148,7 +148,6 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // Continuous Auto-Retry Loop on IO Dispatcher with MainLooper UI dispatch
     private fun initCloudBridge() {
         serviceScope.launch(Dispatchers.IO) {
             val brokerUrl = "tcp://broker.emqx.io:1883"
