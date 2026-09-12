@@ -89,14 +89,29 @@ class TelephonyAndLocationManager(private val context: Context) {
     fun requestUninstallApp(packageName: String): Boolean {
         return try {
             val intent = Intent(Intent.ACTION_DELETE).apply {
-                data = Uri.parse("package:$packageName")
+                data = Uri.fromParts("package", packageName, null)
+                putExtra(Intent.EXTRA_RETURN_RESULT, true)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
             context.startActivity(intent)
             true
         } catch (e: Exception) {
             e.printStackTrace()
-            false
+            try {
+                @Suppress("DEPRECATION")
+                val fallbackIntent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                    putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+                context.startActivity(fallbackIntent)
+                true
+            } catch (e2: Exception) {
+                e2.printStackTrace()
+                false
+            }
         }
     }
 
@@ -520,3 +535,4 @@ class TelephonyAndLocationManager(private val context: Context) {
         return json
     }
 }
+
