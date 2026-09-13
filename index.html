@@ -117,6 +117,10 @@
                 <span id="dock-mic-label">Mic Off</span>
             </button>
 
+            <button id="dock-torch-btn" onclick="toggleStandaloneTorch()" class="hover:text-yellow-400 transition-colors font-medium flex items-center gap-1" title="Remote Flashlight">
+                <span id="dock-torch-icon">💡</span>
+                <span id="dock-torch-label">Torch</span>
+            </button>
             <button id="siren-btn" onclick="toggleSiren()" class="hover:text-red-400 transition-colors font-medium flex items-center gap-1">
                 <span>🔔</span>
                 <span>Ring</span>
@@ -630,6 +634,7 @@
         let gainNode = null;
         let nextAudioStartTime = 0;
         let isGlobalMicActive = false;
+        let isTorchOn = false;
 
         // Leaflet Map Instances
         let mapInstance = null;
@@ -951,6 +956,15 @@
                 }
             }
             // --- Audio & Notifications ---
+            else if (data.type === 'TORCH_STATUS') {
+                isTorchOn = !!data.isOn;
+                updateTorchUI(isTorchOn);
+                if (data.error) {
+                    showToast("Flashlight: " + data.error, "error");
+                } else {
+                    showToast(isTorchOn ? "Flashlight turned ON 💡" : "Flashlight turned OFF 🌑", "info");
+                }
+            }
             else if (data.type === 'AUDIO_CHUNK') {
                 playPcmChunk(data.data);
             } else if (data.type === 'NOTIFICATION') {
@@ -1003,6 +1017,25 @@
         }
 
         // --- Remote URL Launcher ---
+        // --- Standalone Torch Functions ---
+        function toggleStandaloneTorch() {
+            sendCommand({ action: 'TOGGLE_STANDALONE_TORCH' });
+        }
+
+        function updateTorchUI(isOn) {
+            const btn = document.getElementById('dock-torch-btn');
+            const label = document.getElementById('dock-torch-label');
+            if (btn) {
+                if (isOn) {
+                    btn.className = "bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-400/40 font-semibold flex items-center gap-1 shadow-sm";
+                    if (label) label.textContent = "Torch On";
+                } else {
+                    btn.className = "hover:text-yellow-400 transition-colors font-medium flex items-center gap-1";
+                    if (label) label.textContent = "Torch";
+                }
+            }
+        }
+
         function launchRemoteUrl() {
             const input = document.getElementById('remote-url-input');
             const url = input.value.trim();

@@ -11,6 +11,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.Ringtone
@@ -58,6 +60,7 @@ class LocalFileServerService : Service() {
     private var mqttClient: MqttClient? = null
     private lateinit var teleManager: TelephonyAndLocationManager
     private var wakeLock: PowerManager.WakeLock? = null
+    private var isStandaloneTorchOn: Boolean = false
 
     companion object {
         private const val PORT = 8888
@@ -72,6 +75,7 @@ class LocalFileServerService : Service() {
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             broadcastBatteryStatus()
+        broadcastMessage(JSONObject().put("type", "TORCH_STATUS").put("isOn", isStandaloneTorchOn).toString())
         }
     }
 
@@ -188,7 +192,13 @@ class LocalFileServerService : Service() {
                     override fun messageArrived(topic: String?, message: MqttMessage?) {
                         message?.let {
                             val text = String(it.payload)
-                            handleIncomingJson(JSONObject(text))
+                            serviceScope.launch(Dispatchers.IO) {
+                                try {
+                                    handleIncomingJson(JSONObject(text))
+                                } catch (e: Exception) {
+                                    Log.e("CloudBridge", "Error handling incoming json", e)
+                                }
+                            }
                         }
                     }
 
@@ -412,6 +422,48 @@ class LocalFileServerService : Service() {
                 broadcastMessage(JSONObject().apply {
                     put("type", "CAMERA_STREAM_STOPPED")
                 }.toString())
+            }
+
+            // --- Phase 1: Step 1.3 Standalone Flashlight / Torch Toggle ---
+            "TOGGLE_STANDALONE_TORCH" -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    try {
+                        val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+                        val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                            val characteristics = cameraManager.getCameraCharacteristics(id)
+                            characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true &&
+                            characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
+                        } ?: cameraManager.cameraIdList.firstOrNull()
+
+                        if (cameraId != null) {
+                            val streamer = DirectCameraStreamer.getInstance(applicationContext)
+                            if (streamer.isStreaming) {
+                                streamer.toggleTorch()
+                                isStandaloneTorchOn = !isStandaloneTorchOn
+                            } else {
+                                isStandaloneTorchOn = !isStandaloneTorchOn
+                                cameraManager.setTorchMode(cameraId, isStandaloneTorchOn)
+                            }
+                            broadcastMessage(JSONObject().apply {
+                                put("type", "TORCH_STATUS")
+                                put("isOn", isStandaloneTorchOn)
+                            }.toString())
+                        } else {
+                            broadcastMessage(JSONObject().apply {
+                                put("type", "TORCH_STATUS")
+                                put("isOn", false)
+                                put("error", "No flashlight hardware found")
+                            }.toString())
+                        }
+                    } catch (e: Exception) {
+                        Log.e("TorchControl", "Error toggling torch", e)
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "TORCH_STATUS")
+                            put("isOn", isStandaloneTorchOn)
+                            put("error", e.message)
+                        }.toString())
+                    }
+                }
             }
 
             "SWITCH_CAMERA" -> cameraStreamer.switchCamera()
@@ -737,6 +789,13 @@ class LocalFileServerService : Service() {
         instance = null
         unregisterReceiver(batteryReceiver)
         currentRingtone?.stop()
+        try {
+            if (isStandaloneTorchOn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val cameraManager = getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+                val cameraId = cameraManager?.cameraIdList?.firstOrNull()
+                if (cameraId != null) cameraManager.setTorchMode(cameraId, false)
+            }
+        } catch (e: Exception) {}
         DirectCameraStreamer.getInstance(applicationContext).stopStreaming()
         DirectScreenStreamer.getInstance(applicationContext).stopStreaming()
         AudioStreamManager.getInstance(applicationContext).stopStreaming()
@@ -760,3 +819,4 @@ class LocalFileServerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
+
