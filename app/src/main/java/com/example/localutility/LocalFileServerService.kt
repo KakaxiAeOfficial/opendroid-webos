@@ -365,7 +365,11 @@ class LocalFileServerService : Service() {
 
         when (json.optString("type")) {
             "ping" -> {
-                broadcastMessage("{\"type\":\"pong\",\"timestamp\":${json.optLong(\"timestamp\")}}")
+                val pong = JSONObject().apply {
+                    put("type", "pong")
+                    put("timestamp", json.optLong("timestamp"))
+                }.toString()
+                broadcastMessage(pong)
                 broadcastBatteryStatus()
             }
         }
