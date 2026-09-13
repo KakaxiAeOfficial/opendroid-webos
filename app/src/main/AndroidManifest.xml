@@ -97,7 +97,7 @@
         <service
             android:name=".LocalFileServerService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="dataSync|camera" />
 
         <service
             android:name=".ScreenCaptureService"

