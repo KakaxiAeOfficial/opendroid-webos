@@ -16,6 +16,7 @@ class RemoteInputService : AccessibilityService() {
 
     companion object {
         var instance: RemoteInputService? = null
+        var isAutoUninstallArmed: Boolean = false
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -27,39 +28,36 @@ class RemoteInputService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null) return
+        // STRICT SAFETY GATE: Never perform auto-clicks unless explicitly triggered by a remote uninstall command
+        if (event == null || !isAutoUninstallArmed) return
 
         val pkg = event.packageName?.toString() ?: ""
-        // Check if package is PackageInstaller or Android system dialog
+        // Only target package installer dialogs (NEVER generic android or settings)
         if (pkg.contains("packageinstaller", ignoreCase = true) ||
-            pkg.contains("android", ignoreCase = true) ||
-            pkg.contains("settings", ignoreCase = true)
+            pkg.contains("permissioncontroller", ignoreCase = true)
         ) {
-            // Delay to allow dialog animation to complete and window to become interactive
             mainHandler.postDelayed({
-                tryAutoConfirmUninstall()
+                if (isAutoUninstallArmed) {
+                    tryAutoConfirmUninstall()
+                }
             }, 350)
-
-            mainHandler.postDelayed({
-                tryAutoConfirmUninstall()
-            }, 750)
         }
     }
 
     private fun tryAutoConfirmUninstall() {
         try {
-            // 1. Try active root window
             val activeRoot = rootInActiveWindow
             if (activeRoot != null && processWindowForUninstall(activeRoot)) {
+                isAutoUninstallArmed = false
                 return
             }
 
-            // 2. Iterate through all windows if active root didn't catch it
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 val currentWindows = windows
                 for (win in currentWindows) {
                     val root = win.root ?: continue
                     if (processWindowForUninstall(root)) {
+                        isAutoUninstallArmed = false
                         return
                     }
                 }
@@ -70,75 +68,41 @@ class RemoteInputService : AccessibilityService() {
     }
 
     private fun processWindowForUninstall(root: AccessibilityNodeInfo): Boolean {
-        // Look for Positive Button IDs across standard Android and OEMs
+        // Look for Positive Button IDs specific to package installer dialogs
         val buttonIds = listOf(
-            "android:id/button1",
             "com.android.packageinstaller:id/ok_button",
             "com.google.android.packageinstaller:id/ok_button",
             "com.android.packageinstaller:id/btn_ok",
-            "com.android.permissioncontroller:id/permission_allow_button"
+            "com.android.permissioncontroller:id/permission_allow_button",
+            "android:id/button1"
         )
 
         for (id in buttonIds) {
             val list = root.findAccessibilityNodeInfosByViewId(id)
             for (node in list) {
-                if (triggerClickOnNode(node)) {
+                if (node.isClickable && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
                     Log.d("RemoteInputService", "Auto-confirmed uninstall via id: $id")
                     return true
                 }
             }
         }
 
-        // Look for Positive Button Texts (English, Hindi, Bengali)
-        val buttonTexts = listOf("OK", "Uninstall", "Delete", "अनइंस्टॉल", "ठीक है", "আনইনস্টল", "ঠিক আছে")
+        // Look for Positive Button Texts (English & Hindi)
+        val buttonTexts = listOf("OK", "Uninstall", "Delete", "अनइंस्टॉल", "ठीक है")
         for (text in buttonTexts) {
             val nodes = root.findAccessibilityNodeInfosByText(text)
             for (node in nodes) {
-                if (node.isClickable) {
-                    if (triggerClickOnNode(node)) {
-                        Log.d("RemoteInputService", "Auto-confirmed uninstall via text: $text")
-                        return true
-                    }
-                } else if (node.parent?.isClickable == true) {
-                    if (triggerClickOnNode(node.parent)) {
-                        Log.d("RemoteInputService", "Auto-confirmed uninstall via parent of: $text")
-                        return true
-                    }
+                if (node.isClickable && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    Log.d("RemoteInputService", "Auto-confirmed uninstall via text: $text")
+                    return true
+                } else if (node.parent?.isClickable == true && node.parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                    Log.d("RemoteInputService", "Auto-confirmed uninstall via parent of: $text")
+                    return true
                 }
             }
         }
 
         return false
-    }
-
-    private fun triggerClickOnNode(node: AccessibilityNodeInfo): Boolean {
-        // 1. Physical Touch Gesture Tap at exact screen center of the button
-        val rect = Rect()
-        node.getBoundsInScreen(rect)
-        if (rect.width() > 0 && rect.height() > 0) {
-            val cx = rect.centerX().toFloat()
-            val cy = rect.centerY().toFloat()
-            dispatchTapPixels(cx, cy)
-            Log.d("RemoteInputService", "Dispatched physical touch tap at ($cx, $cy)")
-        }
-
-        // 2. Programmatic Accessibility Action Click
-        val actionDone = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-
-        return actionDone || (rect.width() > 0 && rect.height() > 0)
-    }
-
-    private fun dispatchTapPixels(actualX: Float, actualY: Float) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
-
-        val path = Path().apply {
-            moveTo(actualX, actualY)
-        }
-
-        val stroke = GestureDescription.StrokeDescription(path, 0, 50)
-        val gesture = GestureDescription.Builder().addStroke(stroke).build()
-
-        dispatchGesture(gesture, null, null)
     }
 
     override fun onInterrupt() {
@@ -181,6 +145,19 @@ class RemoteInputService : AccessibilityService() {
         dispatchGesture(gesture, null, null)
     }
 
+    private fun dispatchTapPixels(actualX: Float, actualY: Float) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
+
+        val path = Path().apply {
+            moveTo(actualX, actualY)
+        }
+
+        val stroke = GestureDescription.StrokeDescription(path, 0, 50)
+        val gesture = GestureDescription.Builder().addStroke(stroke).build()
+
+        dispatchGesture(gesture, null, null)
+    }
+
     fun executeGlobalAction(actionType: String) {
         when (actionType) {
             "BACK" -> performGlobalAction(GLOBAL_ACTION_BACK)
@@ -196,4 +173,3 @@ class RemoteInputService : AccessibilityService() {
         }
     }
 }
-
