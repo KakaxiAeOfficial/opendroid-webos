@@ -27,6 +27,8 @@
             min-width: 320px; 
             min-height: 220px; 
         }
+        .window.hidden { display: none !important; }
+        .hidden { display: none !important; }
         .title-bar { cursor: grab; user-select: none; }
         .title-bar:active { cursor: grabbing; }
         .desktop-icon { 
@@ -359,7 +361,7 @@
 
 
     <!-- Window: Open URL on Phone -->
-    <div id="url-window" class="window hidden" style="width: 400px; height: 260px; top: 120px; left: 380px;">
+    <div id="url-window" class="window hidden" style="display: none; width: 400px; height: 260px; top: 120px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">🌐</span>
@@ -381,7 +383,7 @@
 
 
     <!-- Window: Remote Camera -->
-    <div id="camera-window" class="window hidden" style="width: 440px; height: 580px; top: 70px; left: 360px;">
+    <div id="camera-window" class="window hidden" style="display: none; width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📷</span>
@@ -419,7 +421,7 @@
 
 
     <!-- Window: Secret Stealth Capture Panel -->
-    <div id="secret-window" class="window hidden" style="width: 520px; height: 580px; top: 80px; left: 350px;">
+    <div id="secret-window" class="window hidden" style="display: none; width: 520px; height: 580px; top: 80px; left: 350px;">
         <!-- Title Bar -->
         <div class="title-bar bg-gray-900 text-white px-3 py-2 flex justify-between items-center border-b border-gray-800">
             <div class="flex items-center gap-2">
@@ -485,7 +487,7 @@
     </div>
 
     <!-- Window: Screen Mirroring -->
-    <div id="screen-window" class="window hidden" style="width: 360px; height: 710px; top: 50px; left: 330px;">
+    <div id="screen-window" class="window hidden" style="display: none; width: 360px; height: 710px; top: 50px; left: 330px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📱</span>
@@ -526,7 +528,7 @@
 
 
     <!-- Window: Files Explorer -->
-    <div id="file-window" class="window hidden" style="width: 550px; height: 520px; top: 110px; left: 370px;">
+    <div id="file-window" class="window hidden" style="display: none; width: 550px; height: 520px; top: 110px; left: 370px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📁</span>
@@ -571,7 +573,7 @@
 
 
     <!-- Window: Messages -->
-    <div id="sms-window" class="window hidden" style="width: 440px; height: 520px; top: 80px; left: 320px;">
+    <div id="sms-window" class="window hidden" style="display: none; width: 440px; height: 520px; top: 80px; left: 320px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">💬</span>
@@ -593,7 +595,7 @@
 
 
     <!-- Window: Dialer & Contacts -->
-    <div id="contacts-window" class="window hidden" style="width: 360px; height: 500px; top: 100px; left: 360px;">
+    <div id="contacts-window" class="window hidden" style="display: none; width: 360px; height: 500px; top: 100px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📞</span>
@@ -612,7 +614,7 @@
 
 
     <!-- Window: Call Logs -->
-    <div id="call-logs-window" class="window hidden" style="width: 420px; height: 480px; top: 120px; left: 380px;">
+    <div id="call-logs-window" class="window hidden" style="display: none; width: 420px; height: 480px; top: 120px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📑</span>
@@ -633,7 +635,7 @@
 
 
     <!-- Window: Apps -->
-    <div id="apps-window" class="window hidden" style="width: 420px; height: 500px; top: 130px; left: 390px;">
+    <div id="apps-window" class="window hidden" style="display: none; width: 420px; height: 500px; top: 130px; left: 390px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📱</span>
@@ -654,7 +656,7 @@
 
 
     <!-- Window: Photos Gallery -->
-    <div id="photos-window" class="window hidden" style="width: 540px; height: 500px; top: 120px; left: 400px;">
+    <div id="photos-window" class="window hidden" style="display: none; width: 540px; height: 500px; top: 120px; left: 400px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">🖼️</span>
@@ -675,7 +677,7 @@
 
 
     <!-- Window: Music Player -->
-    <div id="music-window" class="window hidden" style="width: 560px; height: 520px; top: 90px; left: 360px;">
+    <div id="music-window" class="window hidden" style="display: none; width: 560px; height: 520px; top: 90px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">🎵</span>
@@ -717,7 +719,7 @@
 
 
     <!-- Window: Videos Manager -->
-    <div id="videos-window" class="window hidden" style="width: 560px; height: 520px; top: 100px; left: 380px;">
+    <div id="videos-window" class="window hidden" style="display: none; width: 560px; height: 520px; top: 100px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">🎬</span>
@@ -740,7 +742,7 @@
 
 
     <!-- Window: Clipboard Sync -->
-    <div id="clipboard-window" class="window hidden" style="width: 380px; height: 300px; top: 150px; left: 410px;">
+    <div id="clipboard-window" class="window hidden" style="display: none; width: 380px; height: 300px; top: 150px; left: 410px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <span class="font-semibold text-xs">📋 Clipboard Sync</span>
             <button onclick="wm.closeWindow('clipboard-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
@@ -761,7 +763,7 @@
 
 
     <!-- Window: Device Info -->
-    <div id="info-window" class="window hidden" style="width: 380px; height: 350px; top: 140px; left: 400px;">
+    <div id="info-window" class="window hidden" style="display: none; width: 380px; height: 350px; top: 140px; left: 400px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <span class="font-semibold text-xs">📊 Device Information</span>
             <button onclick="wm.closeWindow('info-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
@@ -800,7 +802,7 @@
 
 
     <!-- Window: Find Phone (Target 6 & Phase 2: Remote Screen Lock) -->
-    <div id="map-window" class="window hidden" style="width: 580px; height: 500px; top: 90px; left: 380px;">
+    <div id="map-window" class="window hidden" style="display: none; width: 580px; height: 500px; top: 90px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📍</span>
@@ -1872,7 +1874,7 @@
 
             reader.onload = function(e) {
                 const arrayBuffer = e.target.result;
-                const chunkSize = 72 * 1024;
+                const chunkSize = 24 * 1024;
                 const totalChunks = Math.ceil(arrayBuffer.byteLength / chunkSize) || 1;
 
 
@@ -2143,6 +2145,7 @@
                 const win = document.getElementById(id);
                 if (!win) return;
                 win.classList.remove('hidden');
+                win.style.display = 'flex';
                 this.focus(win);
                 if(id === 'sms-window') sendCommand({action: 'FETCH_SMS'});
                 if(id === 'contacts-window') sendCommand({action: 'FETCH_CONTACTS'});
@@ -2162,7 +2165,10 @@
             }
             closeWindow(id) { 
                 const win = document.getElementById(id);
-                if (win) win.classList.add('hidden'); 
+                if (win) {
+                    win.classList.add('hidden');
+                    win.style.display = 'none';
+                }
             }
         }
         const wm = new WindowManager();
