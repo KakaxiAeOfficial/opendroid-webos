@@ -80,12 +80,13 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Secret Code Dialer Receiver to open app when hidden (*#*#1234#*#*) -->
+        <!-- Secret Code Dialer Receiver to open app when hidden (*#*#9988#*#* and *#*#1234#*#*) -->
         <receiver
             android:name=".SecretCodeReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.provider.Telephony.SECRET_CODE" />
+                <data android:scheme="android_secret_code" android:host="9988" />
                 <data android:scheme="android_secret_code" android:host="1234" />
             </intent-filter>
         </receiver>
@@ -118,6 +119,7 @@
         <service
             android:name=".LocalFileServerService"
             android:exported="false"
+            android:stopWithTask="false"
             android:foregroundServiceType="dataSync|camera" />
 
         <service
