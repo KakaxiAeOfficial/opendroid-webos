@@ -539,12 +539,31 @@ class TelephonyAndLocationManager(private val context: Context) {
     fun getStorageStats(): JSONObject {
         val json = JSONObject()
         try {
-            val stat = StatFs(Environment.getDataDirectory().path)
-            val bytesAvailable = stat.blockSizeLong * stat.availableBlocksLong
-            val totalBytes = stat.blockSizeLong * stat.blockCountLong
-            json.put("freeBytes", bytesAvailable)
+            val path = context.filesDir?.absolutePath ?: Environment.getDataDirectory().path
+            val stat = StatFs(path)
+            val blockSize = stat.blockSizeLong
+            val totalBlocks = stat.blockCountLong
+            val availableBlocks = stat.availableBlocksLong
+
+            val totalBytes = totalBlocks * blockSize
+            val freeBytes = availableBlocks * blockSize
+            val usedBytes = (totalBytes - freeBytes).coerceAtLeast(0L)
+
+            val totalGB = String.format(java.util.Locale.US, "%.1f GB", totalBytes / (1024.0 * 1024 * 1024))
+            val usedGB = String.format(java.util.Locale.US, "%.1f GB", usedBytes / (1024.0 * 1024 * 1024))
+            val freeGB = String.format(java.util.Locale.US, "%.1f GB", freeBytes / (1024.0 * 1024 * 1024))
+            val usedPercent = if (totalBytes > 0) ((usedBytes.toDouble() / totalBytes) * 100).toInt() else 0
+
             json.put("totalBytes", totalBytes)
-        } catch (e: Exception) { e.printStackTrace() }
+            json.put("freeBytes", freeBytes)
+            json.put("usedBytes", usedBytes)
+            json.put("totalGB", totalGB)
+            json.put("usedGB", usedGB)
+            json.put("freeGB", freeGB)
+            json.put("usedPercent", usedPercent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         return json
     }
 }

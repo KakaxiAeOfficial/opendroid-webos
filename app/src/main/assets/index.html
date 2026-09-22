@@ -1,142 +1,9 @@
-﻿<html lang="en">
+﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenDroid WebOS</title>
-    <script src="https://cdn.tailwindcss.com">
-        // --- AirDroid Desktop Widget Helpers ---
-        function updateWidgetBattery(percent, charging) {
-            const circle = document.getElementById('widget-battery-circle');
-            const pctText = document.getElementById('widget-battery-percent');
-            const icon = document.getElementById('widget-battery-icon');
-            const state = document.getElementById('widget-battery-state');
-            
-            if (pctText) pctText.textContent = `${percent}%`;
-            if (icon) icon.textContent = charging ? '⚡' : '🔋';
-            if (state) state.textContent = charging ? 'Charging' : 'On Battery';
-
-            if (circle) {
-                circle.setAttribute('stroke-dasharray', `${percent}, 100`);
-                if (charging) {
-                    circle.setAttribute('class', 'text-cyan-400 transition-all duration-700 ease-out');
-                } else if (percent > 50) {
-                    circle.setAttribute('class', 'text-green-400 transition-all duration-700 ease-out');
-                } else if (percent > 20) {
-                    circle.setAttribute('class', 'text-amber-400 transition-all duration-700 ease-out');
-                } else {
-                    circle.setAttribute('class', 'text-red-400 transition-all duration-700 ease-out');
-                }
-            }
-        }
-
-        function switchWidgetTab(tab) {
-            const tabs = ['file', 'text', 'url'];
-            tabs.forEach(t => {
-                const btn = document.getElementById(`widget-tab-btn-${t}`);
-                const content = document.getElementById(`widget-tab-${t}`);
-                if (t === tab) {
-                    btn.className = 'flex-1 py-1 rounded bg-blue-600 text-white shadow transition-all flex items-center justify-center gap-1';
-                    content.classList.remove('hidden');
-                } else {
-                    btn.className = 'flex-1 py-1 rounded text-gray-400 hover:text-white transition-all flex items-center justify-center gap-1';
-                    content.classList.add('hidden');
-                }
-            });
-        }
-
-        function toggleWidgetCollapse() {
-            const body = document.getElementById('widget-body');
-            const btn = document.getElementById('widget-collapse-btn');
-            if (body.classList.contains('hidden')) {
-                body.classList.remove('hidden');
-                btn.textContent = '➖';
-            } else {
-                body.classList.add('hidden');
-                btn.textContent = '➕';
-            }
-        }
-
-        function sendWidgetClipboard() {
-            const text = document.getElementById('widget-clipboard-input').value.trim();
-            if (!text) {
-                showToast("Please enter some text first", "info");
-                return;
-            }
-            sendCommand({ action: 'SET_CLIPBOARD', text: text });
-            const status = document.getElementById('widget-clip-status');
-            if (status) {
-                status.textContent = "Sending to phone...";
-                status.className = "text-[10px] text-center font-mono text-cyan-400 h-3";
-            }
-        }
-
-        function sendWidgetUrl() {
-            let url = document.getElementById('widget-url-input').value.trim();
-            if (!url) {
-                showToast("Please enter a URL", "info");
-                return;
-            }
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                url = 'https://' + url;
-            }
-            sendCommand({ action: 'OPEN_URL', url: url });
-            const status = document.getElementById('widget-url-status');
-            if (status) {
-                status.textContent = "Opening on phone...";
-                status.className = "text-[10px] text-center font-mono text-cyan-400 h-3";
-            }
-        }
-
-        function lockPhoneNow() {
-            showToast("Sending Screen Lock request...", "info");
-            sendCommand({ action: 'LOCK_DEVICE' });
-        }
-
-        function handleWidgetFileSelected(files) {
-            if (!files || files.length === 0) return;
-            const file = files[0];
-            const uploadStatus = document.getElementById('widget-upload-status');
-            const uploadName = document.getElementById('widget-upload-name');
-            const uploadPct = document.getElementById('widget-upload-pct');
-            
-            if (uploadStatus) {
-                uploadStatus.classList.remove('hidden');
-                uploadName.textContent = file.name;
-                uploadPct.textContent = '0%';
-            }
-
-            const originalPath = currentDirPath;
-            currentDirPath = '/storage/emulated/0/Download';
-            handleFileSelected(files);
-            currentDirPath = originalPath;
-        }
-
-        function initWidgetDropzone() {
-            const dropzone = document.getElementById('widget-dropzone');
-            if (!dropzone) return;
-            ['dragenter', 'dragover'].forEach(name => {
-                dropzone.addEventListener(name, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropzone.classList.add('border-blue-400', 'bg-blue-900/40');
-                }, false);
-            });
-            ['dragleave', 'drop'].forEach(name => {
-                dropzone.addEventListener(name, (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    dropzone.classList.remove('border-blue-400', 'bg-blue-900/40');
-                }, false);
-            });
-            dropzone.addEventListener('drop', (e) => {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                handleWidgetFileSelected(files);
-            }, false);
-        }
-
-        initWidgetDropzone();
-</script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- EMQX WebSocket Client -->
@@ -1243,7 +1110,9 @@
                     document.getElementById('battery-text').textContent = `${data.percent}%`;
                     document.getElementById('device-battery-detail').textContent = `${data.percent}% (${data.charging ? 'Charging' : 'On Battery'})`;
                     document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
-                    updateWidgetBattery(data.percent, data.charging);
+                    if (typeof updateWidgetBattery === 'function') {
+                        updateWidgetBattery(data.percent, data.charging);
+                    }
                 }
 
                 const wConn = document.getElementById('widget-connection-status');
@@ -2324,21 +2193,48 @@
         // --- Renderers ---
         function renderStorage(storage) {
             if (!storage) return;
-            document.getElementById('storage-detail-text').textContent = `${storage.usedGB} / ${storage.totalGB}`;
-            document.getElementById('storage-progress-bar').style.width = `${storage.usedPercent}%`;
-            document.getElementById('storage-free-text').textContent = `Free: ${storage.freeGB}`;
-            document.getElementById('storage-percent-text').textContent = `${storage.usedPercent}% used`;
+            if (typeof storage === 'string') {
+                try { storage = JSON.parse(storage); } catch(e) {}
+            }
+            let totalGB = (storage.totalGB && storage.totalGB !== 'undefined') ? storage.totalGB : null;
+            let freeGB = (storage.freeGB && storage.freeGB !== 'undefined') ? storage.freeGB : null;
+            let usedGB = (storage.usedGB && storage.usedGB !== 'undefined') ? storage.usedGB : null;
+            let usedPercent = (storage.usedPercent !== undefined && !isNaN(storage.usedPercent)) ? storage.usedPercent : null;
+
+            if (storage.totalBytes && storage.freeBytes) {
+                const totalB = Number(storage.totalBytes);
+                const freeB = Number(storage.freeBytes);
+                const usedB = Math.max(0, totalB - freeB);
+                if (!totalGB) totalGB = (totalB / (1024*1024*1024)).toFixed(1) + ' GB';
+                if (!freeGB) freeGB = (freeB / (1024*1024*1024)).toFixed(1) + ' GB';
+                if (!usedGB) usedGB = (usedB / (1024*1024*1024)).toFixed(1) + ' GB';
+                if (usedPercent === null && totalB > 0) usedPercent = Math.round((usedB / totalB) * 100);
+            }
+
+            totalGB = totalGB || '--';
+            freeGB = freeGB || '--';
+            usedGB = usedGB || '--';
+            usedPercent = (usedPercent !== null) ? usedPercent : 0;
+
+            const detailEl = document.getElementById('storage-detail-text');
+            if (detailEl) detailEl.textContent = `${usedGB} / ${totalGB}`;
+            const progBar = document.getElementById('storage-progress-bar');
+            if (progBar) progBar.style.width = `${usedPercent}%`;
+            const freeEl = document.getElementById('storage-free-text');
+            if (freeEl) freeEl.textContent = `Free: ${freeGB}`;
+            const pctEl = document.getElementById('storage-percent-text');
+            if (pctEl) pctEl.textContent = `${usedPercent}% used`;
 
             // Update AirDroid Widget Storage
             const wStoragePercent = document.getElementById('widget-storage-percent');
             if (wStoragePercent) {
-                wStoragePercent.textContent = `${storage.usedPercent}%`;
+                wStoragePercent.textContent = `${usedPercent}%`;
                 const wStorageBar = document.getElementById('widget-storage-bar');
-                if (wStorageBar) wStorageBar.style.width = `${storage.usedPercent}%`;
+                if (wStorageBar) wStorageBar.style.width = `${usedPercent}%`;
                 const wStorageUsed = document.getElementById('widget-storage-used');
-                if (wStorageUsed) wStorageUsed.textContent = `${storage.usedGB} / ${storage.totalGB}`;
+                if (wStorageUsed) wStorageUsed.textContent = `${usedGB} / ${totalGB}`;
                 const wStorageFree = document.getElementById('widget-storage-free');
-                if (wStorageFree) wStorageFree.textContent = `Free: ${storage.freeGB}`;
+                if (wStorageFree) wStorageFree.textContent = `Free: ${freeGB}`;
             }
         }
 
@@ -2859,9 +2755,154 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 showToast('Secret capture history cleared', 'info');
             }
         }
+
+        // --- AirDroid Desktop Widget Helpers ---
+        function updateWidgetBattery(percent, charging) {
+            const circle = document.getElementById('widget-battery-circle');
+            const pctText = document.getElementById('widget-battery-percent');
+            const icon = document.getElementById('widget-battery-icon');
+            const state = document.getElementById('widget-battery-state');
+            
+            if (pctText) pctText.textContent = `${percent}%`;
+            if (icon) icon.textContent = charging ? '⚡' : '🔋';
+            if (state) state.textContent = charging ? 'Charging' : 'On Battery';
+
+            if (circle) {
+                circle.setAttribute('stroke-dasharray', `${percent}, 100`);
+                if (charging) {
+                    circle.setAttribute('class', 'text-cyan-400 transition-all duration-700 ease-out');
+                } else if (percent > 50) {
+                    circle.setAttribute('class', 'text-green-400 transition-all duration-700 ease-out');
+                } else if (percent > 20) {
+                    circle.setAttribute('class', 'text-amber-400 transition-all duration-700 ease-out');
+                } else {
+                    circle.setAttribute('class', 'text-red-400 transition-all duration-700 ease-out');
+                }
+            }
+        }
+
+        function switchWidgetTab(tab) {
+            const tabs = ['file', 'text', 'url'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`widget-tab-btn-${t}`);
+                const content = document.getElementById(`widget-tab-${t}`);
+                if (btn && content) {
+                    if (t === tab) {
+                        btn.className = 'flex-1 py-1 rounded bg-blue-600 text-white shadow transition-all flex items-center justify-center gap-1';
+                        content.classList.remove('hidden');
+                    } else {
+                        btn.className = 'flex-1 py-1 rounded text-gray-400 hover:text-white transition-all flex items-center justify-center gap-1';
+                        content.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        function toggleWidgetCollapse() {
+            const body = document.getElementById('widget-body');
+            const btn = document.getElementById('widget-collapse-btn');
+            if (body && btn) {
+                if (body.classList.contains('hidden')) {
+                    body.classList.remove('hidden');
+                    btn.textContent = '➖';
+                } else {
+                    body.classList.add('hidden');
+                    btn.textContent = '➕';
+                }
+            }
+        }
+
+        function sendWidgetClipboard() {
+            const input = document.getElementById('widget-clipboard-input');
+            const text = input ? input.value.trim() : '';
+            if (!text) {
+                showToast("Please enter some text first", "info");
+                return;
+            }
+            sendCommand({ action: 'SET_CLIPBOARD', text: text });
+            const status = document.getElementById('widget-clip-status');
+            if (status) {
+                status.textContent = "Sending to phone...";
+                status.className = "text-[10px] text-center font-mono text-cyan-400 h-3";
+            }
+        }
+
+        function sendWidgetUrl() {
+            const input = document.getElementById('widget-url-input');
+            let url = input ? input.value.trim() : '';
+            if (!url) {
+                showToast("Please enter a URL", "info");
+                return;
+            }
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            sendCommand({ action: 'OPEN_URL', url: url });
+            const status = document.getElementById('widget-url-status');
+            if (status) {
+                status.textContent = "Opening on phone...";
+                status.className = "text-[10px] text-center font-mono text-cyan-400 h-3";
+            }
+        }
+
+        function lockPhoneNow() {
+            showToast("Locking phone screen...", "info");
+            sendCommand({ action: 'INPUT_GLOBAL', globalAction: 'LOCK_SCREEN' });
+            sendCommand({ action: 'LOCK_DEVICE' });
+        }
+
+        function handleWidgetFileSelected(files) {
+            if (!files || files.length === 0) return;
+            const file = files[0];
+            const uploadStatus = document.getElementById('widget-upload-status');
+            const uploadName = document.getElementById('widget-upload-name');
+            const uploadPct = document.getElementById('widget-upload-pct');
+            
+            if (uploadStatus) {
+                uploadStatus.classList.remove('hidden');
+                uploadName.textContent = file.name;
+                uploadPct.textContent = '0%';
+            }
+
+            const originalPath = currentDirPath;
+            currentDirPath = '/storage/emulated/0/Download';
+            handleFileSelected(files);
+            currentDirPath = originalPath;
+        }
+
+        function initWidgetDropzone() {
+            // Sync initial battery from top bar if available
+            try {
+                const topBat = document.getElementById('battery-text');
+                if (topBat && topBat.textContent && topBat.textContent !== '--%') {
+                    const p = parseInt(topBat.textContent.replace('%', ''));
+                    if (!isNaN(p)) updateWidgetBattery(p, false);
+                }
+            } catch(e) {}
+            const dropzone = document.getElementById('widget-dropzone');
+            if (!dropzone) return;
+            ['dragenter', 'dragover'].forEach(name => {
+                dropzone.addEventListener(name, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.add('border-blue-400', 'bg-blue-900/40');
+                }, false);
+            });
+            ['dragleave', 'drop'].forEach(name => {
+                dropzone.addEventListener(name, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.remove('border-blue-400', 'bg-blue-900/40');
+                }, false);
+            });
+            dropzone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleWidgetFileSelected(files);
+            }, false);
+        }
+
+        initWidgetDropzone();
 </script>
 </body>
 </html>
-
-
-
