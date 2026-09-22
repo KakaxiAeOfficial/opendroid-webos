@@ -586,7 +586,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun checkAccessibilityPermission(): Boolean {
-        return RemoteInputService.instance != null
+        if (RemoteInputService.instance != null) return true
+        return try {
+            val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as? android.view.accessibility.AccessibilityManager
+            val enabledServices = am?.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+            enabledServices?.any {
+                val sInfo = it.resolveInfo.serviceInfo
+                sInfo.packageName == packageName && sInfo.name == RemoteInputService::class.java.name
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
     }
 
     private fun checkNotificationAccess(): Boolean {
@@ -604,5 +614,3 @@ class MainActivity : ComponentActivity() {
         nsdManager.unregisterService()
     }
 }
-
-
