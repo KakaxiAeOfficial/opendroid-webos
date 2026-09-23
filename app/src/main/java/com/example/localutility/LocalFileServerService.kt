@@ -1,6 +1,9 @@
 package com.example.localutility
 
+import android.app.AlarmManager
 import android.app.Notification
+import android.app.PendingIntent
+import android.os.SystemClock
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -123,6 +126,31 @@ class LocalFileServerService : Service() {
         startForegroundService()
         startServer()
         return START_STICKY
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d("OpenDroid", "Task swiped from recents - scheduling foreground service restart")
+        try {
+            val restartIntent = Intent(applicationContext, LocalFileServerService::class.java).apply {
+                setPackage(packageName)
+                putExtra("PAIRING_CODE", currentPairingCode)
+            }
+            val restartPendingIntent = PendingIntent.getService(
+                applicationContext,
+                1,
+                restartIntent,
+                PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val alarmService = getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+            alarmService?.set(
+                AlarmManager.ELAPSED_REALTIME,
+                SystemClock.elapsedRealtime() + 1000,
+                restartPendingIntent
+            )
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error in onTaskRemoved restart", e)
+        }
     }
 
     private fun startForegroundService() {
