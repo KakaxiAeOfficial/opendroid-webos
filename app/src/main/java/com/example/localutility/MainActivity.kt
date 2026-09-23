@@ -455,6 +455,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateAllPermissionStates() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, "android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionsLauncher.launch(arrayOf("android.permission.POST_NOTIFICATIONS"))
+            }
+        }
         isStorageGrantedState.value = checkStoragePermission()
         isBatteryIgnoredState.value = checkBatteryOptimization()
         isAccessibilityGrantedState.value = checkAccessibilityPermission()
@@ -588,12 +593,14 @@ class MainActivity : ComponentActivity() {
     private fun checkAccessibilityPermission(): Boolean {
         if (RemoteInputService.instance != null) return true
         return try {
-            val am = getSystemService(Context.ACCESSIBILITY_SERVICE) as? android.view.accessibility.AccessibilityManager
-            val enabledServices = am?.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-            enabledServices?.any {
-                val sInfo = it.resolveInfo.serviceInfo
-                sInfo.packageName == packageName && sInfo.name == RemoteInputService::class.java.name
-            } ?: false
+            val enabledServices = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
+            val expectedComponent = ComponentName(this, RemoteInputService::class.java).flattenToString()
+            val expectedShort = ComponentName(this, RemoteInputService::class.java).flattenToShortString()
+            enabledServices.split(":").any {
+                it.equals(expectedComponent, ignoreCase = true) ||
+                it.equals(expectedShort, ignoreCase = true) ||
+                (it.contains(packageName) && it.contains("RemoteInputService"))
+            }
         } catch (e: Exception) {
             false
         }
