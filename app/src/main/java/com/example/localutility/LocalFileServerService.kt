@@ -652,6 +652,18 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+            // --- Phase 3: Two-Way Audio (Walkie-Talkie Playback) ---
+            "WALKIE_TALKIE_CHUNK" -> {
+                val data = json.optString("data")
+                if (data.isNotEmpty()) {
+                    audioStreamer.playWalkieTalkieChunk(data)
+                }
+            }
+
+            "STOP_WALKIE_TALKIE" -> {
+                audioStreamer.stopWalkieTalkie()
+            }
+
             // --- Notifications ---
             "QUICK_REPLY" -> {
                 val key = json.getString("key")

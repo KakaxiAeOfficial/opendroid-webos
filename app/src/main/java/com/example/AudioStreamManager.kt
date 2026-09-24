@@ -2,8 +2,10 @@ package com.example.localutility
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioRecord
+import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.util.Base64
 import android.util.Log
@@ -29,6 +31,8 @@ class AudioStreamManager private constructor(private val context: Context) {
     private var recordingThread: Thread? = null
     @Volatile
     var isRecording = false
+
+    private var audioTrack: AudioTrack? = null
 
     @SuppressLint("MissingPermission")
     fun startStreaming(onChunk: (String) -> Unit) {
@@ -86,6 +90,65 @@ class AudioStreamManager private constructor(private val context: Context) {
             Log.d("AudioStream", "Ambient audio streaming stopped")
         } catch (e: Exception) {
             Log.e("AudioStream", "Error stopping audio", e)
+        }
+    }
+
+    // --- Phase 3 Step 3.3: Two-Way Audio (Walkie-Talkie Speaker Playback) ---
+    fun playWalkieTalkieChunk(base64Pcm: String) {
+        try {
+            if (audioTrack == null || audioTrack?.state != AudioTrack.STATE_INITIALIZED) {
+                initAudioTrack()
+            }
+            val pcmData = Base64.decode(base64Pcm, Base64.NO_WRAP)
+            if (pcmData.isNotEmpty()) {
+                audioTrack?.write(pcmData, 0, pcmData.size)
+            }
+        } catch (e: Exception) {
+            Log.e("AudioStream", "Walkie-talkie playback error", e)
+        }
+    }
+
+    private fun initAudioTrack() {
+        try {
+            val minBufferSize = AudioTrack.getMinBufferSize(
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AUDIO_FORMAT
+            )
+            val bufferSize = maxOf(minBufferSize, 6400)
+            audioTrack = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AUDIO_FORMAT)
+                        .setSampleRate(SAMPLE_RATE)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(bufferSize)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+
+            audioTrack?.play()
+            Log.d("AudioStream", "Walkie-talkie AudioTrack initialized and playing")
+        } catch (e: Exception) {
+            Log.e("AudioStream", "Failed to init AudioTrack", e)
+        }
+    }
+
+    fun stopWalkieTalkie() {
+        try {
+            audioTrack?.stop()
+            audioTrack?.release()
+            audioTrack = null
+            Log.d("AudioStream", "Walkie-talkie stopped")
+        } catch (e: Exception) {
+            Log.e("AudioStream", "Error stopping AudioTrack", e)
         }
     }
 }
