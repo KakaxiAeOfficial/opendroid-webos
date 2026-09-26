@@ -824,6 +824,71 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+            // --- Phase 4: Advanced File Operations ---
+            "DELETE_FILE" -> {
+                val path = json.optString("path", "")
+                val success = teleManager.deleteFileOrFolder(path)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "FILE_OP_RESULT")
+                    put("op", "DELETE")
+                    put("success", success)
+                    put("path", path)
+                }.toString())
+            }
+
+            "RENAME_FILE" -> {
+                val oldPath = json.optString("oldPath", "")
+                val newName = json.optString("newName", "")
+                val success = teleManager.renameFileOrFolder(oldPath, newName)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "FILE_OP_RESULT")
+                    put("op", "RENAME")
+                    put("success", success)
+                    put("oldPath", oldPath)
+                    put("newName", newName)
+                }.toString())
+            }
+
+            "CREATE_FOLDER" -> {
+                val parentPath = json.optString("parentPath", "")
+                val folderName = json.optString("folderName", "")
+                val success = teleManager.createFolder(parentPath, folderName)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "FILE_OP_RESULT")
+                    put("op", "CREATE_FOLDER")
+                    put("success", success)
+                    put("parentPath", parentPath)
+                    put("folderName", folderName)
+                }.toString())
+            }
+
+            "ZIP_AND_DOWNLOAD" -> {
+                val pathsArray = json.optJSONArray("paths") ?: JSONArray()
+                val pathsList = mutableListOf<String>()
+                for (i in 0 until pathsArray.length()) {
+                    pathsList.add(pathsArray.getString(i))
+                }
+                serviceScope.launch {
+                    val zipPath = teleManager.createZipArchive(pathsList)
+                    if (zipPath != null) {
+                        val zipFile = File(zipPath)
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "ZIP_READY")
+                            put("zipPath", zipPath)
+                            put("zipName", zipFile.name)
+                            put("totalSize", zipFile.length())
+                        }.toString())
+                    } else {
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "FILE_OP_RESULT")
+                            put("op", "ZIP")
+                            put("success", false)
+                            put("error", "Failed to create ZIP")
+                        }.toString())
+                    }
+                }
+            }
+
             "FETCH_CALL_LOGS" -> {
                 broadcastMessage(JSONObject().apply {
                     put("type", "CALL_LOGS_LIST")

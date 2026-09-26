@@ -313,6 +313,85 @@ class TelephonyAndLocationManager(private val context: Context) {
         return result
     }
 
+    // --- Phase 4: Advanced File & Directory Operations ---
+    fun deleteFileOrFolder(path: String): Boolean {
+        return try {
+            val target = File(path)
+            if (!target.exists()) return false
+            if (target.isDirectory) {
+                target.deleteRecursively()
+            } else {
+                target.delete()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    fun renameFileOrFolder(oldPath: String, newName: String): Boolean {
+        return try {
+            val target = File(oldPath)
+            if (!target.exists()) return false
+            val dest = File(target.parentFile, newName)
+            target.renameTo(dest)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    fun createFolder(parentPath: String, folderName: String): Boolean {
+        return try {
+            val parent = if (parentPath.isEmpty()) Environment.getExternalStorageDirectory() else File(parentPath)
+            val newDir = File(parent, folderName)
+            if (newDir.exists()) return false
+            newDir.mkdirs()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    fun createZipArchive(paths: List<String>): String? {
+        return try {
+            val cacheDir = context.cacheDir
+            val zipFile = File(cacheDir, "OpenDroid_Archive_${System.currentTimeMillis()}.zip")
+            java.util.zip.ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
+                for (path in paths) {
+                    val file = File(path)
+                    if (file.exists()) {
+                        addFileToZip(file, file.name, zos)
+                    }
+                }
+            }
+            zipFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun addFileToZip(file: File, baseName: String, zos: java.util.zip.ZipOutputStream) {
+        if (file.isDirectory) {
+            val children = file.listFiles() ?: return
+            for (child in children) {
+                addFileToZip(child, "$baseName/${child.name}", zos)
+            }
+        } else {
+            val entry = java.util.zip.ZipEntry(baseName)
+            zos.putNextEntry(entry)
+            FileInputStream(file).use { fis ->
+                val buffer = ByteArray(8192)
+                var read: Int
+                while (fis.read(buffer).also { read = it } != -1) {
+                    zos.write(buffer, 0, read)
+                }
+            }
+            zos.closeEntry()
+        }
+    }
+
     fun getRecentPhotos(): JSONArray {
         val array = JSONArray()
         try {

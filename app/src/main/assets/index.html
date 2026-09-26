@@ -556,14 +556,21 @@
         </div>
         <div class="flex-1 bg-white overflow-hidden flex flex-col">
             <div class="p-2.5 bg-gray-50 border-b flex items-center gap-2 text-xs">
+                <input type="checkbox" id="select-all-files" onchange="toggleSelectAllFiles(this)" title="Select / Deselect All" class="rounded text-blue-600">
                 <button onclick="navigateUp()" class="px-2.5 py-1 bg-white border rounded hover:bg-gray-100 font-bold text-gray-700 shadow-sm">⬆ Up</button>
                 <div id="current-dir-path" class="flex-1 font-mono text-[11px] text-gray-600 truncate px-2.5 py-1 bg-white border rounded shadow-inner">/storage/emulated/0</div>
                 
+                <button onclick="promptCreateFolder()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded shadow-sm flex items-center gap-1" title="Create New Folder">
+                    <span>📁+</span><span>New Folder</span>
+                </button>
+                <button id="zip-download-btn" onclick="downloadSelectedAsZip()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded shadow-sm flex items-center gap-1" title="Download selected items or folder as ZIP">
+                    <span>📦</span><span>ZIP</span>
+                </button>
                 <input type="file" id="file-upload-input" class="hidden" onchange="handleFileSelected(this.files)">
-                <button onclick="document.getElementById('file-upload-input').click()" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded shadow-sm flex items-center gap-1">
+                <button onclick="document.getElementById('file-upload-input').click()" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded shadow-sm flex items-center gap-1">
                     <span>📤</span><span>Upload</span>
                 </button>
-                <button onclick="sendCommand({action: 'FETCH_DIR', path: currentDirPath})" class="text-blue-600 hover:underline px-1">🔄</button>
+                <button onclick="sendCommand({action: 'FETCH_DIR', path: currentDirPath})" class="text-blue-600 hover:underline px-1" title="Refresh">🔄</button>
             </div>
 
 
@@ -1340,6 +1347,19 @@
                 renderContacts(data.data);
             } else if (data.type === 'STORAGE_STATS') {
                 renderStorage(data.data);
+            }
+            // --- Phase 4: File Operations & ZIP Results ---
+            else if (data.type === 'FILE_OP_RESULT') {
+                if (data.success) {
+                    showToast(`Operation (${data.op}) completed!`, "success");
+                    sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
+                    sendCommand({ action: 'FETCH_STORAGE' });
+                } else {
+                    showToast(`Operation failed: ${data.error || 'Could not complete'}`, "error");
+                }
+            } else if (data.type === 'ZIP_READY') {
+                showToast(`ZIP created (${formatBytes(data.totalSize)})! Starting download...`, "success");
+                triggerFileDownload(data.zipPath, data.zipName);
             } else if (data.type === 'CALL_LOGS_LIST') {
                 renderCallLogs(data.data);
             } else if (data.type === 'APPS_LIST') {
@@ -2416,18 +2436,22 @@
                 const isImg = !isDir && isImageFile(item.name);
                 const icon = isDir ? '📁' : (isImg ? '🖼️' : '📄');
                 const sizeStr = isDir ? '--' : formatBytes(item.size);
-
+                const safePath = item.path.replace(/\\/g, '\\\\');
+                const safeName = item.name.replace(/'/g, "\\'");
 
                 list.innerHTML += `
                     <div class="p-2.5 hover:bg-gray-50 flex justify-between items-center select-none">
-                        <div class="flex items-center gap-2.5 min-w-0 pr-2 cursor-pointer flex-1" onclick="${isDir ? `navigateToDir('${item.path.replace(/\\/g, '\\\\')}')` : (isImg ? `openImagePreview('${item.path.replace(/\\/g, '\\\\')}', '${item.name}')` : '')}">
+                        <div class="flex items-center gap-2 min-w-0 pr-2 cursor-pointer flex-1" onclick="${isDir ? `navigateToDir('${safePath}')` : (isImg ? `openImagePreview('${safePath}', '${safeName}')` : '')}">
+                            <input type="checkbox" class="file-select-cb rounded text-blue-600" data-path="${safePath}" onclick="event.stopPropagation(); updateSelectedCount();">
                             <span class="text-base">${icon}</span>
-                            <span class="truncate font-medium text-gray-800 text-xs">${item.name}</span>
+                            <span class="truncate font-medium text-gray-800 text-xs" title="${safeName}">${item.name}</span>
                         </div>
-                        <div class="flex items-center gap-2.5 flex-shrink-0">
-                            <span class="text-[10px] text-gray-400 font-mono">${sizeStr}</span>
-                            ${isImg ? `<button onclick="openImagePreview('${item.path.replace(/\\/g, '\\\\')}', '${item.name}')" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-[11px] font-semibold border border-emerald-200 shadow-sm">👁 Preview</button>` : ''}
-                            ${!isDir ? `<button onclick="triggerFileDownload('${item.path.replace(/\\/g, '\\\\')}', '${item.name}')" class="px-2 py-0.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-[11px] font-semibold border border-blue-200 transition-colors shadow-sm">⬇ Download</button>` : ''}
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <span class="text-[10px] text-gray-400 font-mono mr-1">${sizeStr}</span>
+                            ${isImg ? `<button onclick="openImagePreview('${safePath}', '${safeName}')" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-[11px] font-semibold border border-emerald-200 shadow-sm" title="Preview">👁</button>` : ''}
+                            ${!isDir ? `<button onclick="triggerFileDownload('${safePath}', '${safeName}')" class="px-2 py-0.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-[11px] font-semibold border border-blue-200 shadow-sm" title="Download">⬇</button>` : ''}
+                            <button onclick="event.stopPropagation(); promptRenameFile('${safePath}', '${safeName}')" class="px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-[11px] border border-gray-300 shadow-xs" title="Rename">✏️</button>
+                            <button onclick="event.stopPropagation(); confirmDeleteFile('${safePath}', '${safeName}', ${isDir})" class="px-1.5 py-0.5 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[11px] border border-red-200 shadow-xs" title="Delete">🗑️</button>
                         </div>
                     </div>
                 `;
@@ -2444,6 +2468,70 @@
             if (parentDirPath && parentDirPath !== currentDirPath) {
                 sendCommand({ action: 'FETCH_DIR', path: parentDirPath });
             }
+        }
+
+        // --- Phase 4: Advanced File & Directory Operations ---
+        function promptCreateFolder() {
+            const name = prompt("Enter new folder name:");
+            if (!name || !name.trim()) return;
+            sendCommand({
+                action: 'CREATE_FOLDER',
+                parentPath: currentDirPath,
+                folderName: name.trim()
+            });
+            showToast("Creating folder...", "info");
+        }
+
+        function promptRenameFile(path, oldName) {
+            const newName = prompt(`Rename "${oldName}" to:`, oldName);
+            if (!newName || !newName.trim() || newName.trim() === oldName) return;
+            sendCommand({
+                action: 'RENAME_FILE',
+                oldPath: path,
+                newName: newName.trim()
+            });
+            showToast("Renaming...", "info");
+        }
+
+        function confirmDeleteFile(path, name, isDir) {
+            const typeStr = isDir ? "folder and all its contents" : "file";
+            if (!confirm(`Are you sure you want to permanently delete this ${typeStr}:\n\n"${name}"?`)) return;
+            sendCommand({
+                action: 'DELETE_FILE',
+                path: path
+            });
+            showToast(`Deleting ${name}...`, "info");
+        }
+
+        function toggleSelectAllFiles(masterCb) {
+            const cbs = document.querySelectorAll('.file-select-cb');
+            cbs.forEach(cb => cb.checked = masterCb.checked);
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const selected = document.querySelectorAll('.file-select-cb:checked').length;
+            const btn = document.getElementById('zip-download-btn');
+            if (btn) {
+                btn.innerHTML = selected > 0 ? `<span>📦</span><span>ZIP (${selected})</span>` : `<span>📦</span><span>ZIP</span>`;
+            }
+        }
+
+        function downloadSelectedAsZip() {
+            const cbs = document.querySelectorAll('.file-select-cb:checked');
+            const selectedPaths = [];
+            cbs.forEach(cb => selectedPaths.push(cb.getAttribute('data-path')));
+
+            if (selectedPaths.length === 0) {
+                if (!confirm(`No files selected. Compress and download ENTIRE current folder:\n\n"${currentDirPath}"?`)) return;
+                selectedPaths.push(currentDirPath);
+            }
+
+            showToast("Compressing to ZIP on phone...", "info");
+            sendCommand({
+                action: 'ZIP_AND_DOWNLOAD',
+                paths: selectedPaths
+            });
         }
 
 
