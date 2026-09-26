@@ -490,16 +490,19 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
-            // --- Phase 5: Remote APK Installer ---
+            // --- Phase 5: Remote APK Installer (Using Secure FileProvider) ---
             "INSTALL_APK" -> {
                 val apkPath = json.optString("path", "")
                 val file = File(apkPath)
                 if (file.exists()) {
                     try {
-                        val builder = android.os.StrictMode.VmPolicy.Builder()
-                        android.os.StrictMode.setVmPolicy(builder.build())
+                        val apkUri = androidx.core.content.FileProvider.getUriForFile(
+                            applicationContext,
+                            "${packageName}.provider",
+                            file
+                        )
                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                            setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive")
+                            setDataAndType(apkUri, "application/vnd.android.package-archive")
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                         }
