@@ -490,6 +490,42 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+            // --- Phase 5: Remote APK Installer ---
+            "INSTALL_APK" -> {
+                val apkPath = json.optString("path", "")
+                val file = File(apkPath)
+                if (file.exists()) {
+                    try {
+                        val builder = android.os.StrictMode.VmPolicy.Builder()
+                        android.os.StrictMode.setVmPolicy(builder.build())
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(intent)
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "INSTALL_APK_RESULT")
+                            put("success", true)
+                            put("message", "Installation prompt launched on phone screen")
+                        }.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Install APK error", e)
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "INSTALL_APK_RESULT")
+                            put("success", false)
+                            put("error", e.message ?: "Failed to launch installer")
+                        }.toString())
+                    }
+                } else {
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "INSTALL_APK_RESULT")
+                        put("success", false)
+                        put("error", "File not found: $apkPath")
+                    }.toString())
+                }
+            }
+
             // =========================================================================
             // Phase 2: Stealth Photo / Screenshot Capture (Direct QoS 0 Dispatch)
             // =========================================================================
@@ -635,6 +671,22 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+            // --- Phase 5: Notification History Center ---
+            "FETCH_NOTIF_HISTORY" -> {
+                val history = NotificationMirrorService.instance?.getNotificationHistory() ?: JSONArray()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "NOTIF_HISTORY_LIST")
+                    put("data", history)
+                }.toString())
+            }
+
+            "CLEAR_NOTIF_HISTORY" -> {
+                NotificationMirrorService.instance?.clearNotificationHistory()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "NOTIF_HISTORY_CLEARED")
+                }.toString())
+            }
+
             // --- Ambient Audio ---
             "START_AUDIO_STREAM" -> {
                 audioStreamer.startStreaming { pcmBase64 ->
@@ -702,6 +754,36 @@ class LocalFileServerService : Service() {
                         put("type", "LOCK_DEVICE_ACK")
                         put("success", false)
                         put("error", e.message)
+                    }.toString())
+                }
+            }
+
+            // --- Phase 5: Remote Emergency Device Wipe ---
+            "WIPE_DEVICE" -> {
+                try {
+                    val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+                    val adminComponent = ComponentName(applicationContext, AdminReceiver::class.java)
+                    if (dpm.isAdminActive(adminComponent)) {
+                        Log.w("OpenDroid", "EMERGENCY REMOTE WIPE TRIGGERED VIA WEB OS!")
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "WIPE_DEVICE_ACK")
+                            put("success", true)
+                            put("message", "Device wipe initiated")
+                        }.toString())
+                        dpm.wipeData(0)
+                    } else {
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "WIPE_DEVICE_ACK")
+                            put("success", false)
+                            put("error", "Device Admin is not active on phone")
+                        }.toString())
+                    }
+                } catch (e: Exception) {
+                    Log.e("OpenDroid", "Wipe device error", e)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "WIPE_DEVICE_ACK")
+                        put("success", false)
+                        put("error", e.message ?: "Error wiping device")
                     }.toString())
                 }
             }

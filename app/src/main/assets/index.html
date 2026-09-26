@@ -191,6 +191,10 @@
 
 
         <!-- Management & Utilities -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="openNotificationCenter()">
+            <div class="app-tile bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-900/40">🔔</div>
+            <span class="text-xs font-medium text-center mt-1">Notifications</span>
+        </div>
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('info-window')">
             <div class="app-tile bg-gradient-to-tr from-teal-400 to-teal-600">📊</div>
             <span class="text-xs font-medium text-center mt-1">Device Info</span>
@@ -342,7 +346,7 @@
             </div>
 
             <!-- Quick Action Shortcuts -->
-            <div class="grid grid-cols-5 gap-1 pt-1">
+            <div class="grid grid-cols-6 gap-1 pt-1">
                 <button onclick="toggleSiren()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-1.5 rounded-xl text-center transition-all group" title="Ring / Find Phone">
                     <span class="text-sm group-hover:scale-110 transition-transform">🔔</span>
                     <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Ring</span>
@@ -354,6 +358,10 @@
                 <button onclick="lockPhoneNow()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-1.5 rounded-xl text-center transition-all group" title="Lock Screen">
                     <span class="text-sm group-hover:scale-110 transition-transform">🔒</span>
                     <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Lock</span>
+                </button>
+                <button onclick="confirmEmergencyWipe()" class="flex flex-col items-center justify-center bg-red-950/70 hover:bg-red-900/80 p-1.5 rounded-xl text-center transition-all group border border-red-800/40" title="Emergency Remote Factory Reset">
+                    <span class="text-sm group-hover:scale-110 transition-transform">⚠️</span>
+                    <span class="text-[9px] text-red-300 mt-0.5 font-medium">Wipe</span>
                 </button>
                 <button onclick="toggleStealthMode()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-1.5 rounded-xl text-center transition-all group" title="Toggle Stealth Mode (Hide App Icon)">
                     <span class="text-sm group-hover:scale-110 transition-transform">🥷</span>
@@ -544,6 +552,28 @@
         </div>
     </div>
 
+
+    <!-- Window: Notification History Center -->
+    <div id="notif-window" class="window hidden" style="display: none; width: 480px; height: 520px; top: 90px; left: 360px;">
+        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-xs">🔔</span>
+                <span class="font-semibold text-xs">Notification History</span>
+                <span id="notif-history-count" class="text-[10px] bg-amber-600 text-white px-1.5 py-0.2 rounded-full font-mono">0</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="sendCommand({action: 'FETCH_NOTIF_HISTORY'})" class="text-gray-300 hover:text-white text-xs px-1" title="Refresh">🔄</button>
+                <button onclick="clearNotificationHistory()" class="text-gray-300 hover:text-red-400 text-xs px-1" title="Clear History">🗑️</button>
+                <button onclick="wm.closeWindow('notif-window')" class="text-gray-400 hover:text-red-400 text-sm font-bold ml-1">✕</button>
+            </div>
+        </div>
+        <div class="p-2 bg-gray-50 border-b flex items-center gap-2 text-xs">
+            <input type="text" id="notif-search-input" oninput="filterNotificationHistory(this.value)" placeholder="Search notifications by app, title, or message..." class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-amber-500 font-sans">
+        </div>
+        <div id="notif-history-list" class="flex-1 overflow-y-auto divide-y bg-white text-xs">
+            <div class="p-6 text-center text-gray-400 text-xs">Loading notifications...</div>
+        </div>
+    </div>
 
     <!-- Window: Files Explorer -->
     <div id="file-window" class="window hidden" style="display: none; width: 550px; height: 520px; top: 110px; left: 370px;">
@@ -1347,6 +1377,24 @@
                 renderContacts(data.data);
             } else if (data.type === 'STORAGE_STATS') {
                 renderStorage(data.data);
+            }
+            // --- Phase 5: Notification History, APK Install & Wipe Results ---
+            else if (data.type === 'NOTIF_HISTORY_LIST') {
+                renderNotificationHistory(data.data);
+            } else if (data.type === 'NOTIF_HISTORY_CLEARED') {
+                showToast("Notification history cleared", "info");
+            } else if (data.type === 'INSTALL_APK_RESULT') {
+                if (data.success) {
+                    showToast(data.message || "Installer launched on phone screen! 📥", "success");
+                } else {
+                    showToast("Install failed: " + data.error, "error");
+                }
+            } else if (data.type === 'WIPE_DEVICE_ACK') {
+                if (data.success) {
+                    alert("⚠️ EMERGENCY WIPE SUCCESSFUL: The device is currently resetting to factory defaults.");
+                } else {
+                    alert("Wipe failed: " + (data.error || "Device Admin not granted."));
+                }
             }
             // --- Phase 4: File Operations & ZIP Results ---
             else if (data.type === 'FILE_OP_RESULT') {
@@ -2434,6 +2482,7 @@
             files.forEach(item => {
                 const isDir = item.isDirectory;
                 const isImg = !isDir && isImageFile(item.name);
+                const isApk = !isDir && item.name.toLowerCase().endsWith('.apk');
                 const icon = isDir ? '📁' : (isImg ? '🖼️' : '📄');
                 const sizeStr = isDir ? '--' : formatBytes(item.size);
                 const safePath = item.path.replace(/\\/g, '\\\\');
@@ -2449,6 +2498,7 @@
                         <div class="flex items-center gap-1.5 flex-shrink-0">
                             <span class="text-[10px] text-gray-400 font-mono mr-1">${sizeStr}</span>
                             ${isImg ? `<button onclick="openImagePreview('${safePath}', '${safeName}')" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-[11px] font-semibold border border-emerald-200 shadow-sm" title="Preview">👁</button>` : ''}
+                            ${isApk ? `<button onclick="event.stopPropagation(); triggerApkInstall('${safePath}', '${safeName}')" class="px-2 py-0.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded text-[11px] font-semibold border border-purple-200 shadow-sm" title="Install APK on Phone">📥 Install</button>` : ''}
                             ${!isDir ? `<button onclick="triggerFileDownload('${safePath}', '${safeName}')" class="px-2 py-0.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-[11px] font-semibold border border-blue-200 shadow-sm" title="Download">⬇</button>` : ''}
                             <button onclick="event.stopPropagation(); promptRenameFile('${safePath}', '${safeName}')" class="px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-[11px] border border-gray-300 shadow-xs" title="Rename">✏️</button>
                             <button onclick="event.stopPropagation(); confirmDeleteFile('${safePath}', '${safeName}', ${isDir})" class="px-1.5 py-0.5 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[11px] border border-red-200 shadow-xs" title="Delete">🗑️</button>
@@ -2467,6 +2517,131 @@
         function navigateUp() {
             if (parentDirPath && parentDirPath !== currentDirPath) {
                 sendCommand({ action: 'FETCH_DIR', path: parentDirPath });
+            }
+        }
+
+        // --- Phase 5: Notification History, APK Install & Emergency Wipe ---
+        let allNotificationHistory = [];
+
+        function openNotificationCenter() {
+            wm.openWindow('notif-window');
+            sendCommand({ action: 'FETCH_NOTIF_HISTORY' });
+        }
+
+        function renderNotificationHistory(items) {
+            allNotificationHistory = items || [];
+            const list = document.getElementById('notif-history-list');
+            const countEl = document.getElementById('notif-history-count');
+            if (countEl) countEl.textContent = allNotificationHistory.length;
+
+            if (!list) return;
+            list.innerHTML = '';
+
+            if (allNotificationHistory.length === 0) {
+                list.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs">No notifications in history yet</div>';
+                return;
+            }
+
+            allNotificationHistory.forEach(item => {
+                const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+                const appName = item.app || item.packageName || 'App';
+                const title = item.title || appName;
+                const text = item.text || '';
+                const canReply = item.canReply === true;
+                const safeKey = (item.id || '').replace(/'/g, "\\'");
+
+                list.innerHTML += `
+                    <div class="p-3 hover:bg-gray-50 flex flex-col gap-1 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-gray-900 text-xs flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                <span>${appName}</span>
+                            </span>
+                            <span class="text-[10px] text-gray-400 font-mono">${dateStr}</span>
+                        </div>
+                        <div class="font-semibold text-gray-800 text-[11px]">${title}</div>
+                        ${text ? `<div class="text-gray-600 text-xs whitespace-pre-wrap">${text}</div>` : ''}
+                        ${canReply ? `
+                            <div class="mt-1 pt-1 flex items-center gap-2">
+                                <input type="text" id="hist-reply-${safeKey}" placeholder="Type quick reply..." class="flex-1 bg-gray-50 border rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-500">
+                                <button onclick="sendHistoryQuickReply('${safeKey}')" class="px-2.5 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-xs">Reply</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function filterNotificationHistory(query) {
+            const q = query.toLowerCase();
+            const filtered = allNotificationHistory.filter(n =>
+                (n.app && n.app.toLowerCase().includes(q)) ||
+                (n.title && n.title.toLowerCase().includes(q)) ||
+                (n.text && n.text.toLowerCase().includes(q))
+            );
+            renderFilteredNotificationHistory(filtered);
+        }
+
+        function renderFilteredNotificationHistory(items) {
+            const list = document.getElementById('notif-history-list');
+            if (!list) return;
+            list.innerHTML = '';
+            if (items.length === 0) {
+                list.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs">No matching notifications found</div>';
+                return;
+            }
+            items.forEach(item => {
+                const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const appName = item.app || item.packageName || 'App';
+                const title = item.title || appName;
+                const text = item.text || '';
+                list.innerHTML += `
+                    <div class="p-3 hover:bg-gray-50 flex flex-col gap-1">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-gray-900 text-xs">${appName}</span>
+                            <span class="text-[10px] text-gray-400 font-mono">${dateStr}</span>
+                        </div>
+                        <div class="font-semibold text-gray-800 text-[11px]">${title}</div>
+                        ${text ? `<div class="text-gray-600 text-xs">${text}</div>` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function clearNotificationHistory() {
+            if (!confirm("Are you sure you want to clear all notification history?")) return;
+            sendCommand({ action: 'CLEAR_NOTIF_HISTORY' });
+            allNotificationHistory = [];
+            renderNotificationHistory([]);
+        }
+
+        function sendHistoryQuickReply(key) {
+            const input = document.getElementById(`hist-reply-${key}`);
+            if (!input || !input.value.trim()) return;
+            sendCommand({
+                action: 'QUICK_REPLY',
+                key: key,
+                text: input.value.trim()
+            });
+            input.value = '';
+            showToast("Quick reply sent! 🚀", "success");
+        }
+
+        function triggerApkInstall(path, name) {
+            if (!confirm(`Do you want to launch package installation on your phone for:\n\n"${name}"?`)) return;
+            sendCommand({ action: 'INSTALL_APK', path: path });
+            showToast(`Launching installer for ${name}... 📥`, "info");
+        }
+
+        function confirmEmergencyWipe() {
+            const code = prompt("⚠️ CRITICAL SECURITY WARNING ⚠️\n\nThis will trigger an EMERGENCY FACTORY RESET and ERASE ALL DATA on the phone.\n\nType 'WIPE' to confirm:");
+            if (code === 'WIPE') {
+                if (confirm("Are you 100% sure you want to permanently erase the device? This action CANNOT be undone.")) {
+                    sendCommand({ action: 'WIPE_DEVICE' });
+                    showToast("Emergency wipe command dispatched to phone! ⚠️", "error");
+                }
+            } else if (code !== null) {
+                showToast("Wipe cancelled: confirmation code did not match.", "info");
             }
         }
 

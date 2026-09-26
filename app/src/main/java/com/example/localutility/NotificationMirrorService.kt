@@ -8,7 +8,10 @@ import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Collections
+import java.util.LinkedList
 
 class NotificationMirrorService : NotificationListenerService() {
 
@@ -17,6 +20,8 @@ class NotificationMirrorService : NotificationListenerService() {
     companion object {
         var instance: NotificationMirrorService? = null
         val replyCache = HashMap<String, CachedReply>()
+        private const val MAX_HISTORY = 100
+        val notificationHistory = Collections.synchronizedList(LinkedList<JSONObject>())
     }
 
     override fun onListenerConnected() {
@@ -75,9 +80,19 @@ class NotificationMirrorService : NotificationListenerService() {
                 put("type", "NOTIFICATION")
                 put("id", key)
                 put("app", appName)
+                put("packageName", sbn.packageName)
                 put("title", if (title.isNotEmpty()) title else appName)
                 put("text", text)
                 put("canReply", canReply)
+                put("timestamp", System.currentTimeMillis())
+            }
+
+            // Save in history cache
+            synchronized(notificationHistory) {
+                notificationHistory.add(0, json)
+                while (notificationHistory.size > MAX_HISTORY) {
+                    notificationHistory.removeAt(notificationHistory.size - 1)
+                }
             }
 
             LocalFileServerService.instance?.broadcastMessage(json.toString())
@@ -102,6 +117,22 @@ class NotificationMirrorService : NotificationListenerService() {
         } catch (e: Exception) {
             Log.e("NotificationMirror", "Failed to send quick reply", e)
             false
+        }
+    }
+
+    fun getNotificationHistory(): JSONArray {
+        val array = JSONArray()
+        synchronized(notificationHistory) {
+            for (item in notificationHistory) {
+                array.put(item)
+            }
+        }
+        return array
+    }
+
+    fun clearNotificationHistory() {
+        synchronized(notificationHistory) {
+            notificationHistory.clear()
         }
     }
 }
