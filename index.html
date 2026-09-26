@@ -1178,7 +1178,7 @@
         // --- Phase 6: Central Account & Multi-Device Hub Engine ---
         let currentPairingMode = 'account';
         let accountEmail = '';
-        let accountHash = '';
+        let accountTag = '';
         let currentDeviceId = '';
         let allDiscoveredDevices = {};
 
@@ -1202,14 +1202,11 @@
             }
         }
 
-        function hashAccountEmail(email) {
-            const str = email.trim().toLowerCase();
-            let hash = 0;
-            for (let i = 0; i < str.length; i++) {
-                hash = ((hash << 5) - hash) + str.charCodeAt(i);
-                hash |= 0;
-            }
-            return Math.abs(hash).toString(16).padStart(8, '0');
+        function getAccountTag(email) {
+            return email.trim().toLowerCase()
+                .replace(/@/g, '_at_')
+                .replace(/\./g, '_')
+                .replace(/\+/g, '_');
         }
 
         function connectViaAccount() {
@@ -1219,7 +1216,7 @@
                 return;
             }
             accountEmail = email.toLowerCase();
-            accountHash = hashAccountEmail(accountEmail);
+            accountTag = getAccountTag(accountEmail);
             localStorage.setItem('opendroid_account_email', accountEmail);
 
             const loginBtn = document.getElementById('account-login-btn');
@@ -1246,10 +1243,15 @@
                 document.getElementById('account-devices-container').classList.remove('hidden');
                 document.getElementById('account-login-btn').textContent = '✓ Connected to Account Hub';
 
-                // Listen for presence heartbeats of all devices under this account
-                const presenceTopic = `opendroid/acc/${accountHash}/devices/+/presence`;
+                // 1. Listen for presence heartbeats of all devices under this account
+                const presenceTopic = `opendroid/acc/${accountTag}/devices/+/presence`;
                 mqttClient.subscribe(presenceTopic, { qos: 1 });
-                showToast(`Signed in as ${accountEmail}. Listening for devices...`, 'success');
+
+                // 2. Immediate Active Discovery Ping: triggers all online phones to report presence in <100ms
+                const discoverTopic = `opendroid/acc/${accountTag}/discover`;
+                mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES' }), { qos: 1 });
+
+                showToast(`Signed in as ${accountEmail}. Discovering devices...`, 'success');
             });
 
             mqttClient.on('message', (topic, payload) => {
@@ -1329,7 +1331,7 @@
             document.getElementById('device-selector-wrapper').classList.remove('hidden');
 
             // Subscribe to this device's PC telemetry channel
-            const pcChannel = `opendroid/acc/${accountHash}/${currentDeviceId}/pc`;
+            const pcChannel = `opendroid/acc/${accountTag}/${currentDeviceId}/pc`;
             mqttClient.subscribe(pcChannel, { qos: 1 });
 
             // Start Handshake
@@ -1361,10 +1363,10 @@
         function onDeviceDropdownSelected(newDevId) {
             if (!newDevId || newDevId === currentDeviceId) return;
             if (currentDeviceId) {
-                mqttClient.unsubscribe(`opendroid/acc/${accountHash}/${currentDeviceId}/pc`);
+                mqttClient.unsubscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`);
             }
             currentDeviceId = newDevId;
-            mqttClient.subscribe(`opendroid/acc/${accountHash}/${currentDeviceId}/pc`, { qos: 1 });
+            mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
             showToast(`Switched active control to ${allDiscoveredDevices[newDevId]?.deviceName || 'device'}!`, 'info');
 
             // Re-sync all telemetry
@@ -1375,8 +1377,8 @@
 
         function sendCommand(obj) {
             const str = JSON.stringify(obj);
-            if (accountHash && currentDeviceId && mqttClient && mqttClient.connected) {
-                mqttClient.publish(`opendroid/acc/${accountHash}/${currentDeviceId}/phone`, str, { qos: 1 });
+            if (accountTag && currentDeviceId && mqttClient && mqttClient.connected) {
+                mqttClient.publish(`opendroid/acc/${accountTag}/${currentDeviceId}/phone`, str, { qos: 1 });
             } else if (isCloudMode && mqttClient && mqttClient.connected) {
                 mqttClient.publish(`opendroid/${currentPairingCode}/phone`, str, { qos: 1 });
             } else if (localWs && localWs.readyState === WebSocket.OPEN) {
