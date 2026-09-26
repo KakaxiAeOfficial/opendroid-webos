@@ -22,6 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +40,10 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var nsdManager: NsdDiscoveryManager
     private lateinit var mediaProjectionManager: MediaProjectionManager
+
+    // Phase 6: Central Account & Multi-Device States
+    private val boundAccountState = mutableStateOf("")
+    private val deviceNameState = mutableStateOf(Build.MODEL ?: "Android Device")
 
     // Permission States
     private val isStorageGrantedState = mutableStateOf(false)
@@ -81,6 +87,12 @@ class MainActivity : ComponentActivity() {
             prefs.edit().putString("pairing_code", code).apply()
         }
         LocalFileServerService.currentPairingCode = code
+
+        // Phase 6: Read saved account binding
+        val savedEmail = prefs.getString("account_email", "") ?: ""
+        val savedDeviceName = prefs.getString("device_name", Build.MODEL) ?: (Build.MODEL ?: "Android Device")
+        boundAccountState.value = savedEmail
+        deviceNameState.value = savedDeviceName
 
         nsdManager = NsdDiscoveryManager(this)
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -177,60 +189,168 @@ class MainActivity : ComponentActivity() {
 
                         // Tab 0: Dashboard
                         if (selectedTab == 0) {
+                            val boundAccount by boundAccountState
+                            val deviceName by deviceNameState
+                            var inputEmail by remember { mutableStateOf(boundAccount) }
+                            var inputDeviceName by remember { mutableStateOf(deviceName) }
+
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                // --- Phase 6: Central Account & Multi-Device Hub Card ---
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (boundAccount.isNotEmpty()) Color(0xFFF1F8E9) else MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(18.dp)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = if (boundAccount.isNotEmpty()) "🌐 Multi-Device Sync: Active" else "🔐 Central Account (Multi-Device)",
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 15.sp,
+                                                color = if (boundAccount.isNotEmpty()) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        if (boundAccount.isNotEmpty()) {
+                                            Text(
+                                                text = "Bound to Account:",
+                                                fontSize = 11.sp,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                text = boundAccount,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF1B5E20)
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "Device Name: $deviceName",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = Color.DarkGray
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            OutlinedButton(
+                                                onClick = { unbindAccount() },
+                                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC62828)),
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(10.dp)
+                                            ) {
+                                                Text("Unbind from Account", fontSize = 12.sp)
+                                            }
+                                        } else {
+                                            Text(
+                                                text = "Sign in with your Email on Web and Phone to manage multiple devices without 6-digit codes.",
+                                                fontSize = 12.sp,
+                                                color = Color.Gray
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+
+                                            OutlinedTextField(
+                                                value = inputEmail,
+                                                onValueChange = { inputEmail = it },
+                                                label = { Text("Account Email", fontSize = 12.sp) },
+                                                placeholder = { Text("e.g. user@gmail.com", fontSize = 12.sp) },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(10.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            OutlinedTextField(
+                                                value = inputDeviceName,
+                                                onValueChange = { inputDeviceName = it },
+                                                label = { Text("Device Nickname", fontSize = 12.sp) },
+                                                placeholder = { Text(Build.MODEL ?: "Redmi Note 12", fontSize = 12.sp) },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(10.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.height(12.dp))
+
+                                            Button(
+                                                onClick = {
+                                                    if (inputEmail.contains("@")) {
+                                                        bindAccount(inputEmail, inputDeviceName)
+                                                    }
+                                                },
+                                                enabled = inputEmail.contains("@"),
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(10.dp)
+                                            ) {
+                                                Text("🔗 Bind This Device", fontSize = 13.sp)
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // Quick Guest 6-Digit Code Card
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                    shape = RoundedCornerShape(16.dp)
                                 ) {
                                     Column(
-                                        modifier = Modifier.padding(20.dp),
+                                        modifier = Modifier.padding(16.dp),
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
-                                        Text("5G / Anywhere Remote Code:", fontSize = 14.sp)
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("Direct 6-Digit Guest Code:", fontSize = 13.sp, color = Color.Gray)
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = code,
-                                            fontSize = 40.sp,
+                                            fontSize = 36.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             fontFamily = FontFamily.Monospace,
                                             color = MaterialTheme.colorScheme.primary
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = "Enter this code on your Web Controller",
-                                            fontSize = 12.sp,
+                                            text = "Instant 1-time remote connection",
+                                            fontSize = 11.sp,
                                             color = Color.Gray
                                         )
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.height(24.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
 
                                 Button(
                                     onClick = {
                                         val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
                                         screenCaptureLauncher.launch(captureIntent)
                                     },
-                                    modifier = Modifier.fillMaxWidth(0.9f),
+                                    modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Text("Start Screen Share", fontSize = 15.sp)
+                                    Text("📱 Grant Screen Mirroring", fontSize = 14.sp)
                                 }
 
-                                Spacer(modifier = Modifier.height(14.dp))
+                                Spacer(modifier = Modifier.height(10.dp))
 
                                 OutlinedButton(
                                     onClick = { selectedTab = 1 },
-                                    modifier = Modifier.fillMaxWidth(0.9f),
+                                    modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Text("⚙️ Open Permissions Setup Wizard", fontSize = 14.sp)
+                                    Text("🛡️ Permissions Setup Wizard", fontSize = 13.sp)
                                 }
                             }
                         }
@@ -614,6 +734,27 @@ class MainActivity : ComponentActivity() {
         return permissions.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
+    }
+
+    // --- Phase 6: Account Binding Helpers ---
+    private fun bindAccount(email: String, name: String) {
+        val cleanEmail = email.trim().lowercase()
+        val cleanName = if (name.trim().isEmpty()) (Build.MODEL ?: "Android Device") else name.trim()
+        val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString("account_email", cleanEmail)
+            .putString("device_name", cleanName)
+            .apply()
+        boundAccountState.value = cleanEmail
+        deviceNameState.value = cleanName
+        LocalFileServerService.instance?.bindAccount(cleanEmail, cleanName)
+    }
+
+    private fun unbindAccount() {
+        val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
+        prefs.edit().remove("account_email").apply()
+        boundAccountState.value = ""
+        LocalFileServerService.instance?.unbindAccount()
     }
 
     override fun onDestroy() {

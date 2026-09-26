@@ -74,6 +74,12 @@ class LocalFileServerService : Service() {
         var isCloudConnected: Boolean = false
         var onCloudStatusChanged: ((Boolean) -> Unit)? = null
         var instance: LocalFileServerService? = null
+
+        // Phase 6: Account & Multi-Device Global State
+        var boundAccountEmail: String = ""
+        var accountHash: String = ""
+        var deviceId: String = ""
+        var deviceNickname: String = ""
     }
 
     private val batteryReceiver = object : BroadcastReceiver() {
@@ -87,6 +93,16 @@ class LocalFileServerService : Service() {
         instance = this
         val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
         currentPairingCode = prefs.getString("pairing_code", currentPairingCode) ?: currentPairingCode
+
+        // Phase 6: Initialize persistent Device ID & Account
+        deviceId = prefs.getString("device_id", null) ?: ("dev_" + java.util.UUID.randomUUID().toString().substring(0, 8)).also {
+            prefs.edit().putString("device_id", it).apply()
+        }
+        val savedEmail = prefs.getString("account_email", "") ?: ""
+        val savedName = prefs.getString("device_name", Build.MODEL) ?: (Build.MODEL ?: "Android Device")
+        if (savedEmail.isNotEmpty()) {
+            bindAccountInternal(savedEmail, savedName)
+        }
 
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
@@ -174,7 +190,13 @@ class LocalFileServerService : Service() {
                 try {
                     if (mqttClient?.isConnected == true) {
                         val mqttMsg = MqttMessage(msg.toByteArray()).apply { qos = 1 }
+                        // Always publish to guest pairing code channel
                         mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+
+                        // If bound to account, also publish to multi-device account channel
+                        if (accountHash.isNotEmpty() && deviceId.isNotEmpty()) {
+                            mqttClient?.publish("opendroid/acc/$accountHash/$deviceId/pc", mqttMsg)
+                        }
                     }
                 } catch (e: Exception) {
                     Log.e("CloudBridge", "MQTT Publish Error", e)
@@ -209,6 +231,8 @@ class LocalFileServerService : Service() {
                             onCloudStatusChanged?.invoke(true)
                         }
                         subscribeToCode(currentPairingCode)
+                        subscribeToAccountChannels()
+                        startPresenceHeartbeat()
                     }
 
                     override fun connectionLost(cause: Throwable?) {
@@ -255,6 +279,93 @@ class LocalFileServerService : Service() {
             sendFullSyncData()
         } catch (e: Exception) {
             Log.e("CloudBridge", "Subscribe error", e)
+        }
+    }
+
+    // --- Phase 6: Central Account & Multi-Device Hub Engine ---
+    fun bindAccount(email: String, name: String) {
+        bindAccountInternal(email, name)
+        subscribeToAccountChannels()
+        publishDevicePresence(true)
+    }
+
+    fun unbindAccount() {
+        publishDevicePresence(false)
+        try {
+            if (accountHash.isNotEmpty() && deviceId.isNotEmpty()) {
+                mqttClient?.unsubscribe("opendroid/acc/$accountHash/$deviceId/phone")
+            }
+        } catch (_: Exception) {}
+        boundAccountEmail = ""
+        accountHash = ""
+        deviceNickname = ""
+    }
+
+    private fun bindAccountInternal(email: String, name: String) {
+        boundAccountEmail = email.trim().lowercase()
+        deviceNickname = if (name.trim().isEmpty()) (Build.MODEL ?: "Android Device") else name.trim()
+        accountHash = try {
+            val md = java.security.MessageDigest.getInstance("MD5")
+            val digest = md.digest(boundAccountEmail.toByteArray())
+            digest.joinToString("") { "%02x".format(it) }.substring(0, 12)
+        } catch (_: Exception) {
+            boundAccountEmail.hashCode().toString()
+        }
+        Log.d("OpenDroid", "Bound account: $boundAccountEmail -> Hash: $accountHash | Device: $deviceId ($deviceNickname)")
+    }
+
+    private fun subscribeToAccountChannels() {
+        if (mqttClient?.isConnected == true && accountHash.isNotEmpty() && deviceId.isNotEmpty()) {
+            try {
+                mqttClient?.subscribe("opendroid/acc/$accountHash/$deviceId/phone", 1)
+                Log.d("OpenDroid", "Subscribed to account channel: opendroid/acc/$accountHash/$deviceId/phone")
+            } catch (e: Exception) {
+                Log.e("OpenDroid", "Failed to subscribe to account channel", e)
+            }
+        }
+    }
+
+    private var heartbeatJob: kotlinx.coroutines.Job? = null
+
+    private fun startPresenceHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = serviceScope.launch {
+            while (isActive) {
+                if (isCloudConnected && accountHash.isNotEmpty() && deviceId.isNotEmpty()) {
+                    publishDevicePresence(true)
+                }
+                delay(30000L) // 30-second heartbeat
+            }
+        }
+    }
+
+    private fun publishDevicePresence(isOnline: Boolean) {
+        if (mqttClient?.isConnected != true || accountHash.isEmpty() || deviceId.isEmpty()) return
+        try {
+            val bm = getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+            val batteryLevel = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 50
+            val isCharging = bm?.isCharging ?: false
+
+            val presenceJson = JSONObject().apply {
+                put("deviceId", deviceId)
+                put("deviceName", deviceNickname)
+                put("model", Build.MODEL ?: "Android Device")
+                put("manufacturer", Build.MANUFACTURER ?: "Android")
+                put("battery", batteryLevel)
+                put("isCharging", isCharging)
+                put("isOnline", isOnline)
+                put("timestamp", System.currentTimeMillis())
+            }
+
+            val topic = "opendroid/acc/$accountHash/devices/$deviceId/presence"
+            val msg = MqttMessage(presenceJson.toString().toByteArray()).apply {
+                qos = 1
+                isRetained = true // Retained message so web client gets latest state immediately
+            }
+            mqttClient?.publish(topic, msg)
+            Log.d("OpenDroid", "Published presence heartbeat for $deviceId (online=$isOnline)")
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error publishing presence", e)
         }
     }
 

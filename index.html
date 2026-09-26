@@ -52,16 +52,58 @@
 <body class="h-screen w-screen text-gray-800 font-sans relative">
 
 
-    <!-- Connect / Pairing Modal -->
+    <!-- Connect / Pairing Modal (Dual-Mode: 6-Digit Guest or Central Account) -->
     <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center">
-            <div class="w-14 h-14 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-3 shadow-lg text-white">📱</div>
+        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full text-center">
+            <div class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 shadow-lg text-white">📱</div>
             <h2 class="text-xl font-bold text-gray-900">OpenDroid WebOS</h2>
-            <p class="text-xs text-gray-500 mt-1 mb-4">Enter the 6-digit code shown on your phone screen:</p>
-            <input type="text" id="pairing-code-input" placeholder="e.g. 932941" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 mb-4 uppercase">
-            <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 rounded-xl shadow-md transition-all">Connect 5G Stream</button>
-            <div class="mt-3">
-                <button onclick="connectLocal()" class="text-xs text-gray-400 hover:text-gray-600 underline">Or connect via Local Wi-Fi</button>
+            <p class="text-xs text-gray-500 mt-0.5 mb-3">AirDroid-Style Wireless Remote Management</p>
+
+            <!-- Mode Tabs -->
+            <div class="flex bg-gray-100 p-1 rounded-xl mb-4 text-xs font-semibold">
+                <button id="tab-btn-account" onclick="switchPairingMode('account')" class="flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm transition-all flex items-center justify-center gap-1">
+                    <span>🔐</span><span>Central Account</span>
+                </button>
+                <button id="tab-btn-code" onclick="switchPairingMode('code')" class="flex-1 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1">
+                    <span>📱</span><span>6-Digit Code</span>
+                </button>
+            </div>
+
+            <!-- Mode 1: Central Account & Multi-Device Hub -->
+            <div id="mode-account-section" class="space-y-3">
+                <div class="text-left">
+                    <label class="text-[11px] font-semibold text-gray-700">Account Email</label>
+                    <input type="email" id="account-email-input" placeholder="e.g. user@gmail.com" class="w-full text-xs border border-gray-300 rounded-xl p-2.5 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <button id="account-login-btn" onclick="connectViaAccount()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs flex items-center justify-center gap-1.5">
+                    <span>🌐</span><span>Sign In & Load Devices</span>
+                </button>
+
+                <!-- Discovered Devices Selector (Revealed after sign in) -->
+                <div id="account-devices-container" class="hidden text-left bg-gray-50 border rounded-xl p-3 space-y-2">
+                    <div class="flex items-center justify-between text-[11px] font-semibold text-gray-700">
+                        <span>Select Device to Control:</span>
+                        <span id="account-devices-count" class="text-blue-600 font-mono text-[10px]">0 Online</span>
+                    </div>
+                    <div id="account-devices-list" class="space-y-1.5 max-h-36 overflow-y-auto">
+                        <div class="text-[11px] text-gray-400 text-center py-2">Searching for your phones...</div>
+                    </div>
+                    <button id="account-connect-device-btn" onclick="confirmAccountDeviceConnection()" disabled class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-bold py-2 rounded-lg text-xs shadow transition-all mt-1">
+                        Connect to Selected Device 🚀
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mode 2: Quick 6-Digit Guest Code -->
+            <div id="mode-code-section" class="hidden space-y-3">
+                <p class="text-xs text-gray-500">Enter the 6-digit code shown on your phone:</p>
+                <input type="text" id="pairing-code-input" placeholder="e.g. 932941" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600 uppercase">
+                <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs">Connect 5G Stream</button>
+            </div>
+
+            <div class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-center gap-4 text-xs">
+                <button onclick="connectLocal()" class="text-gray-400 hover:text-gray-600 underline text-[11px]">Connect via Local Wi-Fi</button>
             </div>
         </div>
     </div>
@@ -116,6 +158,14 @@
             <span class="absolute right-2 text-gray-400 text-xs">🔍</span>
         </div>
 
+
+        <!-- Phase 6: Multi-Device Dropdown Selector -->
+        <div id="device-selector-wrapper" class="hidden flex items-center gap-1.5 bg-gray-800/90 px-2.5 py-1 rounded-full border border-gray-700 text-xs">
+            <span class="text-emerald-400 animate-pulse text-[10px]">●</span>
+            <select id="device-selector-dropdown" onchange="onDeviceDropdownSelected(this.value)" class="bg-transparent text-gray-100 text-[11px] font-semibold focus:outline-none cursor-pointer">
+                <option value="" class="bg-gray-800 text-gray-300">Select Phone...</option>
+            </select>
+        </div>
 
         <div class="flex items-center gap-3.5 pl-3 border-l border-gray-700">
             <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
@@ -1125,9 +1175,209 @@
         }
 
 
+        // --- Phase 6: Central Account & Multi-Device Hub Engine ---
+        let currentPairingMode = 'account';
+        let accountEmail = '';
+        let accountHash = '';
+        let currentDeviceId = '';
+        let allDiscoveredDevices = {};
+
+        function switchPairingMode(mode) {
+            currentPairingMode = mode;
+            const tabAccount = document.getElementById('tab-btn-account');
+            const tabCode = document.getElementById('tab-btn-code');
+            const secAccount = document.getElementById('mode-account-section');
+            const secCode = document.getElementById('mode-code-section');
+
+            if (mode === 'account') {
+                tabAccount.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm transition-all flex items-center justify-center gap-1';
+                tabCode.className = 'flex-1 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1';
+                secAccount.classList.remove('hidden');
+                secCode.classList.add('hidden');
+            } else {
+                tabCode.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm transition-all flex items-center justify-center gap-1';
+                tabAccount.className = 'flex-1 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1';
+                secCode.classList.remove('hidden');
+                secAccount.classList.add('hidden');
+            }
+        }
+
+        function hashAccountEmail(email) {
+            const str = email.trim().toLowerCase();
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash).toString(16).padStart(8, '0');
+        }
+
+        function connectViaAccount() {
+            const email = document.getElementById('account-email-input').value.trim();
+            if (!email || !email.includes('@')) {
+                alert('Please enter a valid Account Email address');
+                return;
+            }
+            accountEmail = email.toLowerCase();
+            accountHash = hashAccountEmail(accountEmail);
+            localStorage.setItem('opendroid_account_email', accountEmail);
+
+            const loginBtn = document.getElementById('account-login-btn');
+            loginBtn.textContent = 'Connecting to Account Hub...';
+            loginBtn.disabled = true;
+
+            initAccountMqtt();
+        }
+
+        function initAccountMqtt() {
+            if (mqttClient) {
+                try { mqttClient.end(true); } catch (_e) {}
+            }
+            isCloudMode = true;
+
+            mqttClient = mqtt.connect('wss://ceee508c.ala.asia-southeast1.emqxsl.com:8084/mqtt', {
+                username: 'OpenDroid-v1',
+                password: 'OpenDroid-v1@kakaxi69',
+                keepalive: 60,
+                clientId: 'OpenDroidWeb_' + Math.random().toString(16).substring(2, 8)
+            });
+
+            mqttClient.on('connect', () => {
+                document.getElementById('account-devices-container').classList.remove('hidden');
+                document.getElementById('account-login-btn').textContent = '✓ Connected to Account Hub';
+
+                // Listen for presence heartbeats of all devices under this account
+                const presenceTopic = `opendroid/acc/${accountHash}/devices/+/presence`;
+                mqttClient.subscribe(presenceTopic, { qos: 1 });
+                showToast(`Signed in as ${accountEmail}. Listening for devices...`, 'success');
+            });
+
+            mqttClient.on('message', (topic, payload) => {
+                try {
+                    if (topic.includes('/devices/') && topic.endsWith('/presence')) {
+                        handlePresenceMessage(topic, payload);
+                        return;
+                    }
+                    const data = JSON.parse(payload.toString());
+                    handleIncomingData(data);
+                } catch (e) { console.error(e); }
+            });
+        }
+
+        function handlePresenceMessage(topic, payload) {
+            try {
+                const data = JSON.parse(payload.toString());
+                const devId = data.deviceId;
+                if (!devId) return;
+
+                allDiscoveredDevices[devId] = data;
+                renderDiscoveredDevices();
+                updateTopDockDeviceDropdown();
+            } catch (e) {
+                console.error('Error parsing presence:', e);
+            }
+        }
+
+        function renderDiscoveredDevices() {
+            const list = document.getElementById('account-devices-list');
+            const countEl = document.getElementById('account-devices-count');
+            if (!list) return;
+
+            const devIds = Object.keys(allDiscoveredDevices);
+            if (countEl) countEl.textContent = `${devIds.length} Discovered`;
+
+            if (devIds.length === 0) {
+                list.innerHTML = '<div class="text-[11px] text-gray-400 text-center py-2">Searching for your phones...</div>';
+                return;
+            }
+
+            list.innerHTML = '';
+            devIds.forEach(id => {
+                const dev = allDiscoveredDevices[id];
+                const isSelected = (currentDeviceId === id) || (devIds.length === 1 && !currentDeviceId);
+                if (devIds.length === 1 && !currentDeviceId) currentDeviceId = id;
+
+                list.innerHTML += `
+                    <label class="p-2 border rounded-lg flex items-center justify-between hover:bg-white cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200'}">
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="account_device_radio" value="${id}" ${isSelected ? 'checked' : ''} onchange="onDeviceRadioSelected('${id}')" class="text-blue-600">
+                            <div>
+                                <div class="font-bold text-xs text-gray-800">${dev.deviceName || dev.model}</div>
+                                <div class="text-[10px] text-gray-400">${dev.model || 'Android'} • Battery ${dev.battery || '--'}%</div>
+                            </div>
+                        </div>
+                        <span class="text-[10px] ${dev.isOnline ? 'text-green-600 font-bold' : 'text-gray-400'}">
+                            ${dev.isOnline ? '● Online' : '○ Offline'}
+                        </span>
+                    </label>
+                `;
+            });
+
+            const connectBtn = document.getElementById('account-connect-device-btn');
+            if (connectBtn) connectBtn.disabled = !currentDeviceId;
+        }
+
+        function onDeviceRadioSelected(id) {
+            currentDeviceId = id;
+            const connectBtn = document.getElementById('account-connect-device-btn');
+            if (connectBtn) connectBtn.disabled = false;
+        }
+
+        function confirmAccountDeviceConnection() {
+            if (!currentDeviceId) return;
+            document.getElementById('pair-modal').classList.add('hidden');
+            document.getElementById('device-selector-wrapper').classList.remove('hidden');
+
+            // Subscribe to this device's PC telemetry channel
+            const pcChannel = `opendroid/acc/${accountHash}/${currentDeviceId}/pc`;
+            mqttClient.subscribe(pcChannel, { qos: 1 });
+
+            // Start Handshake
+            document.getElementById('ws-status-taskbar').textContent = '● Connecting Device...';
+            if (handshakeInterval) clearInterval(handshakeInterval);
+            handshakeInterval = setInterval(() => {
+                sendCommand({ action: 'HANDSHAKE' });
+            }, 1500);
+            sendCommand({ action: 'HANDSHAKE' });
+            showToast(`Connected to ${allDiscoveredDevices[currentDeviceId]?.deviceName || 'device'}! 🚀`, 'success');
+        }
+
+        function updateTopDockDeviceDropdown() {
+            const dropdown = document.getElementById('device-selector-dropdown');
+            if (!dropdown) return;
+
+            dropdown.innerHTML = '';
+            Object.keys(allDiscoveredDevices).forEach(id => {
+                const dev = allDiscoveredDevices[id];
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.className = 'bg-gray-800 text-gray-100';
+                opt.textContent = `📱 ${dev.deviceName || dev.model} (${dev.battery || '--'}%)`;
+                if (id === currentDeviceId) opt.selected = true;
+                dropdown.appendChild(opt);
+            });
+        }
+
+        function onDeviceDropdownSelected(newDevId) {
+            if (!newDevId || newDevId === currentDeviceId) return;
+            if (currentDeviceId) {
+                mqttClient.unsubscribe(`opendroid/acc/${accountHash}/${currentDeviceId}/pc`);
+            }
+            currentDeviceId = newDevId;
+            mqttClient.subscribe(`opendroid/acc/${accountHash}/${currentDeviceId}/pc`, { qos: 1 });
+            showToast(`Switched active control to ${allDiscoveredDevices[newDevId]?.deviceName || 'device'}!`, 'info');
+
+            // Re-sync all telemetry
+            sendCommand({ action: 'HANDSHAKE' });
+            sendCommand({ action: 'FETCH_STORAGE' });
+            sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
+        }
+
         function sendCommand(obj) {
             const str = JSON.stringify(obj);
-            if (isCloudMode && mqttClient && mqttClient.connected) {
+            if (accountHash && currentDeviceId && mqttClient && mqttClient.connected) {
+                mqttClient.publish(`opendroid/acc/${accountHash}/${currentDeviceId}/phone`, str, { qos: 1 });
+            } else if (isCloudMode && mqttClient && mqttClient.connected) {
                 mqttClient.publish(`opendroid/${currentPairingCode}/phone`, str, { qos: 1 });
             } else if (localWs && localWs.readyState === WebSocket.OPEN) {
                 localWs.send(str);
@@ -3547,6 +3797,12 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 const files = dt.files;
                 handleWidgetFileSelected(files);
             }, false);
+        }
+
+        const savedAccEmail = localStorage.getItem('opendroid_account_email');
+        if (savedAccEmail) {
+            const accInput = document.getElementById('account-email-input');
+            if (accInput) accInput.value = savedAccEmail;
         }
 
         initWidgetDropzone();
