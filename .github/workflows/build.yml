@@ -1,9 +1,12 @@
-name: Build Android APK
+name: Build and Release OpenDroid APK
 
 on:
   push:
     branches: [ "main", "master" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -33,8 +36,32 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug --stacktrace
 
+    - name: Prepare Release APK Artifact
+      run: |
+        mkdir -p release-apk
+        cp app/build/outputs/apk/debug/app-debug.apk release-apk/OpenDroid-v1.0.apk
+
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OpenDroid-Debug-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: OpenDroid-v1.0-APK
+        path: release-apk/OpenDroid-v1.0.apk
+
+    - name: Publish to GitHub Releases
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create v1.0.0 release-apk/OpenDroid-v1.0.apk           --title "OpenDroid WebOS v1.0 (Production Release)"           --notes "### 📱 OpenDroid WebOS v1.0 Production Release
+
+          **Web Controller:** [https://kakaxiaeofficial.github.io/opendroid-webos/](https://kakaxiaeofficial.github.io/opendroid-webos/)
+
+          #### ✨ Features Included in this Build:
+          - 🌐 **Central Account & Multi-Device Hub:** Connect multiple phones without 6-digit codes.
+          - 📱 **5G Direct Screen Mirroring (~30 FPS):** Full remote touch, swipes, and nav controls.
+          - 🎥 **Direct Camera Stream:** Front/Back camera streaming with flashlight toggle.
+          - 🎙️ **Two-Way Audio (Walkie-Talkie):** Talk directly through phone speaker from PC.
+          - ⏺️ **Screen Video Recorder & Screenshot:** Record screen mirror to WebM and save PNG screenshots.
+          - 📁 **Advanced File Explorer:** Remote Delete, Rename, Create Folder, and Batch ZIP Download.
+          - 📥 **Remote APK Installer & ⚠️ Emergency Remote Wipe.**
+          - 🥷 **Stealth Mode:** Launcher icon disguise with secret dialer access (\`*#*#9988#*#*\`)."           --clobber || true
+
