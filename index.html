@@ -1268,9 +1268,53 @@
 
         function handlePresenceMessage(topic, payload) {
             try {
+                if (!payload || payload.length === 0) {
+                    // Empty retained payload: deleted device topic
+                    const parts = topic.split('/');
+                    const deletedDevId = parts[parts.length - 2];
+                    if (deletedDevId && allDiscoveredDevices[deletedDevId]) {
+                        delete allDiscoveredDevices[deletedDevId];
+                        renderDiscoveredDevices();
+                        updateTopDockDeviceDropdown();
+                    }
+                    return;
+                }
+
                 const data = JSON.parse(payload.toString());
                 const devId = data.deviceId;
                 if (!devId) return;
+
+                // Smart Deduplication & Auto-Merge:
+                // Check if an existing device entry matches this physical hardware or same model
+                const existingKey = Object.keys(allDiscoveredDevices).find(key => {
+                    if (key === devId) return false;
+                    const item = allDiscoveredDevices[key];
+                    // Match by hardwareId if provided
+                    if (data.hardwareId && item.hardwareId && data.hardwareId === item.hardwareId) return true;
+                    // Or match by same phone model (same device bound with updated name/reinstalled)
+                    if (data.model && item.model && data.model === item.model) return true;
+                    return false;
+                });
+
+                if (existingKey) {
+                    const existingItem = allDiscoveredDevices[existingKey];
+                    const isIncomingNewer = (data.timestamp || 0) >= (existingItem.timestamp || 0);
+                    if (isIncomingNewer) {
+                        // Purge old duplicate entry from local device list
+                        delete allDiscoveredDevices[existingKey];
+                        if (currentDeviceId === existingKey) currentDeviceId = devId;
+
+                        // Clean up stale retained MQTT topic from the cloud broker
+                        try {
+                            if (mqttClient && mqttClient.connected) {
+                                mqttClient.publish(`opendroid/acc/${accountTag}/devices/${existingKey}/presence`, '', { qos: 1, retain: true });
+                            }
+                        } catch(e) {}
+                    } else {
+                        // Incoming data is older than current data, ignore
+                        return;
+                    }
+                }
 
                 allDiscoveredDevices[devId] = data;
                 renderDiscoveredDevices();
@@ -1278,6 +1322,25 @@
             } catch (e) {
                 console.error('Error parsing presence:', e);
             }
+        }
+
+        function forgetDevice(devId, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            if (!confirm(`Are you sure you want to remove this device entry?`)) return;
+            delete allDiscoveredDevices[devId];
+            if (currentDeviceId === devId) currentDeviceId = null;
+            try {
+                if (mqttClient && mqttClient.connected && accountTag) {
+                    // Send empty payload with retain: true to permanently wipe it from EMQX broker
+                    mqttClient.publish(`opendroid/acc/${accountTag}/devices/${devId}/presence`, '', { qos: 1, retain: true });
+                }
+            } catch(e) {}
+            renderDiscoveredDevices();
+            updateTopDockDeviceDropdown();
+            showToast('Device removed from your account hub.', 'info');
         }
 
         function renderDiscoveredDevices() {
@@ -1308,9 +1371,14 @@
                                 <div class="text-[10px] text-gray-400">${dev.model || 'Android'} • Battery ${dev.battery || '--'}%</div>
                             </div>
                         </div>
-                        <span class="text-[10px] ${dev.isOnline ? 'text-green-600 font-bold' : 'text-gray-400'}">
-                            ${dev.isOnline ? '● Online' : '○ Offline'}
-                        </span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] ${dev.isOnline ? 'text-green-600 font-bold' : 'text-gray-400'}">
+                                ${dev.isOnline ? '● Online' : '○ Offline'}
+                            </span>
+                            <button type="button" onclick="forgetDevice('${id}', event)" title="Remove / Forget this device" class="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-all">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
                     </label>
                 `;
             });

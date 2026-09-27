@@ -25,6 +25,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import io.ktor.http.ContentType
@@ -75,10 +76,11 @@ class LocalFileServerService : Service() {
         var onCloudStatusChanged: ((Boolean) -> Unit)? = null
         var instance: LocalFileServerService? = null
 
-        // Phase 6: Account & Multi-Device Global State
+        // Phase 6 & 7: Account & Multi-Device Global State
         var boundAccountEmail: String = ""
         var accountTag: String = ""
         var openDroidDeviceId: String = ""
+        var persistentHardwareId: String = ""
         var deviceNickname: String = ""
     }
 
@@ -94,10 +96,21 @@ class LocalFileServerService : Service() {
         val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
         currentPairingCode = prefs.getString("pairing_code", currentPairingCode) ?: currentPairingCode
 
-        // Phase 6: Initialize persistent Device ID & Account
-        openDroidDeviceId = prefs.getString("device_id", null) ?: ("dev_" + java.util.UUID.randomUUID().toString().substring(0, 8)).also {
-            prefs.edit().putString("device_id", it).apply()
+        // Phase 7: Deterministic permanent hardware-backed Device ID (never duplicates across reinstalls/rebinds)
+        val androidId = try {
+            Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""
+        } catch (_: Exception) { "" }
+
+        val cleanHardwareId = if (androidId.isNotEmpty() && androidId != "9774d56d682e549c") {
+            androidId.lowercase()
+        } else {
+            val raw = "${Build.MANUFACTURER}_${Build.MODEL}_${Build.BOARD}"
+            java.security.MessageDigest.getInstance("MD5").digest(raw.toByteArray())
+                .joinToString("") { "%02x".format(it) }
         }
+        persistentHardwareId = cleanHardwareId
+        openDroidDeviceId = "dev_" + cleanHardwareId.takeLast(10)
+        prefs.edit().putString("device_id", openDroidDeviceId).apply()
         val savedEmail = prefs.getString("account_email", "") ?: ""
         val savedName = prefs.getString("device_name", Build.MODEL) ?: (Build.MODEL ?: "Android Device")
         if (savedEmail.isNotEmpty()) {
@@ -221,6 +234,21 @@ class LocalFileServerService : Service() {
                     connectionTimeout = 15
                     keepAliveInterval = 30
                     isAutomaticReconnect = true
+                }
+                if (accountTag.isNotEmpty() && openDroidDeviceId.isNotEmpty()) {
+                    try {
+                        val willTopic = "opendroid/acc/$accountTag/devices/$openDroidDeviceId/presence"
+                        val willJson = JSONObject().apply {
+                            put("deviceId", openDroidDeviceId)
+                            put("hardwareId", persistentHardwareId.ifEmpty { openDroidDeviceId })
+                            put("deviceName", deviceNickname)
+                            put("model", Build.MODEL ?: "Android Device")
+                            put("manufacturer", Build.MANUFACTURER ?: "Android")
+                            put("isOnline", false)
+                            put("timestamp", System.currentTimeMillis())
+                        }
+                        options.setWill(willTopic, willJson.toString().toByteArray(), 1, true)
+                    } catch (_: Exception) {}
                 }
 
                 mqttClient?.setCallback(object : MqttCallbackExtended {
@@ -353,6 +381,7 @@ class LocalFileServerService : Service() {
 
             val presenceJson = JSONObject().apply {
                 put("deviceId", openDroidDeviceId)
+                put("hardwareId", persistentHardwareId.ifEmpty { openDroidDeviceId })
                 put("deviceName", deviceNickname)
                 put("model", Build.MODEL ?: "Android Device")
                 put("manufacturer", Build.MANUFACTURER ?: "Android")
