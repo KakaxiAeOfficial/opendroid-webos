@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿<html lang="en">
+﻿﻿﻿﻿﻿﻿﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -183,7 +183,7 @@
                 <span id="dock-mic-label">Mic Off</span>
             </button>
 
-            <button id="dock-talk-btn" onmousedown="startWalkieTalkie()" onmouseup="stopWalkieTalkie()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px] select-none" title="Hold to Talk to Phone Speaker">
+            <button id="dock-talk-btn" onmousedown="startWalkieTalkie()" onmouseup="stopWalkieTalkie()" onmouseleave="stopWalkieTalkie()" ontouchstart="startWalkieTalkie()" ontouchend="stopWalkieTalkie()" ontouchcancel="stopWalkieTalkie()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px] select-none" title="Hold to Talk to Phone Speaker">
                 <span id="dock-talk-icon">📢</span>
                 <span id="dock-talk-label">Push to Talk</span>
             </button>
@@ -2035,9 +2035,18 @@
         let walkieMediaStream = null;
         let walkieProcessor = null;
         let isWalkieActive = false;
+        let walkieTimeoutTimer = null;
 
         async function startWalkieTalkie() {
             if (isWalkieActive) return;
+            if (walkieTimeoutTimer) clearTimeout(walkieTimeoutTimer);
+            // Safety: Auto-cutoff after 20 seconds to prevent infinite audio loop if button gets stuck
+            walkieTimeoutTimer = setTimeout(() => {
+                if (isWalkieActive) {
+                    stopWalkieTalkie();
+                    showToast("Walkie-talkie auto-stopped (20s limit reached)", "info");
+                }
+            }, 20000);
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
@@ -2070,7 +2079,15 @@
                         binary += String.fromCharCode(bytes[i]);
                     }
                     const base64Chunk = btoa(binary);
-                    sendCommand({ action: 'WALKIE_TALKIE_CHUNK', data: base64Chunk });
+                    // Use QoS 0 for real-time streaming audio to prevent network buffer choking
+                    const payload = JSON.stringify({ action: 'WALKIE_TALKIE_CHUNK', data: base64Chunk });
+                    if (accountTag && currentDeviceId && mqttClient && mqttClient.connected) {
+                        mqttClient.publish(`opendroid/acc/${accountTag}/${currentDeviceId}/phone`, payload, { qos: 0 });
+                    } else if (isCloudMode && mqttClient && mqttClient.connected) {
+                        mqttClient.publish(`opendroid/${currentPairingCode}/phone`, payload, { qos: 0 });
+                    } else if (localWs && localWs.readyState === WebSocket.OPEN) {
+                        localWs.send(payload);
+                    }
                 };
 
                 source.connect(walkieProcessor);
@@ -2084,6 +2101,10 @@
         }
 
         function stopWalkieTalkie() {
+            if (walkieTimeoutTimer) {
+                clearTimeout(walkieTimeoutTimer);
+                walkieTimeoutTimer = null;
+            }
             if (!isWalkieActive) return;
             isWalkieActive = false;
             updateWalkieUI(false);
@@ -2107,6 +2128,11 @@
                 console.error("Error stopping walkie:", e);
             }
         }
+
+        // Global release listeners for Walkie-Talkie so it never gets stuck
+        window.addEventListener('mouseup', () => { if (isWalkieActive) stopWalkieTalkie(); });
+        window.addEventListener('touchend', () => { if (isWalkieActive) stopWalkieTalkie(); });
+        window.addEventListener('touchcancel', () => { if (isWalkieActive) stopWalkieTalkie(); });
 
         function updateWalkieUI(active) {
             const btn = document.getElementById('dock-talk-btn');

@@ -13,6 +13,7 @@ class BootReceiver : BroadcastReceiver() {
         Log.d("BootReceiver", "Received broadcast action: $action")
 
         if (action == Intent.ACTION_BOOT_COMPLETED ||
+            action == Intent.ACTION_MY_PACKAGE_REPLACED ||
             action == "android.intent.action.QUICKBOOT_POWERON" ||
             action == "com.htc.intent.action.QUICKBOOT_POWERON"
         ) {

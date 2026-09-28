@@ -9,6 +9,8 @@ import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.util.Base64
 import android.util.Log
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.atomic.AtomicBoolean
 
 class AudioStreamManager private constructor(private val context: Context) {
 
@@ -23,29 +25,36 @@ class AudioStreamManager private constructor(private val context: Context) {
         }
 
         private const val SAMPLE_RATE = 16000
-        private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
+        private const val CHANNEL_IN_CONFIG = AudioFormat.CHANNEL_IN_MONO
+        private const val CHANNEL_OUT_CONFIG = AudioFormat.CHANNEL_OUT_MONO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
+        private const val MAX_QUEUE_CHUNKS = 8 // ~800ms jitter buffer: drop excess to prevent ANR/memory leak
     }
 
+    // --- Ambient Microphone Recording ---
     private var audioRecord: AudioRecord? = null
     private var recordingThread: Thread? = null
     @Volatile
     var isRecording = false
 
+    // --- Push-to-Talk (Walkie-Talkie) Non-Blocking Playback Queue ---
     private var audioTrack: AudioTrack? = null
+    private val playbackQueue = LinkedBlockingQueue<ByteArray>(MAX_QUEUE_CHUNKS)
+    private var playbackThread: Thread? = null
+    private val isPlaybackActive = AtomicBoolean(false)
 
     @SuppressLint("MissingPermission")
     fun startStreaming(onChunk: (String) -> Unit) {
         if (isRecording) return
 
         try {
-            val minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT)
+            val minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_IN_CONFIG, AUDIO_FORMAT)
             val bufferSize = maxOf(minBufferSize, 3200)
 
             audioRecord = AudioRecord(
                 MediaRecorder.AudioSource.MIC,
                 SAMPLE_RATE,
-                CHANNEL_CONFIG,
+                CHANNEL_IN_CONFIG,
                 AUDIO_FORMAT,
                 bufferSize
             )
@@ -93,26 +102,58 @@ class AudioStreamManager private constructor(private val context: Context) {
         }
     }
 
-    // --- Phase 3 Step 3.3: Two-Way Audio (Walkie-Talkie Speaker Playback) ---
+    // --- Two-Way Audio (Walkie-Talkie Speaker Playback) with Dedicated Single Worker Thread ---
     fun playWalkieTalkieChunk(base64Pcm: String) {
         try {
-            if (audioTrack == null || audioTrack?.state != AudioTrack.STATE_INITIALIZED) {
-                initAudioTrack()
-            }
             val pcmData = Base64.decode(base64Pcm, Base64.NO_WRAP)
-            if (pcmData.isNotEmpty()) {
-                audioTrack?.write(pcmData, 0, pcmData.size)
+            if (pcmData.isEmpty()) return
+
+            ensurePlaybackThreadRunning()
+
+            // Non-blocking queue offer: if queue is full, poll oldest chunk and insert newest
+            if (!playbackQueue.offer(pcmData)) {
+                playbackQueue.poll() // Drop oldest chunk (avoids audio delay & buffer bloat)
+                playbackQueue.offer(pcmData)
             }
         } catch (e: Exception) {
-            Log.e("AudioStream", "Walkie-talkie playback error", e)
+            Log.e("AudioStream", "Walkie-talkie enqueue error", e)
         }
+    }
+
+    @Synchronized
+    private fun ensurePlaybackThreadRunning() {
+        if (isPlaybackActive.get() && playbackThread?.isAlive == true) return
+
+        initAudioTrack()
+        isPlaybackActive.set(true)
+
+        playbackThread = Thread({
+            Log.d("AudioStream", "Walkie-talkie dedicated playback worker started")
+            while (isPlaybackActive.get()) {
+                try {
+                    val chunk = playbackQueue.poll(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    if (chunk != null && chunk.isNotEmpty()) {
+                        audioTrack?.write(chunk, 0, chunk.size)
+                    }
+                } catch (_: InterruptedException) {
+                    break
+                } catch (e: Exception) {
+                    Log.e("AudioStream", "Error playing chunk in worker", e)
+                }
+            }
+            Log.d("AudioStream", "Walkie-talkie playback worker exiting cleanly")
+        }, "WalkieTalkiePlaybackThread").also { it.start() }
     }
 
     private fun initAudioTrack() {
         try {
+            if (audioTrack != null && audioTrack?.state == AudioTrack.STATE_INITIALIZED) {
+                return
+            }
+
             val minBufferSize = AudioTrack.getMinBufferSize(
                 SAMPLE_RATE,
-                AudioFormat.CHANNEL_OUT_MONO,
+                CHANNEL_OUT_CONFIG,
                 AUDIO_FORMAT
             )
             val bufferSize = maxOf(minBufferSize, 6400)
@@ -127,7 +168,7 @@ class AudioStreamManager private constructor(private val context: Context) {
                     AudioFormat.Builder()
                         .setEncoding(AUDIO_FORMAT)
                         .setSampleRate(SAMPLE_RATE)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .setChannelMask(CHANNEL_OUT_CONFIG)
                         .build()
                 )
                 .setBufferSizeInBytes(bufferSize)
@@ -142,13 +183,19 @@ class AudioStreamManager private constructor(private val context: Context) {
     }
 
     fun stopWalkieTalkie() {
+        isPlaybackActive.set(false)
+        playbackThread?.interrupt()
+        playbackThread = null
+        playbackQueue.clear()
+
         try {
             audioTrack?.stop()
             audioTrack?.release()
             audioTrack = null
-            Log.d("AudioStream", "Walkie-talkie stopped")
+            Log.d("AudioStream", "Walkie-talkie AudioTrack stopped & released")
         } catch (e: Exception) {
             Log.e("AudioStream", "Error stopping AudioTrack", e)
         }
     }
 }
+
