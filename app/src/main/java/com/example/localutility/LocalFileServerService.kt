@@ -490,6 +490,9 @@ class LocalFileServerService : Service() {
                 if (mqttClient?.isConnected == true) {
                     val mqttMsg = MqttMessage(jsonStr.toByteArray()).apply { qos = 0 }
                     mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+                    if (accountTag.isNotEmpty() && openDroidDeviceId.isNotEmpty()) {
+                        mqttClient?.publish("opendroid/acc/$accountTag/$openDroidDeviceId/pc", mqttMsg)
+                    }
                     Log.d("StealthCapture", "Dispatched $target capture result via MQTT (qos 0)")
                 }
             } catch (e: Exception) {
@@ -538,6 +541,9 @@ class LocalFileServerService : Service() {
             try {
                 val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
                 mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+                if (accountTag.isNotEmpty() && openDroidDeviceId.isNotEmpty()) {
+                    mqttClient?.publish("opendroid/acc/$accountTag/$openDroidDeviceId/pc", mqttMsg)
+                }
             } catch (e: Exception) {
                 Log.e("DirectCamera", "Frame publish error", e)
             }
@@ -555,6 +561,9 @@ class LocalFileServerService : Service() {
             try {
                 val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
                 mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+                if (accountTag.isNotEmpty() && openDroidDeviceId.isNotEmpty()) {
+                    mqttClient?.publish("opendroid/acc/$accountTag/$openDroidDeviceId/pc", mqttMsg)
+                }
             } catch (e: Exception) {
                 Log.e("DirectScreen", "Screen frame publish error", e)
             }
@@ -572,6 +581,9 @@ class LocalFileServerService : Service() {
             try {
                 val mqttMsg = MqttMessage(json.toByteArray()).apply { qos = 0 }
                 mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+                if (accountTag.isNotEmpty() && openDroidDeviceId.isNotEmpty()) {
+                    mqttClient?.publish("opendroid/acc/$accountTag/$openDroidDeviceId/pc", mqttMsg)
+                }
             } catch (e: Exception) {
                 Log.e("AudioStream", "Audio publish error", e)
             }
@@ -1385,3 +1397,4 @@ class LocalFileServerService : Service() {
         }
     }
 }
+

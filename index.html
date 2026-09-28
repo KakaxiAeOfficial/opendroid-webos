@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<html lang="en">
+﻿﻿﻿﻿﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1466,13 +1466,13 @@
             if (dockBattery) dockBattery.textContent = '--%';
             if (dockStorage) dockStorage.textContent = '-- / --';
 
-            // Show offline placeholder in all open data windows
+            // Disable quick action buttons visually
+            setQuickActionButtonsEnabled(false);
+
+            // Show clean offline placeholder in all open data windows (No old data leakage)
             document.querySelectorAll('.app-window:not(.hidden)').forEach(win => {
                 const body = win.querySelector('.window-body');
                 if (body && !win.id.includes('terminal')) {
-                    if (!body.hasAttribute('data-cached-content')) {
-                        body.setAttribute('data-cached-content', body.innerHTML);
-                    }
                     body.innerHTML = `
                         <div class="flex flex-col items-center justify-center h-full p-6 text-center text-gray-400">
                             <span class="text-3xl mb-2">📡</span>
@@ -1484,45 +1484,67 @@
             });
         }
 
-        function restoreAndRefreshOpenWindows(dev) {
-            // Restore window bodies and trigger fresh fetches
-            document.querySelectorAll('.app-window:not(.hidden)').forEach(win => {
-                const body = win.querySelector('.window-body');
-                if (body && body.hasAttribute('data-cached-content')) {
-                    body.innerHTML = body.getAttribute('data-cached-content');
-                    body.removeAttribute('data-cached-content');
+        function setQuickActionButtonsEnabled(enabled) {
+            const btns = ['dock-torch-btn', 'dock-ring-btn', 'dock-lock-btn', 'dock-wipe-btn'];
+            btns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    if (enabled) {
+                        btn.classList.remove('opacity-40', 'pointer-events-none');
+                    } else {
+                        btn.classList.add('opacity-40', 'pointer-events-none');
+                    }
                 }
             });
+        }
 
-            // Trigger fresh data requests for all open tools
+        function restoreAndRefreshOpenWindows(dev) {
+            // Enable quick action buttons
+            setQuickActionButtonsEnabled(true);
+
+            // Cleanly reset open windows with loading state (Prevents old device data leak)
             const messagesWin = document.getElementById('messages-window');
             if (messagesWin && !messagesWin.classList.contains('hidden')) {
-                sendCommand({ action: 'GET_SMS' });
+                const list = document.getElementById('messages-thread-list') || messagesWin.querySelector('.window-body');
+                if (list) list.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs animate-pulse">Loading SMS from ' + (dev?.deviceName || 'device') + '...</div>';
+                sendCommand({ action: 'FETCH_SMS' });
             }
+
             const contactsWin = document.getElementById('contacts-window');
             if (contactsWin && !contactsWin.classList.contains('hidden')) {
-                sendCommand({ action: 'GET_CONTACTS' });
+                const list = document.getElementById('contacts-list-container') || contactsWin.querySelector('.window-body');
+                if (list) list.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs animate-pulse">Loading contacts from ' + (dev?.deviceName || 'device') + '...</div>';
+                sendCommand({ action: 'FETCH_CONTACTS' });
             }
+
             const callLogsWin = document.getElementById('call-logs-window');
             if (callLogsWin && !callLogsWin.classList.contains('hidden')) {
-                sendCommand({ action: 'GET_CALL_LOGS' });
+                const list = document.getElementById('call-logs-container') || callLogsWin.querySelector('.window-body');
+                if (list) list.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs animate-pulse">Loading call logs from ' + (dev?.deviceName || 'device') + '...</div>';
+                sendCommand({ action: 'FETCH_CALL_LOGS' });
             }
+
             const filesWin = document.getElementById('files-window');
             if (filesWin && !filesWin.classList.contains('hidden')) {
-                sendCommand({ action: 'LIST_FILES', path: '/storage/emulated/0' });
+                const list = document.getElementById('files-container') || filesWin.querySelector('.window-body');
+                if (list) list.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs animate-pulse">Loading files from ' + (dev?.deviceName || 'device') + '...</div>';
+                sendCommand({ action: 'FETCH_DIR', path: '/storage/emulated/0' });
             }
+
             const photosWin = document.getElementById('photos-window');
             if (photosWin && !photosWin.classList.contains('hidden')) {
-                sendCommand({ action: 'GET_PHOTOS' });
+                const grid = document.getElementById('photos-grid') || photosWin.querySelector('.window-body');
+                if (grid) grid.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs animate-pulse">Loading photos from ' + (dev?.deviceName || 'device') + '...</div>';
+                sendCommand({ action: 'FETCH_PHOTOS' });
             }
+
             const findPhoneWin = document.getElementById('find-phone-window');
             if (findPhoneWin && !findPhoneWin.classList.contains('hidden')) {
-                sendCommand({ action: 'GET_LOCATION' });
+                sendCommand({ action: 'FETCH_LOCATION' });
             }
-            const infoWin = document.getElementById('device-info-window');
-            if (infoWin && !infoWin.classList.contains('hidden')) {
-                sendCommand({ action: 'GET_DEVICE_INFO' });
-            }
+
+            // Always request fresh storage and battery stats
+            sendCommand({ action: 'FETCH_STORAGE' });
         }
 
         function onDeviceDropdownSelected(newDevId) {

