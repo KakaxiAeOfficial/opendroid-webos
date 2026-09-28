@@ -1,3 +1,4 @@
+
 name: Build and Release OpenDroid APK
 
 on:
@@ -15,6 +16,8 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -39,29 +42,49 @@ jobs:
     - name: Prepare Release APK Artifact
       run: |
         mkdir -p release-apk
-        cp app/build/outputs/apk/debug/app-debug.apk release-apk/OpenDroid-v1.0.apk
+        cp app/build/outputs/apk/debug/app-debug.apk release-apk/OpenDroid-v1.0-build${{ github.run_number }}.apk
+        cp app/build/outputs/apk/debug/app-debug.apk release-apk/OpenDroid-Latest.apk
 
-    - name: Upload APK Artifact
+    - name: Upload Temporary Workflow Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OpenDroid-v1.0-APK
-        path: release-apk/OpenDroid-v1.0.apk
+        name: OpenDroid-APK-Build-${{ github.run_number }}
+        path: release-apk/OpenDroid-Latest.apk
+        retention-days: 90
 
-    - name: Publish to GitHub Releases
+    - name: Publish Permanent GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: "OpenDroid WebOS v1.0.${{ github.run_number }} (Latest Release)"
+        body: |
+          ### 📱 OpenDroid WebOS v1.0.${{ github.run_number }} Official Release
+
+          > **Permanent Downloadable Release Build** (Never expires).
+
+          🌐 **Live Web Controller:** [https://kakaxiaeofficial.github.io/opendroid-webos/](https://kakaxiaeofficial.github.io/opendroid-webos/)  
+          📦 **Build Run:** #${{ github.run_number }}  
+          🔖 **Commit:** `${{ github.sha }}`
+
+          #### ✨ Features Included:
+          - 🛡️ **6-Digit Secret PIN Security:** SHA-256 salted zero-knowledge channel.
+          - 🌐 **Central Account & Multi-Device Hub:** Manage multiple phones seamlessly.
+          - 📱 **5G Screen Mirroring (~30 FPS):** Full remote touch, swipes & hardware keys.
+          - 🎥 **Remote Camera Stream & Silent Photo Capture.**
+          - 🎙️ **Two-Way Audio (Walkie-Talkie):** Speak through phone loudspeaker.
+          - 📁 **Advanced File Explorer:** Batch ZIP download, rename, delete & APK installer.
+          - 📞 **SMS, Dialer, Call Logs & Live GPS Tracker.**
+          - 🥷 **Stealth Mode & Device Admin Lock.**
+
+          ---
+          #### 📦 Downloads:
+          - **`OpenDroid-Latest.apk`** (Latest recommended build)
+          - **`OpenDroid-v1.0-build${{ github.run_number }}.apk`** (Version-specific build)
+        files: |
+          release-apk/OpenDroid-Latest.apk
+          release-apk/OpenDroid-v1.0-build${{ github.run_number }}.apk
+        draft: false
+        prerelease: false
+        make_latest: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        gh release create v1.0.0 release-apk/OpenDroid-v1.0.apk           --title "OpenDroid WebOS v1.0 (Production Release)"           --notes "### 📱 OpenDroid WebOS v1.0 Production Release
-
-          **Web Controller:** [https://kakaxiaeofficial.github.io/opendroid-webos/](https://kakaxiaeofficial.github.io/opendroid-webos/)
-
-          #### ✨ Features Included in this Build:
-          - 🌐 **Central Account & Multi-Device Hub:** Connect multiple phones without 6-digit codes.
-          - 📱 **5G Direct Screen Mirroring (~30 FPS):** Full remote touch, swipes, and nav controls.
-          - 🎥 **Direct Camera Stream:** Front/Back camera streaming with flashlight toggle.
-          - 🎙️ **Two-Way Audio (Walkie-Talkie):** Talk directly through phone speaker from PC.
-          - ⏺️ **Screen Video Recorder & Screenshot:** Record screen mirror to WebM and save PNG screenshots.
-          - 📁 **Advanced File Explorer:** Remote Delete, Rename, Create Folder, and Batch ZIP Download.
-          - 📥 **Remote APK Installer & ⚠️ Emergency Remote Wipe.**
-          - 🥷 **Stealth Mode:** Launcher icon disguise with secret dialer access (\`*#*#9988#*#*\`)."           --clobber || true
-
