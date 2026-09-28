@@ -76,6 +76,14 @@
                     <input type="email" id="account-email-input" placeholder="e.g. user@gmail.com" class="w-full text-xs border border-gray-300 rounded-xl p-2.5 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
+                <div class="text-left">
+                    <label class="text-[11px] font-semibold text-gray-700 flex items-center justify-between">
+                        <span>6-Digit Secret PIN</span>
+                        <span class="text-[10px] text-blue-600 font-normal">🛡️ Private Security</span>
+                    </label>
+                    <input type="password" id="account-pin-input" placeholder="e.g. 843635" maxlength="12" class="w-full text-xs border border-gray-300 rounded-xl p-2.5 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
                 <button id="account-login-btn" onclick="connectViaAccount()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs flex items-center justify-center gap-1.5">
                     <span>🌐</span><span>Sign In & Load Devices</span>
                 </button>
@@ -1202,25 +1210,32 @@
             }
         }
 
-        function getAccountTag(email) {
-            return email.trim().toLowerCase()
-                .replace(/@/g, '_at_')
-                .replace(/\./g, '_')
-                .replace(/\+/g, '_');
+        async function getAccountTag(email, pin) {
+            const raw = `${email.trim().toLowerCase()}:${pin.trim()}`;
+            const msgBuffer = new TextEncoder().encode(raw);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return 'acc_' + hashHex.substring(0, 16);
         }
 
-        function connectViaAccount() {
+        async function connectViaAccount() {
             const email = document.getElementById('account-email-input').value.trim();
+            const pin = (document.getElementById('account-pin-input')?.value || '').trim();
             if (!email || !email.includes('@')) {
-                alert('Please enter a valid Account Email address');
+                showToast('Please enter a valid Account Email address', 'warning');
+                return;
+            }
+            if (!pin || pin.length < 4) {
+                showToast('Please enter your 6-Digit Secret PIN set on your phone', 'warning');
                 return;
             }
             accountEmail = email.toLowerCase();
-            accountTag = getAccountTag(accountEmail);
+            accountTag = await getAccountTag(accountEmail, pin);
             localStorage.setItem('opendroid_account_email', accountEmail);
 
             const loginBtn = document.getElementById('account-login-btn');
-            loginBtn.textContent = 'Connecting to Account Hub...';
+            loginBtn.textContent = 'Connecting to Secure Hub...';
             loginBtn.disabled = true;
 
             initAccountMqtt();
@@ -1398,18 +1413,25 @@
             document.getElementById('pair-modal').classList.add('hidden');
             document.getElementById('device-selector-wrapper').classList.remove('hidden');
 
+            const dev = allDiscoveredDevices[currentDeviceId];
+            const isDevOnline = dev?.isOnline ?? true;
+
             // Subscribe to this device's PC telemetry channel
             const pcChannel = `opendroid/acc/${accountTag}/${currentDeviceId}/pc`;
             mqttClient.subscribe(pcChannel, { qos: 1 });
 
-            // Start Handshake
-            document.getElementById('ws-status-taskbar').textContent = '● Connecting Device...';
-            if (handshakeInterval) clearInterval(handshakeInterval);
-            handshakeInterval = setInterval(() => {
+            if (isDevOnline) {
+                document.getElementById('ws-status-taskbar').textContent = '● Connecting Device...';
+                if (handshakeInterval) clearInterval(handshakeInterval);
+                handshakeInterval = setInterval(() => {
+                    sendCommand({ action: 'HANDSHAKE' });
+                }, 1500);
                 sendCommand({ action: 'HANDSHAKE' });
-            }, 1500);
-            sendCommand({ action: 'HANDSHAKE' });
-            showToast(`Connected to ${allDiscoveredDevices[currentDeviceId]?.deviceName || 'device'}! 🚀`, 'success');
+                showToast(`Connecting to ${dev?.deviceName || 'device'}... 🚀`, 'info');
+            } else {
+                setDeviceOfflineUI(dev?.deviceName || 'Device', dev?.model || 'Android');
+                showToast(`${dev?.deviceName || 'Device'} is currently offline.`, 'warning');
+            }
         }
 
         function updateTopDockDeviceDropdown() {
@@ -1428,19 +1450,131 @@
             });
         }
 
+        function setDeviceOfflineUI(name, model) {
+            const statusEl = document.getElementById('ws-status-taskbar');
+            if (statusEl) {
+                statusEl.textContent = `○ ${name} (Offline)`;
+                statusEl.className = 'text-[11px] text-amber-400 font-medium px-2 py-0.5 bg-amber-950/40 rounded border border-amber-800/50';
+            }
+            // Update dock card
+            const dockName = document.getElementById('dock-device-name');
+            const dockStatus = document.getElementById('dock-status-text');
+            const dockBattery = document.getElementById('dock-battery-percent');
+            const dockStorage = document.getElementById('dock-storage-text');
+            if (dockName) dockName.textContent = name || model || 'Device';
+            if (dockStatus) dockStatus.innerHTML = '<span class="text-amber-400">○ Offline</span>';
+            if (dockBattery) dockBattery.textContent = '--%';
+            if (dockStorage) dockStorage.textContent = '-- / --';
+
+            // Show offline placeholder in all open data windows
+            document.querySelectorAll('.app-window:not(.hidden)').forEach(win => {
+                const body = win.querySelector('.window-body');
+                if (body && !win.id.includes('terminal')) {
+                    if (!body.hasAttribute('data-cached-content')) {
+                        body.setAttribute('data-cached-content', body.innerHTML);
+                    }
+                    body.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full p-6 text-center text-gray-400">
+                            <span class="text-3xl mb-2">📡</span>
+                            <div class="font-bold text-sm text-gray-300">${name} is Offline</div>
+                            <div class="text-[11px] text-gray-500 mt-1">This device is currently unreachable. Connect the device to Wi-Fi or mobile data to access its data.</div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function restoreAndRefreshOpenWindows(dev) {
+            // Restore window bodies and trigger fresh fetches
+            document.querySelectorAll('.app-window:not(.hidden)').forEach(win => {
+                const body = win.querySelector('.window-body');
+                if (body && body.hasAttribute('data-cached-content')) {
+                    body.innerHTML = body.getAttribute('data-cached-content');
+                    body.removeAttribute('data-cached-content');
+                }
+            });
+
+            // Trigger fresh data requests for all open tools
+            const messagesWin = document.getElementById('messages-window');
+            if (messagesWin && !messagesWin.classList.contains('hidden')) {
+                sendCommand({ action: 'GET_SMS' });
+            }
+            const contactsWin = document.getElementById('contacts-window');
+            if (contactsWin && !contactsWin.classList.contains('hidden')) {
+                sendCommand({ action: 'GET_CONTACTS' });
+            }
+            const callLogsWin = document.getElementById('call-logs-window');
+            if (callLogsWin && !callLogsWin.classList.contains('hidden')) {
+                sendCommand({ action: 'GET_CALL_LOGS' });
+            }
+            const filesWin = document.getElementById('files-window');
+            if (filesWin && !filesWin.classList.contains('hidden')) {
+                sendCommand({ action: 'LIST_FILES', path: '/storage/emulated/0' });
+            }
+            const photosWin = document.getElementById('photos-window');
+            if (photosWin && !photosWin.classList.contains('hidden')) {
+                sendCommand({ action: 'GET_PHOTOS' });
+            }
+            const findPhoneWin = document.getElementById('find-phone-window');
+            if (findPhoneWin && !findPhoneWin.classList.contains('hidden')) {
+                sendCommand({ action: 'GET_LOCATION' });
+            }
+            const infoWin = document.getElementById('device-info-window');
+            if (infoWin && !infoWin.classList.contains('hidden')) {
+                sendCommand({ action: 'GET_DEVICE_INFO' });
+            }
+        }
+
         function onDeviceDropdownSelected(newDevId) {
             if (!newDevId || newDevId === currentDeviceId) return;
+
+            // 1. Unsubscribe from old device
             if (currentDeviceId) {
                 mqttClient.unsubscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`);
             }
-            currentDeviceId = newDevId;
-            mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
-            showToast(`Switched active control to ${allDiscoveredDevices[newDevId]?.deviceName || 'device'}!`, 'info');
 
-            // Re-sync all telemetry
-            sendCommand({ action: 'HANDSHAKE' });
-            sendCommand({ action: 'FETCH_STORAGE' });
-            sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
+            // 2. Tear-down active streaming sessions if any
+            if (window.isMirroringActive) {
+                try { stopScreenMirror(); } catch(e) {}
+            }
+            if (window.isCameraStreaming) {
+                try { stopCamera(); } catch(e) {}
+            }
+            if (window.isPushToTalkActive) {
+                try { stopPushToTalk(); } catch(e) {}
+            }
+
+            currentDeviceId = newDevId;
+            const dev = allDiscoveredDevices[newDevId];
+            const devName = dev?.deviceName || dev?.model || 'Device';
+            const isDevOnline = dev?.isOnline ?? false;
+
+            // 3. Subscribe to new target device channel
+            mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
+
+            // 4. Update UI according to Online vs Offline state
+            if (isDevOnline) {
+                document.getElementById('ws-status-taskbar').textContent = `● Connecting to ${devName}...`;
+                document.getElementById('ws-status-taskbar').className = 'text-[11px] text-green-400 font-medium px-2 py-0.5 bg-green-950/40 rounded border border-green-800/50';
+
+                // Update Dock Card with new device's metadata
+                const dockName = document.getElementById('dock-device-name');
+                const dockStatus = document.getElementById('dock-status-text');
+                const dockBattery = document.getElementById('dock-battery-percent');
+                if (dockName) dockName.textContent = devName;
+                if (dockStatus) dockStatus.innerHTML = '<span class="text-green-400">● Connected</span>';
+                if (dockBattery && dev.battery) dockBattery.textContent = `${dev.battery}%`;
+
+                // Initiate Handshake & Auto-fetch data for currently open windows
+                sendCommand({ action: 'HANDSHAKE' });
+                sendCommand({ action: 'GET_DEVICE_INFO' });
+                restoreAndRefreshOpenWindows(dev);
+
+                showToast(`Switched active control to ${devName}! 🚀`, 'success');
+            } else {
+                setDeviceOfflineUI(devName, dev?.model || 'Android');
+                showToast(`${devName} is currently Offline.`, 'warning');
+            }
         }
 
         function sendCommand(obj) {

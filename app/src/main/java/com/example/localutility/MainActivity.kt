@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
 
     // Phase 6: Central Account & Multi-Device States
     private val boundAccountState = mutableStateOf("")
+    private val boundPinState = mutableStateOf("")
     private val deviceNameState = mutableStateOf(Build.MODEL ?: "Android Device")
 
     // Permission States
@@ -88,10 +89,12 @@ class MainActivity : ComponentActivity() {
         }
         LocalFileServerService.currentPairingCode = code
 
-        // Phase 6: Read saved account binding
+        // Phase 6 & 7: Read saved account binding with Secret PIN
         val savedEmail = prefs.getString("account_email", "") ?: ""
+        val savedPin = prefs.getString("account_pin", "") ?: ""
         val savedDeviceName = prefs.getString("device_name", Build.MODEL) ?: (Build.MODEL ?: "Android Device")
         boundAccountState.value = savedEmail
+        boundPinState.value = savedPin
         deviceNameState.value = savedDeviceName
 
         nsdManager = NsdDiscoveryManager(this)
@@ -190,8 +193,10 @@ class MainActivity : ComponentActivity() {
                         // Tab 0: Dashboard
                         if (selectedTab == 0) {
                             val boundAccount by boundAccountState
+                            val boundPin by boundPinState
                             val deviceName by deviceNameState
                             var inputEmail by remember { mutableStateOf(boundAccount) }
+                            var inputPin by remember { mutableStateOf(boundPin) }
                             var inputDeviceName by remember { mutableStateOf(deviceName) }
 
                             Column(
@@ -237,12 +242,24 @@ class MainActivity : ComponentActivity() {
                                                 color = Color(0xFF1B5E20)
                                             )
                                             Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
-                                                text = "Device Name: $deviceName",
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                color = Color.DarkGray
-                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "Device: $deviceName",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = Color.DarkGray
+                                                )
+                                                Text(
+                                                    text = "🛡️ 6-Digit PIN Protected",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF1565C0)
+                                                )
+                                            }
                                             Spacer(modifier = Modifier.height(10.dp))
                                             OutlinedButton(
                                                 onClick = { unbindAccount() },
@@ -254,7 +271,7 @@ class MainActivity : ComponentActivity() {
                                             }
                                         } else {
                                             Text(
-                                                text = "Sign in with your Email on Web and Phone to manage multiple devices without 6-digit codes.",
+                                                text = "Set your Account Email and a 6-digit Secret PIN. Without this PIN, no one can discover or control your phone.",
                                                 fontSize = 12.sp,
                                                 color = Color.Gray
                                             )
@@ -265,6 +282,18 @@ class MainActivity : ComponentActivity() {
                                                 onValueChange = { inputEmail = it },
                                                 label = { Text("Account Email", fontSize = 12.sp) },
                                                 placeholder = { Text("e.g. user@gmail.com", fontSize = 12.sp) },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = RoundedCornerShape(10.dp)
+                                            )
+
+                                            Spacer(modifier = Modifier.height(8.dp))
+
+                                            OutlinedTextField(
+                                                value = inputPin,
+                                                onValueChange = { if (it.length <= 12) inputPin = it },
+                                                label = { Text("6-Digit Secret PIN", fontSize = 12.sp) },
+                                                placeholder = { Text("e.g. 843635", fontSize = 12.sp) },
                                                 singleLine = true,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 shape = RoundedCornerShape(10.dp)
@@ -286,15 +315,15 @@ class MainActivity : ComponentActivity() {
 
                                             Button(
                                                 onClick = {
-                                                    if (inputEmail.contains("@")) {
-                                                        bindAccount(inputEmail, inputDeviceName)
+                                                    if (inputEmail.contains("@") && inputPin.trim().length >= 4) {
+                                                        bindAccount(inputEmail, inputPin, inputDeviceName)
                                                     }
                                                 },
-                                                enabled = inputEmail.contains("@"),
+                                                enabled = inputEmail.contains("@") && inputPin.trim().length >= 4,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 shape = RoundedCornerShape(10.dp)
                                             ) {
-                                                Text("🔗 Bind This Device", fontSize = 13.sp)
+                                                Text("🔗 Secure & Bind This Device", fontSize = 13.sp)
                                             }
                                         }
                                     }
@@ -736,24 +765,31 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // --- Phase 6: Account Binding Helpers ---
-    private fun bindAccount(email: String, name: String) {
+    // --- Phase 6 & 7: Account Binding Helpers with Secret PIN ---
+    private fun bindAccount(email: String, pin: String, name: String) {
         val cleanEmail = email.trim().lowercase()
+        val cleanPin = pin.trim()
         val cleanName = if (name.trim().isEmpty()) (Build.MODEL ?: "Android Device") else name.trim()
         val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
         prefs.edit()
             .putString("account_email", cleanEmail)
+            .putString("account_pin", cleanPin)
             .putString("device_name", cleanName)
             .apply()
         boundAccountState.value = cleanEmail
+        boundPinState.value = cleanPin
         deviceNameState.value = cleanName
-        LocalFileServerService.instance?.bindAccount(cleanEmail, cleanName)
+        LocalFileServerService.instance?.bindAccount(cleanEmail, cleanPin, cleanName)
     }
 
     private fun unbindAccount() {
         val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
-        prefs.edit().remove("account_email").apply()
+        prefs.edit()
+            .remove("account_email")
+            .remove("account_pin")
+            .apply()
         boundAccountState.value = ""
+        boundPinState.value = ""
         LocalFileServerService.instance?.unbindAccount()
     }
 

@@ -76,8 +76,9 @@ class LocalFileServerService : Service() {
         var onCloudStatusChanged: ((Boolean) -> Unit)? = null
         var instance: LocalFileServerService? = null
 
-        // Phase 6 & 7: Account & Multi-Device Global State
+        // Phase 6 & 7: Account & Multi-Device Global State with Secret PIN
         var boundAccountEmail: String = ""
+        var boundAccountPin: String = ""
         var accountTag: String = ""
         var openDroidDeviceId: String = ""
         var persistentHardwareId: String = ""
@@ -112,9 +113,10 @@ class LocalFileServerService : Service() {
         openDroidDeviceId = "dev_" + cleanHardwareId.takeLast(10)
         prefs.edit().putString("device_id", openDroidDeviceId).apply()
         val savedEmail = prefs.getString("account_email", "") ?: ""
+        val savedPin = prefs.getString("account_pin", "") ?: ""
         val savedName = prefs.getString("device_name", Build.MODEL) ?: (Build.MODEL ?: "Android Device")
-        if (savedEmail.isNotEmpty()) {
-            bindAccountInternal(savedEmail, savedName)
+        if (savedEmail.isNotEmpty() && savedPin.isNotEmpty()) {
+            bindAccountInternal(savedEmail, savedPin, savedName)
         }
 
         baseDir = getExternalFilesDir(null) ?: filesDir
@@ -316,8 +318,8 @@ class LocalFileServerService : Service() {
     }
 
     // --- Phase 6: Central Account & Multi-Device Hub Engine ---
-    fun bindAccount(email: String, name: String) {
-        bindAccountInternal(email, name)
+    fun bindAccount(email: String, pin: String, name: String) {
+        bindAccountInternal(email, pin, name)
         subscribeToAccountChannels()
         publishDevicePresence(true)
     }
@@ -331,18 +333,23 @@ class LocalFileServerService : Service() {
             }
         } catch (_: Exception) {}
         boundAccountEmail = ""
+        boundAccountPin = ""
         accountTag = ""
         deviceNickname = ""
     }
 
-    private fun bindAccountInternal(email: String, name: String) {
+    private fun bindAccountInternal(email: String, pin: String, name: String) {
         boundAccountEmail = email.trim().lowercase()
+        boundAccountPin = pin.trim()
         deviceNickname = if (name.trim().isEmpty()) (Build.MODEL ?: "Android Device") else name.trim()
-        accountTag = boundAccountEmail
-            .replace("@", "_at_")
-            .replace(".", "_")
-            .replace("+", "_")
-        Log.d("OpenDroid", "Bound account: $boundAccountEmail -> Tag: $accountTag | Device: $openDroidDeviceId ($deviceNickname)")
+        
+        // Cryptographic SHA-256 salted accountTag derived from email + secret PIN
+        val rawAuth = "$boundAccountEmail:$boundAccountPin"
+        val hash = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(rawAuth.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        accountTag = "acc_" + hash.take(16)
+        Log.d("OpenDroid", "Bound account: $boundAccountEmail [PIN Protected] -> Tag: $accountTag | Device: $openDroidDeviceId ($deviceNickname)")
     }
 
     private fun subscribeToAccountChannels() {
