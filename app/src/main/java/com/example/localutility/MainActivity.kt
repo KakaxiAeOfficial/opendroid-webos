@@ -604,11 +604,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateAllPermissionStates() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, "android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) {
-                requestPermissionsLauncher.launch(arrayOf("android.permission.POST_NOTIFICATIONS"))
-            }
-        }
+        // Safe check without recursive launch loop (Fixes StackOverflowError when notification is turned off)
         isStorageGrantedState.value = checkStoragePermission()
         isBatteryIgnoredState.value = checkBatteryOptimization()
         isAccessibilityGrantedState.value = checkAccessibilityPermission()
