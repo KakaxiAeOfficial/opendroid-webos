@@ -24,7 +24,10 @@ class AudioStreamManager private constructor(private val context: Context) {
             }
         }
 
-        private const val SAMPLE_RATE = 16000
+        // Ambient Mic uses 16kHz
+        private const val MIC_SAMPLE_RATE = 16000
+        // Walkie-Talkie uses 8kHz Telephony Downsampling (50% traffic reduction)
+        private const val WALKIE_SAMPLE_RATE = 8000
         private const val CHANNEL_IN_CONFIG = AudioFormat.CHANNEL_IN_MONO
         private const val CHANNEL_OUT_CONFIG = AudioFormat.CHANNEL_OUT_MONO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
@@ -48,12 +51,12 @@ class AudioStreamManager private constructor(private val context: Context) {
         if (isRecording) return
 
         try {
-            val minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_IN_CONFIG, AUDIO_FORMAT)
+            val minBufferSize = AudioRecord.getMinBufferSize(MIC_SAMPLE_RATE, CHANNEL_IN_CONFIG, AUDIO_FORMAT)
             val bufferSize = maxOf(minBufferSize, 3200)
 
             audioRecord = AudioRecord(
                 MediaRecorder.AudioSource.MIC,
-                SAMPLE_RATE,
+                MIC_SAMPLE_RATE,
                 CHANNEL_IN_CONFIG,
                 AUDIO_FORMAT,
                 bufferSize
@@ -102,7 +105,7 @@ class AudioStreamManager private constructor(private val context: Context) {
         }
     }
 
-    // --- Two-Way Audio (Walkie-Talkie Speaker Playback) with Dedicated Single Worker Thread ---
+    // --- Two-Way Audio (Walkie-Talkie Speaker Playback) at 8kHz Telephony Rate ---
     fun playWalkieTalkieChunk(base64Pcm: String) {
         try {
             val pcmData = Base64.decode(base64Pcm, Base64.NO_WRAP)
@@ -128,7 +131,7 @@ class AudioStreamManager private constructor(private val context: Context) {
         isPlaybackActive.set(true)
 
         playbackThread = Thread({
-            Log.d("AudioStream", "Walkie-talkie dedicated playback worker started")
+            Log.d("AudioStream", "Walkie-talkie dedicated 8kHz playback worker started")
             while (isPlaybackActive.get()) {
                 try {
                     val chunk = playbackQueue.poll(500, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -152,11 +155,11 @@ class AudioStreamManager private constructor(private val context: Context) {
             }
 
             val minBufferSize = AudioTrack.getMinBufferSize(
-                SAMPLE_RATE,
+                WALKIE_SAMPLE_RATE,
                 CHANNEL_OUT_CONFIG,
                 AUDIO_FORMAT
             )
-            val bufferSize = maxOf(minBufferSize, 6400)
+            val bufferSize = maxOf(minBufferSize, 3200)
             audioTrack = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
@@ -167,7 +170,7 @@ class AudioStreamManager private constructor(private val context: Context) {
                 .setAudioFormat(
                     AudioFormat.Builder()
                         .setEncoding(AUDIO_FORMAT)
-                        .setSampleRate(SAMPLE_RATE)
+                        .setSampleRate(WALKIE_SAMPLE_RATE)
                         .setChannelMask(CHANNEL_OUT_CONFIG)
                         .build()
                 )
@@ -176,7 +179,7 @@ class AudioStreamManager private constructor(private val context: Context) {
                 .build()
 
             audioTrack?.play()
-            Log.d("AudioStream", "Walkie-talkie AudioTrack initialized and playing")
+            Log.d("AudioStream", "Walkie-talkie AudioTrack initialized at 8kHz and playing")
         } catch (e: Exception) {
             Log.e("AudioStream", "Failed to init AudioTrack", e)
         }
@@ -198,4 +201,3 @@ class AudioStreamManager private constructor(private val context: Context) {
         }
     }
 }
-

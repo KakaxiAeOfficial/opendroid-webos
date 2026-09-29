@@ -53,6 +53,70 @@
 
 
     <!-- Connect / Pairing Modal (Dual-Mode: 6-Digit Guest or Central Account) -->
+        <!-- Admin Custom Wallpaper Modal -->
+    <div id="wallpaper-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md z-[120] flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 text-white rounded-2xl shadow-2xl p-6 max-w-lg w-full">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">🎨</span>
+                    <h3 class="font-bold text-sm">Admin Wallpaper & Theme Manager</h3>
+                </div>
+                <button onclick="closeWallpaperModal()" class="text-gray-400 hover:text-white text-lg">✕</button>
+            </div>
+
+            <div class="mt-4 space-y-4 text-xs">
+                <div>
+                    <label class="text-gray-400 block mb-2 font-semibold">Choose Premium Preset:</label>
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
+                            <img src="https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
+                            <div class="p-1 text-center text-[10px] text-gray-300">Anime Eva (Default)</div>
+                        </div>
+                        <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
+                            <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
+                            <div class="p-1 text-center text-[10px] text-gray-300">Deep Cyberpunk</div>
+                        </div>
+                        <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
+                            <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
+                            <div class="p-1 text-center text-[10px] text-gray-300">Alpine Nature</div>
+                        </div>
+                        <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
+                            <img src="https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
+                            <div class="p-1 text-center text-[10px] text-gray-300">Neon Horizon</div>
+                        </div>
+                        <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
+                            <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
+                            <div class="p-1 text-center text-[10px] text-gray-300">Minimal Dark</div>
+                        </div>
+                        <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
+                            <img src="https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
+                            <div class="p-1 text-center text-[10px] text-gray-300">Artistic Abstract</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-gray-800">
+                    <label class="text-gray-400 block mb-1 font-semibold">Or Enter Custom Image URL:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="custom-wallpaper-url-input" placeholder="https://example.com/wallpaper.jpg" class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
+                        <button onclick="applyCustomWallpaperUrl()" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">Apply</button>
+                    </div>
+                </div>
+
+                <div class="pt-2 border-t border-gray-800 flex items-center justify-between">
+                    <div>
+                        <span class="text-gray-400 block font-semibold">Upload Local Wallpaper:</span>
+                        <span class="text-[10px] text-gray-500">Pick any image from your PC</span>
+                    </div>
+                    <label class="bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-700 cursor-pointer font-semibold text-xs text-gray-200">
+                        📁 Browse File
+                        <input type="file" accept="image/*" onchange="onWallpaperFileUpload(event)" class="hidden">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full text-center">
             <div class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 shadow-lg text-white">📱</div>
@@ -183,7 +247,7 @@
                 <span id="dock-mic-label">Mic Off</span>
             </button>
 
-            <button id="dock-talk-btn" onmousedown="startWalkieTalkie()" onmouseup="stopWalkieTalkie()" onmouseleave="stopWalkieTalkie()" ontouchstart="startWalkieTalkie()" ontouchend="stopWalkieTalkie()" ontouchcancel="stopWalkieTalkie()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px] select-none" title="Hold to Talk to Phone Speaker">
+            <button id="dock-talk-btn" onmousedown="startWalkieTalkie()" onmouseup="stopWalkieTalkie()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px] select-none" title="Hold to Talk to Phone Speaker">
                 <span id="dock-talk-icon">📢</span>
                 <span id="dock-talk-label">Push to Talk</span>
             </button>
@@ -964,6 +1028,48 @@
 
 
     <script>
+        // --- Admin Custom Wallpaper Engine ---
+        function initCustomWallpaper() {
+            const saved = localStorage.getItem('opendroid_admin_wallpaper');
+            if (saved) {
+                document.body.style.backgroundImage = `url('${saved}')`;
+            }
+        }
+        window.addEventListener('DOMContentLoaded', initCustomWallpaper);
+
+        function openWallpaperModal() {
+            document.getElementById('wallpaper-modal').classList.remove('hidden');
+        }
+
+        function closeWallpaperModal() {
+            document.getElementById('wallpaper-modal').classList.add('hidden');
+        }
+
+        function setWallpaperPreset(url) {
+            localStorage.setItem('opendroid_admin_wallpaper', url);
+            document.body.style.backgroundImage = `url('${url}')`;
+            showToast('Custom wallpaper applied! 🎨', 'success');
+            closeWallpaperModal();
+        }
+
+        function applyCustomWallpaperUrl() {
+            const input = document.getElementById('custom-wallpaper-url-input');
+            const url = (input?.value || '').trim();
+            if (!url) return;
+            setWallpaperPreset(url);
+        }
+
+        function onWallpaperFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const base64Url = event.target.result;
+                setWallpaperPreset(base64Url);
+            };
+            reader.readAsDataURL(file);
+        }
+
         let currentPairingCode = '';
         let mqttClient = null;
         let localWs = null;
@@ -1175,7 +1281,7 @@
             isCloudMode = false;
             localWs = new WebSocket(`ws://${location.host}/ws`);
             localWs.onopen = () => {
-                document.getElementById('ws-status-taskbar').textContent = '● Connected (Local Wi-Fi)';
+                document.getElementById('ws-status-taskbar').textContent = '● Connected';
                 document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs font-semibold';
                 sendCommand({ action: 'HANDSHAKE' });
             };
@@ -1636,7 +1742,7 @@
                     clearInterval(handshakeInterval);
                     handshakeInterval = null;
                 }
-                document.getElementById('ws-status-taskbar').textContent = '● Connected (5G Phone Active)';
+                document.getElementById('ws-status-taskbar').textContent = '● Connected';
                 document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs font-semibold';
                 
                 if (data.device) {
@@ -2035,25 +2141,16 @@
         let walkieMediaStream = null;
         let walkieProcessor = null;
         let isWalkieActive = false;
-        let walkieTimeoutTimer = null;
 
         async function startWalkieTalkie() {
             if (isWalkieActive) return;
-            if (walkieTimeoutTimer) clearTimeout(walkieTimeoutTimer);
-            // Safety: Auto-cutoff after 20 seconds to prevent infinite audio loop if button gets stuck
-            walkieTimeoutTimer = setTimeout(() => {
-                if (isWalkieActive) {
-                    stopWalkieTalkie();
-                    showToast("Walkie-talkie auto-stopped (20s limit reached)", "info");
-                }
-            }, 20000);
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         echoCancellation: true,
                         noiseSuppression: true,
                         channelCount: 1,
-                        sampleRate: 16000
+                        sampleRate: 8000
                     }
                 });
                 walkieMediaStream = stream;
@@ -2061,10 +2158,11 @@
                 updateWalkieUI(true);
 
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                walkieAudioContext = new AudioCtx({ sampleRate: 16000 });
+                walkieAudioContext = new AudioCtx({ sampleRate: 8000 });
                 const source = walkieAudioContext.createMediaStreamSource(stream);
                 
-                walkieProcessor = walkieAudioContext.createScriptProcessor(2048, 1, 1);
+                // 8kHz Telephony Downsampling: 1024 samples = 128ms per chunk (50% traffic reduction)
+                walkieProcessor = walkieAudioContext.createScriptProcessor(1024, 1, 1);
                 walkieProcessor.onaudioprocess = (e) => {
                     if (!isWalkieActive) return;
                     const inputData = e.inputBuffer.getChannelData(0);
@@ -2079,7 +2177,7 @@
                         binary += String.fromCharCode(bytes[i]);
                     }
                     const base64Chunk = btoa(binary);
-                    // Use QoS 0 for real-time streaming audio to prevent network buffer choking
+                    // 8kHz QoS 0 stream (Lightweight fire-and-forget, saves EMQX traffic)
                     const payload = JSON.stringify({ action: 'WALKIE_TALKIE_CHUNK', data: base64Chunk });
                     if (accountTag && currentDeviceId && mqttClient && mqttClient.connected) {
                         mqttClient.publish(`opendroid/acc/${accountTag}/${currentDeviceId}/phone`, payload, { qos: 0 });
@@ -2101,10 +2199,6 @@
         }
 
         function stopWalkieTalkie() {
-            if (walkieTimeoutTimer) {
-                clearTimeout(walkieTimeoutTimer);
-                walkieTimeoutTimer = null;
-            }
             if (!isWalkieActive) return;
             isWalkieActive = false;
             updateWalkieUI(false);
@@ -2129,7 +2223,7 @@
             }
         }
 
-        // Global release listeners for Walkie-Talkie so it never gets stuck
+        // Global release listeners: User can hold down mouse/finger anywhere on screen smoothly
         window.addEventListener('mouseup', () => { if (isWalkieActive) stopWalkieTalkie(); });
         window.addEventListener('touchend', () => { if (isWalkieActive) stopWalkieTalkie(); });
         window.addEventListener('touchcancel', () => { if (isWalkieActive) stopWalkieTalkie(); });
