@@ -11,7 +11,7 @@
     <style>
         body { 
             overflow: hidden; 
-            background: url('https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=2560&auto=format&fit=crop') no-repeat center center fixed; 
+            background: url('wallpaper.png') no-repeat center center fixed; 
             background-size: cover; 
             user-select: none;
         }
@@ -52,6 +52,8 @@
 <body class="h-screen w-screen text-gray-800 font-sans relative">
 
 
+
+
     <!-- Connect / Pairing Modal (Dual-Mode: 6-Digit Guest or Central Account) -->
         <!-- Admin Custom Wallpaper Modal -->
     <div id="wallpaper-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md z-[120] flex items-center justify-center p-4">
@@ -64,13 +66,14 @@
                 <button onclick="closeWallpaperModal()" class="text-gray-400 hover:text-white text-lg">✕</button>
             </div>
 
+
             <div class="mt-4 space-y-4 text-xs">
                 <div>
                     <label class="text-gray-400 block mb-2 font-semibold">Choose Premium Preset:</label>
                     <div class="grid grid-cols-3 gap-2.5">
-                        <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
-                            <img src="https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
-                            <div class="p-1 text-center text-[10px] text-gray-300">Anime Eva (Default)</div>
+                        <div onclick="setWallpaperPreset('wallpaper.png')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
+                            <img src="wallpaper.png" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
+                            <div class="p-1 text-center text-[10px] text-gray-300">Aizen Bleach (Default)</div>
                         </div>
                         <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
                             <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
@@ -95,6 +98,7 @@
                     </div>
                 </div>
 
+
                 <div class="pt-2 border-t border-gray-800">
                     <label class="text-gray-400 block mb-1 font-semibold">Or Enter Custom Image URL:</label>
                     <div class="flex gap-2">
@@ -102,6 +106,7 @@
                         <button onclick="applyCustomWallpaperUrl()" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">Apply</button>
                     </div>
                 </div>
+
 
                 <div class="pt-2 border-t border-gray-800 flex items-center justify-between">
                     <div>
@@ -117,11 +122,13 @@
         </div>
     </div>
 
+
     <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full text-center">
             <div class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 shadow-lg text-white">📱</div>
             <h2 class="text-xl font-bold text-gray-900">OpenDroid WebOS</h2>
             <p class="text-xs text-gray-500 mt-0.5 mb-3">AirDroid-Style Wireless Remote Management</p>
+
 
             <!-- Mode Tabs -->
             <div class="flex bg-gray-100 p-1 rounded-xl mb-4 text-xs font-semibold">
@@ -133,12 +140,14 @@
                 </button>
             </div>
 
+
             <!-- Mode 1: Central Account & Multi-Device Hub -->
             <div id="mode-account-section" class="space-y-3">
                 <div class="text-left">
                     <label class="text-[11px] font-semibold text-gray-700">Account Email</label>
                     <input type="email" id="account-email-input" placeholder="e.g. user@gmail.com" class="w-full text-xs border border-gray-300 rounded-xl p-2.5 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
+
 
                 <div class="text-left">
                     <label class="text-[11px] font-semibold text-gray-700 flex items-center justify-between">
@@ -148,9 +157,11 @@
                     <input type="password" id="account-pin-input" placeholder="e.g. 843635" maxlength="12" class="w-full text-xs border border-gray-300 rounded-xl p-2.5 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
+
                 <button id="account-login-btn" onclick="connectViaAccount()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs flex items-center justify-center gap-1.5">
                     <span>🌐</span><span>Sign In & Load Devices</span>
                 </button>
+
 
                 <!-- Discovered Devices Selector (Revealed after sign in) -->
                 <div id="account-devices-container" class="hidden text-left bg-gray-50 border rounded-xl p-3 space-y-2">
@@ -167,6 +178,7 @@
                 </div>
             </div>
 
+
             <!-- Mode 2: Quick 6-Digit Guest Code -->
             <div id="mode-code-section" class="hidden space-y-3">
                 <p class="text-xs text-gray-500">Enter the 6-digit code shown on your phone:</p>
@@ -174,11 +186,14 @@
                 <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs">Connect 5G Stream</button>
             </div>
 
+
             <div class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-center gap-4 text-xs">
                 <button onclick="connectLocal()" class="text-gray-400 hover:text-gray-600 underline text-[11px]">Connect via Local Wi-Fi</button>
             </div>
         </div>
     </div>
+
+
 
 
     <!-- On-Demand Image Preview Modal -->
@@ -199,6 +214,8 @@
     </div>
 
 
+
+
     <!-- On-Demand Video Player Modal -->
     <div id="video-player-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
         <div class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden">
@@ -217,6 +234,8 @@
     </div>
 
 
+
+
     <!-- Top Dock Bar -->
     <div class="fixed top-2 left-1/2 -translate-x-1/2 h-10 bg-gray-900/85 backdrop-blur-md text-white flex items-center gap-4 px-4 rounded-full z-50 shadow-xl border border-white/10 text-xs">
         <div class="flex items-center gap-2 pr-3 border-r border-gray-700">
@@ -225,10 +244,14 @@
         </div>
 
 
+
+
         <div class="relative flex items-center">
             <input type="text" id="top-search" placeholder="Search contacts or messages..." class="bg-gray-800/80 border border-gray-700 rounded-full px-3 py-1 text-xs w-48 focus:w-64 transition-all focus:outline-none focus:border-blue-500 text-gray-200">
             <span class="absolute right-2 text-gray-400 text-xs">🔍</span>
         </div>
+
+
 
 
         <!-- Phase 6: Multi-Device Dropdown Selector -->
@@ -239,6 +262,7 @@
             </select>
         </div>
 
+
         <div class="flex items-center gap-3.5 pl-3 border-l border-gray-700">
             <span id="ws-status-taskbar" class="text-yellow-400 text-xs font-semibold">● Ready</span>
             
@@ -247,10 +271,13 @@
                 <span id="dock-mic-label">Mic Off</span>
             </button>
 
+
             <button id="dock-talk-btn" onmousedown="startWalkieTalkie()" onmouseup="stopWalkieTalkie()" class="bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-full text-gray-300 hover:text-white transition-all flex items-center gap-1.5 border border-gray-700 font-medium text-[11px] select-none" title="Hold to Talk to Phone Speaker">
                 <span id="dock-talk-icon">📢</span>
                 <span id="dock-talk-label">Push to Talk</span>
             </button>
+
+
 
 
             <!-- Admin Custom Wallpaper & Theme Engine Button (Header Trigger) -->
@@ -262,6 +289,8 @@
             <button onclick="location.reload()" title="Disconnect" class="hover:text-red-400 font-bold ml-1">⏻</button>
         </div>
     </div>
+
+
 
 
     <!-- Desktop Icons Grid (Vertical Column-Wrapping AirDroid Style) -->
@@ -286,6 +315,8 @@
         </div>
 
 
+
+
         <!-- Media & Files -->
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('file-window')">
             <div class="app-tile bg-gradient-to-tr from-amber-400 to-yellow-500">📁</div>
@@ -303,6 +334,8 @@
             <div class="app-tile bg-gradient-to-tr from-blue-400 to-indigo-500">🎬</div>
             <span class="text-xs font-medium text-center mt-1">Videos</span>
         </div>
+
+
 
 
         <!-- Management & Utilities -->
@@ -326,6 +359,8 @@
             <div class="app-tile bg-gradient-to-tr from-orange-500 to-amber-600">🔔</div>
             <span class="text-xs font-medium text-center mt-1">Ringtone</span>
         </div>
+
+
 
 
         <!-- Remote Controls, Web & Security -->
@@ -353,6 +388,8 @@
     </div>
 
 
+
+
     <!-- AirDroid-Style Right-Side Device & Quick Toolbox Widget -->
     <div id="airdroid-widget" class="fixed top-14 right-6 w-80 bg-gray-900/85 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-4 text-white z-20 transition-all duration-300 select-none">
         
@@ -372,6 +409,7 @@
                 ➖
             </button>
         </div>
+
 
         <div id="widget-body" class="transition-all duration-300 space-y-3 pt-3">
             
@@ -395,6 +433,7 @@
                     <span id="widget-battery-state" class="text-[10px] text-gray-400 mt-1 font-medium">Battery</span>
                 </div>
 
+
                 <!-- Storage Gauge -->
                 <div class="flex flex-col justify-center text-left">
                     <div class="flex items-center justify-between text-[11px] font-semibold mb-1">
@@ -408,6 +447,7 @@
                     <div id="widget-storage-free" class="text-[9px] text-emerald-400 font-mono truncate">Free: --</div>
                 </div>
             </div>
+
 
             <!-- Quick Toolbox Tabs -->
             <div class="bg-black/20 rounded-xl p-2.5 border border-white/5 space-y-2">
@@ -424,6 +464,7 @@
                     </button>
                 </div>
 
+
                 <!-- Tab 1: Quick File Drop Content -->
                 <div id="widget-tab-file" class="space-y-1.5">
                     <div id="widget-dropzone" onclick="document.getElementById('widget-file-input').click()"
@@ -439,6 +480,7 @@
                     </div>
                 </div>
 
+
                 <!-- Tab 2: Quick Clipboard Content -->
                 <div id="widget-tab-text" class="hidden space-y-1.5">
                     <textarea id="widget-clipboard-input" rows="2" placeholder="Type or paste text to send to phone clipboard..."
@@ -448,6 +490,7 @@
                     </button>
                     <div id="widget-clip-status" class="text-[10px] text-center font-mono text-gray-400 h-3"></div>
                 </div>
+
 
                 <!-- Tab 3: Quick URL Content -->
                 <div id="widget-tab-url" class="hidden space-y-1.5">
@@ -459,6 +502,7 @@
                     <div id="widget-url-status" class="text-[10px] text-center font-mono text-gray-400 h-3"></div>
                 </div>
             </div>
+
 
             <!-- Quick Action Shortcuts -->
             <div class="grid grid-cols-6 gap-1 pt-1">
@@ -488,8 +532,11 @@
                 </button>
             </div>
 
+
         </div>
     </div>
+
+
 
 
     <!-- Window: Open URL on Phone -->
@@ -514,6 +561,8 @@
     </div>
 
 
+
+
     <!-- Window: Remote Camera -->
     <div id="camera-window" class="window hidden" style="display: none; width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -527,6 +576,8 @@
             <div id="camera-status-bar" class="bg-gray-900/90 text-yellow-400 text-[11px] py-1.5 px-3 text-center border-b border-gray-800 font-mono">
                 Click Start Camera below
             </div>
+
+
 
 
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden">
@@ -555,6 +606,8 @@
     </div>
 
 
+
+
     <!-- Window: Secret Stealth Capture Panel -->
     <div id="secret-window" class="window hidden" style="display: none; width: 520px; height: 580px; top: 80px; left: 350px;">
         <!-- Title Bar -->
@@ -567,6 +620,7 @@
             <button onclick="wm.closeWindow('secret-window')" class="text-gray-400 hover:text-red-400 text-sm font-bold">✕</button>
         </div>
 
+
         <!-- Panel Content -->
         <div class="flex-1 bg-gray-900 text-gray-200 overflow-hidden flex flex-col">
             <!-- Capture Controls Bar -->
@@ -575,6 +629,7 @@
                     <span class="font-medium">Select Source:</span>
                     <span id="secret-status-text" class="text-emerald-400 font-mono text-[11px]">● Idle / Ready</span>
                 </div>
+
 
                 <!-- 3 Options Selection -->
                 <div class="grid grid-cols-3 gap-2 text-xs">
@@ -592,6 +647,7 @@
                     </label>
                 </div>
 
+
                 <!-- Primary Action Button with Cooldown -->
                 <div class="flex items-center gap-2">
                     <button id="secret-capture-btn" onclick="triggerSecretCapture()" class="flex-1 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-bold py-2 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 text-xs">
@@ -604,11 +660,13 @@
                 </div>
             </div>
 
+
             <!-- Gallery Header -->
             <div class="px-3 py-1.5 bg-gray-950/60 border-b border-gray-800 flex justify-between items-center text-[11px] text-gray-400">
                 <span>Session Captures (<span id="secret-count" class="font-mono text-cyan-400 font-bold">0</span>)</span>
                 <span class="text-gray-500">Stored in browser RAM only • Not saved on phone</span>
             </div>
+
 
             <!-- Gallery Grid (Retains all captured photos in chronological order) -->
             <div id="secret-gallery-grid" class="flex-1 overflow-y-auto p-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -620,6 +678,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Window: Screen Mirroring -->
     <div id="screen-window" class="window hidden" style="display: none; width: 360px; height: 710px; top: 50px; left: 330px;">
@@ -636,6 +695,8 @@
             </div>
 
 
+
+
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden select-none">
                 <img id="screen-frame-view" class="w-full h-full object-fill cursor-crosshair hidden" alt="Screen Mirror" />
                 <div id="screen-placeholder" class="text-gray-500 text-xs text-center p-4">
@@ -648,6 +709,8 @@
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
             </div>
+
+
 
 
             <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10 flex flex-col gap-2 text-xs">
@@ -666,6 +729,8 @@
             </div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Notification History Center -->
@@ -689,6 +754,7 @@
             <div class="p-6 text-center text-gray-400 text-xs">Loading notifications...</div>
         </div>
     </div>
+
 
     <!-- Window: Files Explorer -->
     <div id="file-window" class="window hidden" style="display: none; width: 550px; height: 520px; top: 110px; left: 370px;">
@@ -719,11 +785,15 @@
             </div>
 
 
+
+
             <div id="dir-files-list" class="flex-1 overflow-y-auto divide-y text-xs">
                 <div class="p-4 text-center text-gray-400 text-xs">Loading directory...</div>
             </div>
         </div>
     </div>
+
+
 
 
     <!-- Live File Transfer Progress Toast -->
@@ -738,8 +808,12 @@
     </div>
 
 
+
+
     <!-- Real-Time Notification Mirror Toast Container -->
     <div id="toast-container" class="fixed top-14 right-6 w-80 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
+
 
 
     <!-- Window: Messages -->
@@ -764,6 +838,8 @@
     </div>
 
 
+
+
     <!-- Window: Dialer & Contacts -->
     <div id="contacts-window" class="window hidden" style="display: none; width: 360px; height: 500px; top: 100px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -781,6 +857,8 @@
             <div id="contacts-list" class="flex-1 overflow-y-auto divide-y text-xs"></div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Call Logs -->
@@ -804,6 +882,8 @@
     </div>
 
 
+
+
     <!-- Window: Apps -->
     <div id="apps-window" class="window hidden" style="display: none; width: 420px; height: 500px; top: 130px; left: 390px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -823,6 +903,8 @@
             </div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Photos Gallery -->
@@ -846,6 +928,8 @@
     </div>
 
 
+
+
     <!-- Window: Music Player -->
     <div id="music-window" class="window hidden" style="display: none; width: 560px; height: 520px; top: 90px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -864,9 +948,13 @@
             </div>
 
 
+
+
             <div id="music-list" class="flex-1 overflow-y-auto divide-y text-xs">
                 <div class="p-6 text-center text-gray-400 text-xs">Loading songs from phone...</div>
             </div>
+
+
 
 
             <div class="p-3 bg-gray-900 text-white border-t border-gray-800 flex flex-col gap-1.5 z-10 text-xs">
@@ -886,6 +974,8 @@
             </div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Videos Manager -->
@@ -911,6 +1001,8 @@
     </div>
 
 
+
+
     <!-- Window: Clipboard Sync -->
     <div id="clipboard-window" class="window hidden" style="display: none; width: 380px; height: 300px; top: 150px; left: 410px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -930,6 +1022,8 @@
             <div id="clipboard-status" class="text-[10px] text-gray-400 text-center"></div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Device Info -->
@@ -971,6 +1065,8 @@
     </div>
 
 
+
+
     <!-- Window: Find Phone (Target 6 & Phase 2: Remote Screen Lock) -->
     <div id="map-window" class="window hidden" style="display: none; width: 580px; height: 500px; top: 90px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -1010,6 +1106,8 @@
             </div>
 
 
+
+
             <div id="map-container" class="flex-1 bg-gray-200 relative">
                 <div id="map" class="absolute inset-0"></div>
                 <div class="absolute bottom-1 right-2 z-[400] bg-gray-900/80 backdrop-blur text-white text-[10px] font-mono px-2 py-0.5 rounded shadow pointer-events-none">
@@ -1020,23 +1118,31 @@
     </div>
 
 
+
+
     <script>
         // --- Admin Custom Wallpaper Engine ---
         function initCustomWallpaper() {
             const saved = localStorage.getItem('opendroid_admin_wallpaper');
-            if (saved) {
+            if (saved && !saved.includes('photo-1578632767115-351597cf2477')) {
                 document.body.style.backgroundImage = `url('${saved}')`;
+            } else {
+                document.body.style.backgroundImage = "url('wallpaper.png')";
+                localStorage.setItem('opendroid_admin_wallpaper', 'wallpaper.png');
             }
         }
         window.addEventListener('DOMContentLoaded', initCustomWallpaper);
+
 
         function openWallpaperModal() {
             document.getElementById('wallpaper-modal').classList.remove('hidden');
         }
 
+
         function closeWallpaperModal() {
             document.getElementById('wallpaper-modal').classList.add('hidden');
         }
+
 
         function setWallpaperPreset(url) {
             localStorage.setItem('opendroid_admin_wallpaper', url);
@@ -1045,12 +1151,14 @@
             closeWallpaperModal();
         }
 
+
         function applyCustomWallpaperUrl() {
             const input = document.getElementById('custom-wallpaper-url-input');
             const url = (input?.value || '').trim();
             if (!url) return;
             setWallpaperPreset(url);
         }
+
 
         function onWallpaperFileUpload(e) {
             const file = e.target.files[0];
@@ -1062,6 +1170,7 @@
             };
             reader.readAsDataURL(file);
         }
+
 
         let currentPairingCode = '';
         let mqttClient = null;
@@ -1076,10 +1185,14 @@
         let parentDirPath = '';
 
 
+
+
         // Chunked File Transfer State
         let activeDownload = null;
         let activeUpload = null;
         let activePreview = null;
+
+
 
 
         // Music & Video Player State
@@ -1090,6 +1203,8 @@
         let activeVideoBuffer = null;
 
 
+
+
         // Web Audio API
         let audioCtx = null;
         let gainNode = null;
@@ -1098,10 +1213,14 @@
         let isTorchOn = false;
 
 
+
+
         // Leaflet Map Instances
         let mapInstance = null;
         let mapMarker = null;
         let mapCircle = null;
+
+
 
 
         function initWebAudio() {
@@ -1114,12 +1233,16 @@
         }
 
 
+
+
         function playPcmChunk(base64Pcm) {
             if (!isGlobalMicActive) return;
             initWebAudio();
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
+
+
 
 
             try {
@@ -1132,6 +1255,8 @@
                 }
 
 
+
+
                 const int16 = new Int16Array(buffer);
                 const float32 = new Float32Array(int16.length);
                 for (let i = 0; i < int16.length; i++) {
@@ -1139,13 +1264,19 @@
                 }
 
 
+
+
                 const audioBuffer = audioCtx.createBuffer(1, float32.length, 16000);
                 audioBuffer.getChannelData(0).set(float32);
+
+
 
 
                 const source = audioCtx.createBufferSource();
                 source.buffer = audioBuffer;
                 source.connect(gainNode);
+
+
 
 
                 const currentTime = audioCtx.currentTime;
@@ -1160,14 +1291,20 @@
         }
 
 
+
+
         function toggleGlobalMic() {
             setMicState(!isGlobalMicActive);
         }
 
 
+
+
         function toggleScreenMic() {
             setMicState(!isGlobalMicActive);
         }
+
+
 
 
         function adjustAudioVolume(val) {
@@ -1180,10 +1317,14 @@
         }
 
 
+
+
         function setMicState(enable, volume = 0.8) {
             isGlobalMicActive = enable;
             initWebAudio();
             gainNode.gain.value = enable ? volume : 0;
+
+
 
 
             const dockIcon = document.getElementById('dock-mic-icon');
@@ -1192,6 +1333,8 @@
             const screenBtn = document.getElementById('screen-mic-btn');
             const camSlider = document.getElementById('cam-mic-volume');
             const camLabel = document.getElementById('cam-mic-volume-label');
+
+
 
 
             if (enable) {
@@ -1205,6 +1348,8 @@
                 }
                 if (camSlider) camSlider.value = volume;
                 if (camLabel) camLabel.textContent = `${Math.round(volume * 100)}%`;
+
+
 
 
                 sendCommand({ action: 'START_AUDIO_STREAM' });
@@ -1221,9 +1366,13 @@
                 if (camLabel) camLabel.textContent = "Off";
 
 
+
+
                 sendCommand({ action: 'STOP_AUDIO_STREAM' });
             }
         }
+
+
 
 
         // Dedicated EMQX Serverless Secure Connection
@@ -1236,6 +1385,8 @@
             currentPairingCode = code;
             document.getElementById('pair-modal').classList.add('hidden');
             document.getElementById('ws-status-taskbar').textContent = '● Connecting...';
+
+
 
 
             mqttClient = mqtt.connect('wss://ceee508c.ala.asia-southeast1.emqxsl.com:8084/mqtt', {
@@ -1252,12 +1403,16 @@
                 mqttClient.subscribe(`opendroid/${currentPairingCode}/pc`, { qos: 1 });
 
 
+
+
                 if (handshakeInterval) clearInterval(handshakeInterval);
                 handshakeInterval = setInterval(() => {
                     sendCommand({ action: 'HANDSHAKE', code: currentPairingCode });
                 }, 1500);
                 sendCommand({ action: 'HANDSHAKE', code: currentPairingCode });
             });
+
+
 
 
             mqttClient.on('message', (topic, payload) => {
@@ -1267,6 +1422,8 @@
                 } catch (e) { console.error(e); }
             });
         }
+
+
 
 
         function connectLocal() {
@@ -1282,6 +1439,8 @@
         }
 
 
+
+
         // --- Phase 6: Central Account & Multi-Device Hub Engine ---
         let currentPairingMode = 'account';
         let accountEmail = '';
@@ -1289,12 +1448,14 @@
         let currentDeviceId = '';
         let allDiscoveredDevices = {};
 
+
         function switchPairingMode(mode) {
             currentPairingMode = mode;
             const tabAccount = document.getElementById('tab-btn-account');
             const tabCode = document.getElementById('tab-btn-code');
             const secAccount = document.getElementById('mode-account-section');
             const secCode = document.getElementById('mode-code-section');
+
 
             if (mode === 'account') {
                 tabAccount.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm transition-all flex items-center justify-center gap-1';
@@ -1309,6 +1470,7 @@
             }
         }
 
+
         async function getAccountTag(email, pin) {
             const raw = `${email.trim().toLowerCase()}:${pin.trim()}`;
             const msgBuffer = new TextEncoder().encode(raw);
@@ -1317,6 +1479,7 @@
             const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             return 'acc_' + hashHex.substring(0, 16);
         }
+
 
         async function connectViaAccount() {
             const email = document.getElementById('account-email-input').value.trim();
@@ -1333,18 +1496,22 @@
             accountTag = await getAccountTag(accountEmail, pin);
             localStorage.setItem('opendroid_account_email', accountEmail);
 
+
             const loginBtn = document.getElementById('account-login-btn');
             loginBtn.textContent = 'Connecting to Secure Hub...';
             loginBtn.disabled = true;
 
+
             initAccountMqtt();
         }
+
 
         function initAccountMqtt() {
             if (mqttClient) {
                 try { mqttClient.end(true); } catch (_e) {}
             }
             isCloudMode = true;
+
 
             mqttClient = mqtt.connect('wss://ceee508c.ala.asia-southeast1.emqxsl.com:8084/mqtt', {
                 username: 'OpenDroid-v1',
@@ -1353,20 +1520,25 @@
                 clientId: 'OpenDroidWeb_' + Math.random().toString(16).substring(2, 8)
             });
 
+
             mqttClient.on('connect', () => {
                 document.getElementById('account-devices-container').classList.remove('hidden');
                 document.getElementById('account-login-btn').textContent = '✓ Connected to Account Hub';
+
 
                 // 1. Listen for presence heartbeats of all devices under this account
                 const presenceTopic = `opendroid/acc/${accountTag}/devices/+/presence`;
                 mqttClient.subscribe(presenceTopic, { qos: 1 });
 
+
                 // 2. Immediate Active Discovery Ping: triggers all online phones to report presence in <100ms
                 const discoverTopic = `opendroid/acc/${accountTag}/discover`;
                 mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES' }), { qos: 1 });
 
+
                 showToast(`Signed in as ${accountEmail}. Discovering devices...`, 'success');
             });
+
 
             mqttClient.on('message', (topic, payload) => {
                 try {
@@ -1379,6 +1551,7 @@
                 } catch (e) { console.error(e); }
             });
         }
+
 
         function handlePresenceMessage(topic, payload) {
             try {
@@ -1394,9 +1567,11 @@
                     return;
                 }
 
+
                 const data = JSON.parse(payload.toString());
                 const devId = data.deviceId;
                 if (!devId) return;
+
 
                 // Smart Deduplication & Auto-Merge:
                 // Check if an existing device entry matches this physical hardware or same model
@@ -1410,6 +1585,7 @@
                     return false;
                 });
 
+
                 if (existingKey) {
                     const existingItem = allDiscoveredDevices[existingKey];
                     const isIncomingNewer = (data.timestamp || 0) >= (existingItem.timestamp || 0);
@@ -1417,6 +1593,7 @@
                         // Purge old duplicate entry from local device list
                         delete allDiscoveredDevices[existingKey];
                         if (currentDeviceId === existingKey) currentDeviceId = devId;
+
 
                         // Clean up stale retained MQTT topic from the cloud broker
                         try {
@@ -1430,6 +1607,7 @@
                     }
                 }
 
+
                 allDiscoveredDevices[devId] = data;
                 renderDiscoveredDevices();
                 updateTopDockDeviceDropdown();
@@ -1437,6 +1615,7 @@
                 console.error('Error parsing presence:', e);
             }
         }
+
 
         function forgetDevice(devId, event) {
             if (event) {
@@ -1457,24 +1636,29 @@
             showToast('Device removed from your account hub.', 'info');
         }
 
+
         function renderDiscoveredDevices() {
             const list = document.getElementById('account-devices-list');
             const countEl = document.getElementById('account-devices-count');
             if (!list) return;
 
+
             const devIds = Object.keys(allDiscoveredDevices);
             if (countEl) countEl.textContent = `${devIds.length} Discovered`;
+
 
             if (devIds.length === 0) {
                 list.innerHTML = '<div class="text-[11px] text-gray-400 text-center py-2">Searching for your phones...</div>';
                 return;
             }
 
+
             list.innerHTML = '';
             devIds.forEach(id => {
                 const dev = allDiscoveredDevices[id];
                 const isSelected = (currentDeviceId === id) || (devIds.length === 1 && !currentDeviceId);
                 if (devIds.length === 1 && !currentDeviceId) currentDeviceId = id;
+
 
                 list.innerHTML += `
                     <label class="p-2 border rounded-lg flex items-center justify-between hover:bg-white cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200'}">
@@ -1497,9 +1681,11 @@
                 `;
             });
 
+
             const connectBtn = document.getElementById('account-connect-device-btn');
             if (connectBtn) connectBtn.disabled = !currentDeviceId;
         }
+
 
         function onDeviceRadioSelected(id) {
             currentDeviceId = id;
@@ -1507,17 +1693,21 @@
             if (connectBtn) connectBtn.disabled = false;
         }
 
+
         function confirmAccountDeviceConnection() {
             if (!currentDeviceId) return;
             document.getElementById('pair-modal').classList.add('hidden');
             document.getElementById('device-selector-wrapper').classList.remove('hidden');
 
+
             const dev = allDiscoveredDevices[currentDeviceId];
             const isDevOnline = dev?.isOnline ?? true;
+
 
             // Subscribe to this device's PC telemetry channel
             const pcChannel = `opendroid/acc/${accountTag}/${currentDeviceId}/pc`;
             mqttClient.subscribe(pcChannel, { qos: 1 });
+
 
             if (isDevOnline) {
                 document.getElementById('ws-status-taskbar').textContent = '● Connecting Device...';
@@ -1533,9 +1723,11 @@
             }
         }
 
+
         function updateTopDockDeviceDropdown() {
             const dropdown = document.getElementById('device-selector-dropdown');
             if (!dropdown) return;
+
 
             dropdown.innerHTML = '';
             Object.keys(allDiscoveredDevices).forEach(id => {
@@ -1548,6 +1740,7 @@
                 dropdown.appendChild(opt);
             });
         }
+
 
         function setDeviceOfflineUI(name, model) {
             const statusEl = document.getElementById('ws-status-taskbar');
@@ -1565,8 +1758,10 @@
             if (dockBattery) dockBattery.textContent = '--%';
             if (dockStorage) dockStorage.textContent = '-- / --';
 
+
             // Disable quick action buttons visually
             setQuickActionButtonsEnabled(false);
+
 
             // Show clean offline placeholder in all open data windows (No old data leakage)
             document.querySelectorAll('.app-window:not(.hidden)').forEach(win => {
@@ -1583,6 +1778,7 @@
             });
         }
 
+
         function setQuickActionButtonsEnabled(enabled) {
             const btns = ['dock-torch-btn', 'dock-ring-btn', 'dock-lock-btn', 'dock-wipe-btn'];
             btns.forEach(id => {
@@ -1597,9 +1793,11 @@
             });
         }
 
+
         function restoreAndRefreshOpenWindows(dev) {
             // Enable quick action buttons
             setQuickActionButtonsEnabled(true);
+
 
             // Cleanly reset open windows with loading state (Prevents old device data leak)
             const messagesWin = document.getElementById('messages-window');
@@ -1609,12 +1807,14 @@
                 sendCommand({ action: 'FETCH_SMS' });
             }
 
+
             const contactsWin = document.getElementById('contacts-window');
             if (contactsWin && !contactsWin.classList.contains('hidden')) {
                 const list = document.getElementById('contacts-list-container') || contactsWin.querySelector('.window-body');
                 if (list) list.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs animate-pulse">Loading contacts from ' + (dev?.deviceName || 'device') + '...</div>';
                 sendCommand({ action: 'FETCH_CONTACTS' });
             }
+
 
             const callLogsWin = document.getElementById('call-logs-window');
             if (callLogsWin && !callLogsWin.classList.contains('hidden')) {
@@ -1623,12 +1823,14 @@
                 sendCommand({ action: 'FETCH_CALL_LOGS' });
             }
 
+
             const filesWin = document.getElementById('files-window');
             if (filesWin && !filesWin.classList.contains('hidden')) {
                 const list = document.getElementById('files-container') || filesWin.querySelector('.window-body');
                 if (list) list.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs animate-pulse">Loading files from ' + (dev?.deviceName || 'device') + '...</div>';
                 sendCommand({ action: 'FETCH_DIR', path: '/storage/emulated/0' });
             }
+
 
             const photosWin = document.getElementById('photos-window');
             if (photosWin && !photosWin.classList.contains('hidden')) {
@@ -1637,22 +1839,27 @@
                 sendCommand({ action: 'FETCH_PHOTOS' });
             }
 
+
             const findPhoneWin = document.getElementById('find-phone-window');
             if (findPhoneWin && !findPhoneWin.classList.contains('hidden')) {
                 sendCommand({ action: 'FETCH_LOCATION' });
             }
 
+
             // Always request fresh storage and battery stats
             sendCommand({ action: 'FETCH_STORAGE' });
         }
 
+
         function onDeviceDropdownSelected(newDevId) {
             if (!newDevId || newDevId === currentDeviceId) return;
+
 
             // 1. Unsubscribe from old device
             if (currentDeviceId) {
                 mqttClient.unsubscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`);
             }
+
 
             // 2. Tear-down active streaming sessions if any
             if (window.isMirroringActive) {
@@ -1665,18 +1872,22 @@
                 try { stopPushToTalk(); } catch(e) {}
             }
 
+
             currentDeviceId = newDevId;
             const dev = allDiscoveredDevices[newDevId];
             const devName = dev?.deviceName || dev?.model || 'Device';
             const isDevOnline = dev?.isOnline ?? false;
 
+
             // 3. Subscribe to new target device channel
             mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
+
 
             // 4. Update UI according to Online vs Offline state
             if (isDevOnline) {
                 document.getElementById('ws-status-taskbar').textContent = `● Connecting to ${devName}...`;
                 document.getElementById('ws-status-taskbar').className = 'text-[11px] text-green-400 font-medium px-2 py-0.5 bg-green-950/40 rounded border border-green-800/50';
+
 
                 // Update Dock Card with new device's metadata
                 const dockName = document.getElementById('dock-device-name');
@@ -1686,10 +1897,12 @@
                 if (dockStatus) dockStatus.innerHTML = '<span class="text-green-400">● Connected</span>';
                 if (dockBattery && dev.battery) dockBattery.textContent = `${dev.battery}%`;
 
+
                 // Initiate Handshake & Auto-fetch data for currently open windows
                 sendCommand({ action: 'HANDSHAKE' });
                 sendCommand({ action: 'GET_DEVICE_INFO' });
                 restoreAndRefreshOpenWindows(dev);
+
 
                 showToast(`Switched active control to ${devName}! 🚀`, 'success');
             } else {
@@ -1697,6 +1910,7 @@
                 showToast(`${devName} is currently Offline.`, 'warning');
             }
         }
+
 
         function sendCommand(obj) {
             const str = JSON.stringify(obj);
@@ -1708,6 +1922,10 @@
                 localWs.send(str);
             }
         }
+
+
+
+
 
 
 
@@ -1729,6 +1947,8 @@
         }
 
 
+
+
         function handleIncomingData(data) {
             if (data.type === 'HANDSHAKE_ACK' || data.type === 'BATTERY') {
                 if (handshakeInterval) {
@@ -1745,6 +1965,8 @@
                 }
 
 
+
+
                 if (data.percent !== undefined) {
                     const topBatText = document.getElementById('battery-text');
                     if (topBatText) topBatText.textContent = `${data.percent}%`;
@@ -1756,6 +1978,7 @@
                         updateWidgetBattery(data.percent, data.charging);
                     }
                 }
+
 
                 const wConn = document.getElementById('widget-connection-status');
                 if (wConn) {
@@ -2011,11 +2234,15 @@
         }
 
 
+
+
         // --- Remote URL Launcher ---
         // --- Standalone Torch Functions ---
         function toggleStandaloneTorch() {
             sendCommand({ action: 'TOGGLE_STANDALONE_TORCH' });
         }
+
+
 
 
         function updateTorchUI(isOn) {
@@ -2033,6 +2260,8 @@
         }
 
 
+
+
         function launchRemoteUrl() {
             const input = document.getElementById('remote-url-input');
             const url = input.value.trim();
@@ -2046,14 +2275,18 @@
         }
 
 
+
+
         // --- Remote Screen Lock (Instant 1-Click) ---
         function lockDeviceScreen() {
             showToast("Locking phone screen... 🔒", "info");
             sendCommand({ action: 'LOCK_DEVICE' });
         }
 
+
         // --- Phase 2: Step 2.3 Stealth Mode (Hide App Icon) ---
         let isStealthModeOn = false;
+
 
         function toggleStealthMode() {
             isStealthModeOn = !isStealthModeOn;
@@ -2062,10 +2295,12 @@
             updateStealthUI(isStealthModeOn);
         }
 
+
         function launchOpenDroidOnPhone() {
             showToast("Launching OpenDroid on phone screen... 📱", "info");
             sendCommand({ action: 'LAUNCH_OPEN_DROID' });
         }
+
 
         function updateStealthUI(hidden) {
             isStealthModeOn = hidden;
@@ -2089,6 +2324,8 @@
         }
 
 
+
+
         // --- Camera Controls with Auto-Switch ---
         function updateCameraStatus(statusText) {
             const bar = document.getElementById('camera-status-bar');
@@ -2101,6 +2338,8 @@
                 }
             }
         }
+
+
 
 
         function startCameraStream(facing) {
@@ -2117,9 +2356,13 @@
             }
 
 
+
+
             updateCameraStatus("🟡 Starting Camera Hardware on Phone...");
             sendCommand({ action: 'START_CAMERA_STREAM', facing: facing });
         }
+
+
 
 
         function stopCameraStream() {
@@ -2127,16 +2370,20 @@
         }
 
 
+
+
         function closeCameraRoom() {
             wm.closeWindow('camera-window');
             stopCameraStream();
         }
+
 
         // --- Phase 3: Two-Way Audio (Walkie-Talkie Engine) ---
         let walkieAudioContext = null;
         let walkieMediaStream = null;
         let walkieProcessor = null;
         let isWalkieActive = false;
+
 
         async function startWalkieTalkie() {
             if (isWalkieActive) return;
@@ -2152,6 +2399,7 @@
                 walkieMediaStream = stream;
                 isWalkieActive = true;
                 updateWalkieUI(true);
+
 
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 walkieAudioContext = new AudioCtx({ sampleRate: 8000 });
@@ -2184,6 +2432,7 @@
                     }
                 };
 
+
                 source.connect(walkieProcessor);
                 walkieProcessor.connect(walkieAudioContext.destination);
                 showToast("Speaking to phone speaker... 📢", "info");
@@ -2194,10 +2443,12 @@
             }
         }
 
+
         function stopWalkieTalkie() {
             if (!isWalkieActive) return;
             isWalkieActive = false;
             updateWalkieUI(false);
+
 
             try {
                 if (walkieProcessor) {
@@ -2219,10 +2470,12 @@
             }
         }
 
+
         // Global release listeners: User can hold down mouse/finger anywhere on screen smoothly
         window.addEventListener('mouseup', () => { if (isWalkieActive) stopWalkieTalkie(); });
         window.addEventListener('touchend', () => { if (isWalkieActive) stopWalkieTalkie(); });
         window.addEventListener('touchcancel', () => { if (isWalkieActive) stopWalkieTalkie(); });
+
 
         function updateWalkieUI(active) {
             const btn = document.getElementById('dock-talk-btn');
@@ -2238,8 +2491,10 @@
             }
         }
 
+
         // --- Phase 3: Step 3.2 High-Resolution Camera Snapshot Saver ---
         let isCameraSnapPendingDownload = false;
+
 
         function saveCameraSnapshot() {
             const img = document.getElementById('camera-frame-view');
@@ -2251,10 +2506,12 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+
                     const now = new Date();
                     const pad = (n) => String(n).padStart(2, '0');
                     const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
                     const filename = `OpenDroid_Camera_Photo_${ts}.png`;
+
 
                     const a = document.createElement('a');
                     a.href = canvas.toDataURL('image/png');
@@ -2275,6 +2532,8 @@
         }
 
 
+
+
         // --- Screen Mirror Controls with Touch Injection ---
         function updateScreenStatus(statusText) {
             const bar = document.getElementById('screen-status-bar');
@@ -2287,6 +2546,8 @@
                 }
             }
         }
+
+
 
 
         function startScreenStream() {
@@ -2303,14 +2564,20 @@
             }
 
 
+
+
             updateScreenStatus("🟡 Connecting Screen Stream...");
             sendCommand({ action: 'START_SCREEN_STREAM' });
         }
 
 
+
+
         function stopScreenStream() {
             sendCommand({ action: 'STOP_SCREEN_STREAM' });
         }
+
+
 
 
         function closeScreenRoom() {
@@ -2320,6 +2587,7 @@
             }
             stopScreenStream();
         }
+
 
         // --- Phase 3: Step 3.1 1-Click Screen Screenshot Saver ---
         function saveScreenSnapshot() {
@@ -2340,6 +2608,7 @@
                 const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
                 const filename = `OpenDroid_Screenshot_${ts}.png`;
 
+
                 const a = document.createElement('a');
                 a.href = canvas.toDataURL('image/png');
                 a.download = filename;
@@ -2353,6 +2622,7 @@
             }
         }
 
+
         // --- Phase 3: Step 3.1 Live Screen Video Recorder to WebM ---
         let screenMediaRecorder = null;
         let screenRecordedChunks = [];
@@ -2362,6 +2632,7 @@
         let screenRecordCtx = null;
         let screenRecordAnimId = null;
 
+
         function toggleScreenRecording() {
             if (screenMediaRecorder && screenMediaRecorder.state === 'recording') {
                 stopScreenRecording();
@@ -2370,6 +2641,7 @@
             }
         }
 
+
         function startScreenRecording() {
             const img = document.getElementById('screen-frame-view');
             if (!img || img.classList.contains('hidden') || !img.src) {
@@ -2377,11 +2649,13 @@
                 return;
             }
 
+
             try {
                 screenRecordCanvas = document.createElement('canvas');
                 screenRecordCanvas.width = img.naturalWidth || 720;
                 screenRecordCanvas.height = img.naturalHeight || 1600;
                 screenRecordCtx = screenRecordCanvas.getContext('2d');
+
 
                 function drawRecordFrame() {
                     if (screenRecordCtx && img && img.complete) {
@@ -2391,8 +2665,10 @@
                 }
                 drawRecordFrame();
 
+
                 const stream = screenRecordCanvas.captureStream(25);
                 screenRecordedChunks = [];
+
 
                 let mimeType = 'video/webm;codecs=vp9';
                 if (!MediaRecorder.isTypeSupported(mimeType)) {
@@ -2402,12 +2678,14 @@
                     }
                 }
 
+
                 screenMediaRecorder = new MediaRecorder(stream, { mimeType });
                 screenMediaRecorder.ondataavailable = (e) => {
                     if (e.data && e.data.size > 0) {
                         screenRecordedChunks.push(e.data);
                     }
                 };
+
 
                 screenMediaRecorder.onstop = () => {
                     cancelAnimationFrame(screenRecordAnimId);
@@ -2417,6 +2695,7 @@
                         const pad = (n) => String(n).padStart(2, '0');
                         const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
                         const filename = `OpenDroid_Record_${ts}.webm`;
+
 
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -2430,9 +2709,11 @@
                     }
                 };
 
+
                 screenMediaRecorder.start(200);
                 screenRecordSeconds = 0;
                 updateRecordBtnUI(true);
+
 
                 screenRecordTimer = setInterval(() => {
                     screenRecordSeconds++;
@@ -2442,12 +2723,14 @@
                     if (textEl) textEl.textContent = `${mins}:${secs}`;
                 }, 1000);
 
+
                 showToast("Screen video recording started! ⏺", "info");
             } catch (e) {
                 console.error("Recording error:", e);
                 showToast("Recording failed: " + e.message, "error");
             }
         }
+
 
         function stopScreenRecording() {
             if (screenMediaRecorder && screenMediaRecorder.state === 'recording') {
@@ -2456,6 +2739,7 @@
             clearInterval(screenRecordTimer);
             updateRecordBtnUI(false);
         }
+
 
         function updateRecordBtnUI(isRecording) {
             const btn = document.getElementById('screen-record-btn');
@@ -2475,13 +2759,19 @@
         }
 
 
+
+
         // Mouse Touch Control on Screen Mirror Image
         let isDraggingScreen = false;
         let startNormX = 0, startNormY = 0;
         const screenImg = document.getElementById('screen-frame-view');
 
 
+
+
         screenImg.addEventListener('dragstart', (e) => e.preventDefault());
+
+
 
 
         screenImg.addEventListener('mousedown', (e) => {
@@ -2492,9 +2782,13 @@
         });
 
 
+
+
         document.addEventListener('mouseup', (e) => {
             if (!isDraggingScreen) return;
             isDraggingScreen = false;
+
+
 
 
             const rect = screenImg.getBoundingClientRect();
@@ -2502,13 +2796,19 @@
             const rawEndY = (e.clientY - rect.top) / rect.height;
 
 
+
+
             const distance = Math.hypot(rawEndX - startNormX, rawEndY - startNormY);
+
+
 
 
             const clampedX = Math.max(0, Math.min(1, rawEndX));
             const clampedY = Math.max(0, Math.min(1, rawEndY));
             const clampedStartX = Math.max(0, Math.min(1, startNormX));
             const clampedStartY = Math.max(0, Math.min(1, startNormY));
+
+
 
 
             if (distance < 0.02) {
@@ -2519,9 +2819,15 @@
         });
 
 
+
+
         function sendGlobalAction(actionType) {
             sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
         }
+
+
+
+
 
 
 
@@ -2534,6 +2840,8 @@
                 list.innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">No songs found in phone storage</div>';
                 return;
             }
+
+
 
 
             tracks.forEach(track => {
@@ -2559,6 +2867,8 @@
         }
 
 
+
+
         function filterMusic(query) {
             const q = query.toLowerCase();
             const filtered = allAudioTracks.filter(t => 
@@ -2568,6 +2878,8 @@
         }
 
 
+
+
         function startAudioPlayback(path, title, artist, totalSize) {
             if (currentAudioBlobUrl) {
                 URL.revokeObjectURL(currentAudioBlobUrl);
@@ -2575,14 +2887,20 @@
             }
 
 
+
+
             const player = document.getElementById('music-html-audio');
             player.pause();
+
+
 
 
             document.getElementById('player-song-title').textContent = title;
             document.getElementById('player-song-artist').textContent = artist;
             document.getElementById('player-song-time').textContent = "Buffering...";
             document.getElementById('player-play-btn').textContent = "⏳";
+
+
 
 
             activeAudioBuffer = {
@@ -2593,8 +2911,12 @@
             };
 
 
+
+
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: path, offset: 0 });
         }
+
+
 
 
         function handleAudioBufferChunk(chunk) {
@@ -2609,9 +2931,13 @@
             }
 
 
+
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
             const percent = activeAudioBuffer.totalSize > 0 ? (currentLoaded / activeAudioBuffer.totalSize) * 100 : 100;
             document.getElementById('player-song-time').textContent = `Loading ${Math.round(percent)}%`;
+
+
 
 
             if (chunk.isLast) {
@@ -2634,6 +2960,8 @@
         }
 
 
+
+
         function toggleAudioPlayback() {
             const player = document.getElementById('music-html-audio');
             if (!player.src) return;
@@ -2649,11 +2977,15 @@
         }
 
 
+
+
         function updateAudioProgress() {
             const player = document.getElementById('music-html-audio');
             if (!player.duration) return;
             const progress = (player.currentTime / player.duration) * 100;
             document.getElementById('player-seek-bar').value = progress;
+
+
 
 
             const curM = Math.floor(player.currentTime / 60);
@@ -2662,9 +2994,13 @@
             const durS = Math.floor(player.duration % 60);
 
 
+
+
             const format = (m, s) => `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
             document.getElementById('player-song-time').textContent = `${format(curM, curS)} / ${format(durM, durS)}`;
         }
+
+
 
 
         function seekAudio(val) {
@@ -2675,10 +3011,14 @@
         }
 
 
+
+
         function setPlayerVolume(val) {
             const player = document.getElementById('music-html-audio');
             player.volume = parseFloat(val);
         }
+
+
 
 
         function onAudioEnded() {
@@ -2686,6 +3026,8 @@
             document.getElementById('player-play-btn').textContent = "▶";
             document.getElementById('player-seek-bar').value = 0;
         }
+
+
 
 
         // --- Target 7B: Videos Manager with 25MB Guard ---
@@ -2698,9 +3040,13 @@
             }
 
 
+
+
             videos.forEach(video => {
                 const sizeMb = (video.size / (1024 * 1024)).toFixed(1);
                 const isStreamable = (video.size <= 25 * 1024 * 1024);
+
+
 
 
                 list.innerHTML += `
@@ -2733,6 +3079,8 @@
         }
 
 
+
+
         function openVideoPlayer(path, fileName, totalSize) {
             if (currentVideoBlobUrl) {
                 URL.revokeObjectURL(currentVideoBlobUrl);
@@ -2740,10 +3088,14 @@
             }
 
 
+
+
             const modal = document.getElementById('video-player-modal');
             const player = document.getElementById('video-modal-player');
             const loader = document.getElementById('video-modal-loader');
             const title = document.getElementById('video-modal-title');
+
+
 
 
             player.pause();
@@ -2755,6 +3107,8 @@
             modal.classList.remove('hidden');
 
 
+
+
             activeVideoBuffer = {
                 path: path,
                 fileName: fileName,
@@ -2763,8 +3117,12 @@
             };
 
 
+
+
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: path, offset: 0 });
         }
+
+
 
 
         function handleVideoBufferChunk(chunk) {
@@ -2779,9 +3137,13 @@
             }
 
 
+
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
             const percent = activeVideoBuffer.totalSize > 0 ? (currentLoaded / activeVideoBuffer.totalSize) * 100 : 100;
             document.getElementById('video-modal-loader').textContent = `Buffering video (${Math.round(percent)}%)...`;
+
+
 
 
             if (chunk.isLast) {
@@ -2799,6 +3161,8 @@
         }
 
 
+
+
         function closeVideoPlayerModal() {
             const player = document.getElementById('video-modal-player');
             player.pause();
@@ -2810,6 +3174,8 @@
             }
             activeVideoBuffer = null;
         }
+
+
 
 
         // --- File Download & Chunks Router ---
@@ -2825,11 +3191,15 @@
         }
 
 
+
+
         function handleDownloadChunk(chunk) {
             if (activeAudioBuffer && chunk.filePath === activeAudioBuffer.path) {
                 handleAudioBufferChunk(chunk);
                 return;
             }
+
+
 
 
             if (activeVideoBuffer && chunk.filePath === activeVideoBuffer.path) {
@@ -2838,10 +3208,14 @@
             }
 
 
+
+
             if (activePreview && chunk.filePath === activePreview.path) {
                 handlePreviewChunk(chunk);
                 return;
             }
+
+
 
 
             if (!activeDownload) return;
@@ -2853,7 +3227,11 @@
             }
 
 
+
+
             activeDownload.totalSize = chunk.totalSize;
+
+
 
 
             if (chunk.data) {
@@ -2866,9 +3244,13 @@
             }
 
 
+
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
             const percent = activeDownload.totalSize > 0 ? (currentLoaded / activeDownload.totalSize) * 100 : 100;
             showTransferToast(`Downloading ${activeDownload.name}`, Math.min(percent, 99));
+
+
 
 
             if (chunk.isLast) {
@@ -2890,6 +3272,8 @@
         }
 
 
+
+
         // --- File Upload ---
         function handleFileSelected(files) {
             if (!files || files.length === 0) return;
@@ -2897,13 +3281,19 @@
             const reader = new FileReader();
 
 
+
+
             showTransferToast(`Reading ${file.name}...`, 0);
+
+
 
 
             reader.onload = function(e) {
                 const arrayBuffer = e.target.result;
                 const chunkSize = 24 * 1024;
                 const totalChunks = Math.ceil(arrayBuffer.byteLength / chunkSize) || 1;
+
+
 
 
                 activeUpload = {
@@ -2916,12 +3306,18 @@
                 };
 
 
+
+
                 sendNextUploadChunk();
             };
 
 
+
+
             reader.readAsArrayBuffer(file);
         }
+
+
 
 
         function sendNextUploadChunk() {
@@ -2929,6 +3325,8 @@
             const start = activeUpload.currentChunk * activeUpload.chunkSize;
             const end = Math.min(start + activeUpload.chunkSize, activeUpload.buffer.byteLength);
             const slice = activeUpload.buffer.slice(start, end);
+
+
 
 
             let binary = '';
@@ -2939,14 +3337,20 @@
             const base64Data = btoa(binary);
 
 
+
+
             const isFirst = (activeUpload.currentChunk === 0);
             const isLast = (activeUpload.currentChunk + 1 >= activeUpload.totalChunks);
+
+
 
 
             const percent = ((activeUpload.currentChunk + 1) / activeUpload.totalChunks) * 100;
             showTransferToast(`Uploading ${activeUpload.file.name}`, percent);
             const wUploadPct = document.getElementById('widget-upload-pct');
             if (wUploadPct) wUploadPct.textContent = `${Math.round(percent)}%`;
+
+
 
 
             sendCommand({
@@ -2960,11 +3364,15 @@
         }
 
 
+
+
         function handleUploadAck() {
             if (!activeUpload) return;
             activeUpload.currentChunk++;
             sendNextUploadChunk();
         }
+
+
 
 
         function handleUploadComplete(fileName) {
@@ -2986,6 +3394,8 @@
         }
 
 
+
+
         // --- Image Preview ---
         function openImagePreview(filePath, fileName) {
             activePreview = {
@@ -2993,6 +3403,8 @@
                 name: fileName,
                 chunks: []
             };
+
+
 
 
             document.getElementById('preview-filename').textContent = fileName;
@@ -3003,8 +3415,12 @@
             document.getElementById('image-preview-modal').classList.remove('hidden');
 
 
+
+
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: filePath, offset: 0 });
         }
+
+
 
 
         function handlePreviewChunk(chunk) {
@@ -3013,6 +3429,8 @@
                 document.getElementById('preview-loader').textContent = "Failed to load preview: " + chunk.error;
                 return;
             }
+
+
 
 
             if (chunk.data) {
@@ -3025,7 +3443,11 @@
             }
 
 
+
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
+
+
 
 
             if (chunk.isLast) {
@@ -3039,6 +3461,8 @@
         }
 
 
+
+
         function closeImagePreview() {
             document.getElementById('image-preview-modal').classList.add('hidden');
             document.getElementById('preview-img').src = '';
@@ -3046,10 +3470,14 @@
         }
 
 
+
+
         function isImageFile(name) {
             const ext = name.split('.').pop().toLowerCase();
             return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(ext);
         }
+
+
 
 
         // --- Directory Explorer ---
@@ -3060,8 +3488,12 @@
             document.getElementById('current-dir-path').textContent = currentDirPath;
 
 
+
+
             const list = document.getElementById('dir-files-list');
             list.innerHTML = '';
+
+
 
 
             const files = data.files || [];
@@ -3069,6 +3501,8 @@
                 list.innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">Folder is empty</div>';
                 return;
             }
+
+
 
 
             files.forEach(item => {
@@ -3079,6 +3513,7 @@
                 const sizeStr = isDir ? '--' : formatBytes(item.size);
                 const safePath = item.path.replace(/\\/g, '\\\\');
                 const safeName = item.name.replace(/'/g, "\\'");
+
 
                 list.innerHTML += `
                     <div class="p-2.5 hover:bg-gray-50 flex justify-between items-center select-none">
@@ -3101,9 +3536,13 @@
         }
 
 
+
+
         function navigateToDir(path) {
             sendCommand({ action: 'FETCH_DIR', path: path });
         }
+
+
 
 
         function navigateUp() {
@@ -3112,13 +3551,16 @@
             }
         }
 
+
         // --- Phase 5: Notification History, APK Install & Emergency Wipe ---
         let allNotificationHistory = [];
+
 
         function openNotificationCenter() {
             wm.openWindow('notif-window');
             sendCommand({ action: 'FETCH_NOTIF_HISTORY' });
         }
+
 
         function renderNotificationHistory(items) {
             allNotificationHistory = items || [];
@@ -3126,13 +3568,16 @@
             const countEl = document.getElementById('notif-history-count');
             if (countEl) countEl.textContent = allNotificationHistory.length;
 
+
             if (!list) return;
             list.innerHTML = '';
+
 
             if (allNotificationHistory.length === 0) {
                 list.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs">No notifications in history yet</div>';
                 return;
             }
+
 
             allNotificationHistory.forEach(item => {
                 const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
@@ -3141,6 +3586,7 @@
                 const text = item.text || '';
                 const canReply = item.canReply === true;
                 const safeKey = (item.id || '').replace(/'/g, "\\'");
+
 
                 list.innerHTML += `
                     <div class="p-3 hover:bg-gray-50 flex flex-col gap-1 transition-colors">
@@ -3164,6 +3610,7 @@
             });
         }
 
+
         function filterNotificationHistory(query) {
             const q = query.toLowerCase();
             const filtered = allNotificationHistory.filter(n =>
@@ -3173,6 +3620,7 @@
             );
             renderFilteredNotificationHistory(filtered);
         }
+
 
         function renderFilteredNotificationHistory(items) {
             const list = document.getElementById('notif-history-list');
@@ -3200,12 +3648,14 @@
             });
         }
 
+
         function clearNotificationHistory() {
             if (!confirm("Are you sure you want to clear all notification history?")) return;
             sendCommand({ action: 'CLEAR_NOTIF_HISTORY' });
             allNotificationHistory = [];
             renderNotificationHistory([]);
         }
+
 
         function sendHistoryQuickReply(key) {
             const input = document.getElementById(`hist-reply-${key}`);
@@ -3219,11 +3669,13 @@
             showToast("Quick reply sent! 🚀", "success");
         }
 
+
         function triggerApkInstall(path, name) {
             if (!confirm(`Do you want to launch package installation on your phone for:\n\n"${name}"?`)) return;
             sendCommand({ action: 'INSTALL_APK', path: path });
             showToast(`Launching installer for ${name}... 📥`, "info");
         }
+
 
         function confirmEmergencyWipe() {
             const code = prompt("⚠️ CRITICAL SECURITY WARNING ⚠️\n\nThis will trigger an EMERGENCY FACTORY RESET and ERASE ALL DATA on the phone.\n\nType 'WIPE' to confirm:");
@@ -3237,6 +3689,7 @@
             }
         }
 
+
         // --- Phase 4: Advanced File & Directory Operations ---
         function promptCreateFolder() {
             const name = prompt("Enter new folder name:");
@@ -3249,6 +3702,7 @@
             showToast("Creating folder...", "info");
         }
 
+
         function promptRenameFile(path, oldName) {
             const newName = prompt(`Rename "${oldName}" to:`, oldName);
             if (!newName || !newName.trim() || newName.trim() === oldName) return;
@@ -3260,6 +3714,7 @@
             showToast("Renaming...", "info");
         }
 
+
         function confirmDeleteFile(path, name, isDir) {
             const typeStr = isDir ? "folder and all its contents" : "file";
             if (!confirm(`Are you sure you want to permanently delete this ${typeStr}:\n\n"${name}"?`)) return;
@@ -3270,11 +3725,13 @@
             showToast(`Deleting ${name}...`, "info");
         }
 
+
         function toggleSelectAllFiles(masterCb) {
             const cbs = document.querySelectorAll('.file-select-cb');
             cbs.forEach(cb => cb.checked = masterCb.checked);
             updateSelectedCount();
         }
+
 
         function updateSelectedCount() {
             const selected = document.querySelectorAll('.file-select-cb:checked').length;
@@ -3284,15 +3741,18 @@
             }
         }
 
+
         function downloadSelectedAsZip() {
             const cbs = document.querySelectorAll('.file-select-cb:checked');
             const selectedPaths = [];
             cbs.forEach(cb => selectedPaths.push(cb.getAttribute('data-path')));
 
+
             if (selectedPaths.length === 0) {
                 if (!confirm(`No files selected. Compress and download ENTIRE current folder:\n\n"${currentDirPath}"?`)) return;
                 selectedPaths.push(currentDirPath);
             }
+
 
             showToast("Compressing to ZIP on phone...", "info");
             sendCommand({
@@ -3302,6 +3762,8 @@
         }
 
 
+
+
         function formatBytes(bytes) {
             if (bytes === 0) return '0 B';
             const k = 1024;
@@ -3309,6 +3771,8 @@
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
+
+
 
 
         // --- Photos Gallery ---
@@ -3321,9 +3785,13 @@
             }
 
 
+
+
             photos.forEach(photo => {
                 const dateStr = new Date(photo.date).toLocaleDateString([], {month: 'short', day: 'numeric'});
                 const sizeStr = formatBytes(photo.size);
+
+
 
 
                 grid.innerHTML += `
@@ -3338,6 +3806,8 @@
                 `;
             });
         }
+
+
 
 
         // --- Window Manager Engine ---
@@ -3397,10 +3867,14 @@
         const wm = new WindowManager();
 
 
+
+
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }, 1000);
+
+
 
 
         let isSirenRinging = false;
@@ -3419,6 +3893,8 @@
         }
 
 
+
+
         // --- Renderers ---
         function renderStorage(storage) {
             if (!storage) return;
@@ -3430,6 +3906,7 @@
             let usedGB = (storage.usedGB && storage.usedGB !== 'undefined') ? storage.usedGB : null;
             let usedPercent = (storage.usedPercent !== undefined && !isNaN(storage.usedPercent)) ? storage.usedPercent : null;
 
+
             if (storage.totalBytes && storage.freeBytes) {
                 const totalB = Number(storage.totalBytes);
                 const freeB = Number(storage.freeBytes);
@@ -3440,10 +3917,12 @@
                 if (usedPercent === null && totalB > 0) usedPercent = Math.round((usedB / totalB) * 100);
             }
 
+
             totalGB = totalGB || '--';
             freeGB = freeGB || '--';
             usedGB = usedGB || '--';
             usedPercent = (usedPercent !== null) ? usedPercent : 0;
+
 
             const detailEl = document.getElementById('storage-detail-text');
             if (detailEl) detailEl.textContent = `${usedGB} / ${totalGB}`;
@@ -3453,6 +3932,7 @@
             if (freeEl) freeEl.textContent = `Free: ${freeGB}`;
             const pctEl = document.getElementById('storage-percent-text');
             if (pctEl) pctEl.textContent = `${usedPercent}% used`;
+
 
             // Update AirDroid Widget Storage
             const wStoragePercent = document.getElementById('widget-storage-percent');
@@ -3466,6 +3946,8 @@
                 if (wStorageFree) wStorageFree.textContent = `Free: ${freeGB}`;
             }
         }
+
+
 
 
         function renderCallLogs(logs) {
@@ -3482,6 +3964,8 @@
                 const dateStr = new Date(log.date).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
 
 
+
+
                 list.innerHTML += `
                     <div class="p-3 hover:bg-gray-50 flex justify-between items-center cursor-pointer" onclick="document.getElementById('dial-number').value='${log.number}'; wm.openWindow('contacts-window')">
                         <div>
@@ -3496,6 +3980,8 @@
                 `;
             });
         }
+
+
 
 
         function renderApps(apps) {
@@ -3535,16 +4021,22 @@
         }
 
 
+
+
         function launchRemoteApp(pkg, name) {
             showToast(`Opening ${name} on phone... 🚀`, "info");
             sendCommand({ action: 'LAUNCH_APP', package: pkg });
         }
 
 
+
+
         function uninstallRemoteApp(pkg, name) {
             showToast(`Triggering uninstall for ${name}... 🗑️`, "info");
             sendCommand({ action: 'UNINSTALL_APP', package: pkg });
         }
+
+
 
 
         function filterApps(query) {
@@ -3556,12 +4048,16 @@
         }
 
 
+
+
         function syncClipboard() {
             const text = document.getElementById('clipboard-input').value;
             if (text) {
                 sendCommand({ action: 'SET_CLIPBOARD', text: text });
             }
         }
+
+
 
 
         function copyToPcClipboard() {
@@ -3573,6 +4069,8 @@
                 });
             }
         }
+
+
 
 
         function renderSms(sms) {
@@ -3592,6 +4090,8 @@
         }
 
 
+
+
         function sendSms() {
             const to = document.getElementById('sms-to').value;
             const body = document.getElementById('sms-body').value;
@@ -3600,6 +4100,8 @@
             document.getElementById('sms-body').value = '';
             setTimeout(() => sendCommand({action: 'FETCH_SMS'}), 1000);
         }
+
+
 
 
         function renderContacts(contacts) {
@@ -3618,6 +4120,8 @@
         }
 
 
+
+
         function makeCall() {
             const num = document.getElementById('dial-number').value;
             if(num) sendCommand({ action: 'MAKE_CALL', number: num });
@@ -3628,6 +4132,8 @@
             const toast = document.createElement('div');
             toast.className = 'bg-gray-900/95 backdrop-blur text-white rounded-xl shadow-2xl p-3.5 border border-white/10 pointer-events-auto transform transition-all duration-300 translate-x-full text-xs';
             toast.id = `toast-${notif.id}`;
+
+
 
 
             let html = `
@@ -3643,6 +4149,8 @@
             `;
 
 
+
+
             if (notif.canReply) {
                 html += `
                     <div class="mt-2.5 flex gap-1.5">
@@ -3653,13 +4161,19 @@
             }
 
 
+
+
             toast.innerHTML = html;
             container.appendChild(toast);
+
+
 
 
             requestAnimationFrame(() => {
                 toast.classList.remove('translate-x-full');
             });
+
+
 
 
             if (!notif.canReply) {
@@ -3671,11 +4185,15 @@
         }
 
 
+
+
         function submitQuickReply(key) {
             const input = document.getElementById(`reply-input-${key}`);
             if (input && input.value.trim() !== '') {
                 const text = input.value.trim();
                 sendCommand({ action: 'QUICK_REPLY', key: key, text: text });
+
+
 
 
                 const btn = input.nextElementSibling;
@@ -3691,9 +4209,13 @@
         }
 
 
+
+
         // --- Target 6: Live GPS Map with Official CARTO API Key ---
         function renderMap(loc) {
             const statusEl = document.getElementById('map-status');
+
+
 
 
             if (!loc || loc.error || !loc.lat || !loc.lng) {
@@ -3705,16 +4227,22 @@
             }
 
 
+
+
             const lat = parseFloat(loc.lat);
             const lng = parseFloat(loc.lng);
             const accuracy = parseFloat(loc.accuracy) || 20;
             const timeStr = loc.timestamp ? new Date(loc.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
 
 
+
+
             if (statusEl) {
                 statusEl.innerHTML = `<span>Lat: <b>${lat.toFixed(5)}</b>, Lng: <b>${lng.toFixed(5)}</b> (±${Math.round(accuracy)}m at ${timeStr})</span>`;
                 statusEl.className = "font-mono text-[11px] text-green-700 font-medium truncate";
             }
+
+
 
 
             try {
@@ -3724,6 +4252,8 @@
                     L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_3hei_1_76590e9ed91b1cc0943b2f71', {
                         maxZoom: 20
                     }).addTo(mapInstance);
+
+
 
 
                     mapMarker = L.marker([lat, lng]).addTo(mapInstance);
@@ -3744,6 +4274,8 @@
                 }
 
 
+
+
                 if (mapMarker) {
                     const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
                     mapMarker.bindPopup(`
@@ -3760,6 +4292,8 @@
                 }
 
 
+
+
                 setTimeout(() => {
                     if (mapInstance) mapInstance.invalidateSize();
                 }, 200);
@@ -3769,6 +4303,8 @@
         }
 
 
+
+
         function copyCurrentCoords() {
             if (!latestLocation || !latestLocation.lat || !latestLocation.lng) {
                 alert("GPS location not available yet!");
@@ -3776,10 +4312,14 @@
             }
 
 
+
+
             const lat = parseFloat(latestLocation.lat).toFixed(6);
             const lng = parseFloat(latestLocation.lng).toFixed(6);
             const textToCopy = `${lat}, ${lng}
 Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
+
+
 
 
             navigator.clipboard.writeText(textToCopy).then(() => {
@@ -3802,12 +4342,14 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         // =========================================================================
         let secretSnapsHistory = []; // Array of { id, target, timestamp, filename, dataUrl }
 
+
         function triggerSecretCapture() {
             const selectedTarget = document.querySelector('input[name="secret-capture-target"]:checked')?.value || 'FRONT';
             const statusText = document.getElementById('secret-status-text');
             const captureBtn = document.getElementById('secret-capture-btn');
             const btnLabel = document.getElementById('secret-btn-label');
             const btnIcon = document.getElementById('secret-btn-icon');
+
 
             // UI state: Capturing / Busy
             captureBtn.disabled = true;
@@ -3817,13 +4359,16 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             statusText.textContent = `● Triggering ${selectedTarget}...`;
             statusText.className = 'text-amber-400 font-mono text-[11px] animate-pulse';
 
+
             showToast(`Triggering secret capture (${selectedTarget})...`, 'info');
+
 
             // Send command to phone
             sendCommand({
                 action: 'STEALTH_CAPTURE',
                 target: selectedTarget // 'FRONT' | 'BACK' | 'SCREEN'
             });
+
 
             // Safety timeout in case device is sleeping or network packet drops
             setTimeout(() => {
@@ -3835,15 +4380,18 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             }, 10000);
         }
 
+
         function startCooldownOnButton() {
             const captureBtn = document.getElementById('secret-capture-btn');
             const btnLabel = document.getElementById('secret-btn-label');
             const btnIcon = document.getElementById('secret-btn-icon');
             if (!captureBtn) return;
 
+
             let secondsLeft = 3;
             btnIcon.textContent = '⏳';
             btnLabel.textContent = `Wait ${secondsLeft}s...`;
+
 
             const interval = setInterval(() => {
                 secondsLeft--;
@@ -3859,9 +4407,11 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             }, 1000);
         }
 
+
         function handleStealthCaptureResult(payload) {
             startCooldownOnButton();
             const statusText = document.getElementById('secret-status-text');
+
 
             if (payload.error || !payload.data) {
                 const errorMsg = payload.error || 'Failed to capture frame';
@@ -3871,12 +4421,14 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 return;
             }
 
+
             const targetType = payload.target || 'SNAP';
             const now = new Date();
             const timeFormatted = now.toLocaleTimeString();
             const dateFormatted = now.toISOString().slice(0, 10);
             const filename = `Secret_${targetType}_${dateFormatted}_${Date.now().toString().slice(-4)}.jpg`;
             const dataUrl = `data:image/jpeg;base64,${payload.data}`;
+
 
             const snapItem = {
                 id: 'snap_' + Date.now(),
@@ -3886,8 +4438,10 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 dataUrl: dataUrl
             };
 
+
             // Prepend to history so latest appears first
             secretSnapsHistory.unshift(snapItem);
+
 
             if (isCameraSnapPendingDownload) {
                 isCameraSnapPendingDownload = false;
@@ -3903,19 +4457,24 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             statusText.className = 'text-emerald-400 font-mono text-[11px]';
             showToast(`Secret snapshot captured (${targetType})!`, 'success');
 
+
             // Re-render gallery grid (retains all past images)
             renderSecretGallery();
+
 
             // Automatically open Preview Modal for the latest captured image
             openSecretPreview(snapItem.id);
         }
+
 
         function renderSecretGallery() {
             const grid = document.getElementById('secret-gallery-grid');
             const countEl = document.getElementById('secret-count');
             if (!grid) return;
 
+
             countEl.textContent = secretSnapsHistory.length;
+
 
             if (secretSnapsHistory.length === 0) {
                 grid.innerHTML = `
@@ -3926,6 +4485,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                     </div>`;
                 return;
             }
+
 
             grid.innerHTML = secretSnapsHistory.map(snap => `
                 <div class="bg-gray-800 border border-gray-700/70 rounded-xl overflow-hidden shadow flex flex-col group hover:border-blue-500/80 transition-all">
@@ -3953,23 +4513,29 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             `).join('');
         }
 
+
         function openSecretPreview(snapId) {
             const snap = secretSnapsHistory.find(s => s.id === snapId);
             if (!snap) return;
+
 
             document.getElementById('preview-filename').textContent = `[Secret Snap: ${snap.target}] ${snap.filename} (${snap.timestamp})`;
             const previewImg = document.getElementById('preview-img');
             const previewLoader = document.getElementById('preview-loader');
             const downloadBtn = document.getElementById('preview-download-btn');
 
+
             previewLoader.classList.add('hidden');
             previewImg.src = snap.dataUrl;
             previewImg.classList.remove('hidden');
 
+
             downloadBtn.onclick = () => downloadDirectBase64(snap.dataUrl, snap.filename);
+
 
             document.getElementById('image-preview-modal').classList.remove('hidden');
         }
+
 
         function downloadDirectBase64(dataUrl, filename) {
             const a = document.createElement('a');
@@ -3981,10 +4547,12 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             showToast(`Saved ${filename} to your PC!`, 'success');
         }
 
+
         function deleteSecretSnap(snapId) {
             secretSnapsHistory = secretSnapsHistory.filter(s => s.id !== snapId);
             renderSecretGallery();
         }
+
 
         function clearSecretHistory() {
             if (secretSnapsHistory.length === 0) return;
@@ -3994,6 +4562,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 showToast('Secret capture history cleared', 'info');
             }
         }
+
 
         // --- AirDroid Desktop Widget Helpers ---
         function updateWidgetBattery(percent, charging) {
@@ -4005,6 +4574,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             if (pctText) pctText.textContent = `${percent}%`;
             if (icon) icon.textContent = charging ? '⚡' : '🔋';
             if (state) state.textContent = charging ? 'Charging' : 'On Battery';
+
 
             if (circle) {
                 circle.setAttribute('stroke-dasharray', `${percent}, 100`);
@@ -4019,6 +4589,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 }
             }
         }
+
 
         function switchWidgetTab(tab) {
             const tabs = ['file', 'text', 'url'];
@@ -4037,6 +4608,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             });
         }
 
+
         function toggleWidgetCollapse() {
             const body = document.getElementById('widget-body');
             const btn = document.getElementById('widget-collapse-btn');
@@ -4050,6 +4622,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 }
             }
         }
+
 
         function sendWidgetClipboard() {
             const input = document.getElementById('widget-clipboard-input');
@@ -4065,6 +4638,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 status.className = "text-[10px] text-center font-mono text-cyan-400 h-3";
             }
         }
+
 
         function sendWidgetUrl() {
             const input = document.getElementById('widget-url-input');
@@ -4084,11 +4658,13 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             }
         }
 
+
         function lockPhoneNow() {
             showToast("Locking phone screen...", "info");
             sendCommand({ action: 'INPUT_GLOBAL', globalAction: 'LOCK_SCREEN' });
             sendCommand({ action: 'LOCK_DEVICE' });
         }
+
 
         function handleWidgetFileSelected(files) {
             if (!files || files.length === 0) return;
@@ -4103,11 +4679,13 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 uploadPct.textContent = '0%';
             }
 
+
             const originalPath = currentDirPath;
             currentDirPath = '/storage/emulated/0/Download';
             handleFileSelected(files);
             currentDirPath = originalPath;
         }
+
 
         function initWidgetDropzone() {
             // Sync initial battery from top bar if available
@@ -4141,11 +4719,13 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             }, false);
         }
 
+
         const savedAccEmail = localStorage.getItem('opendroid_account_email');
         if (savedAccEmail) {
             const accInput = document.getElementById('account-email-input');
             if (accInput) accInput.value = savedAccEmail;
         }
+
 
         initWidgetDropzone();
 </script>
