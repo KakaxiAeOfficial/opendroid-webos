@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<html lang="en">
+﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -253,18 +253,11 @@
             </button>
 
 
-            <button id="dock-torch-btn" onclick="toggleStandaloneTorch()" class="hover:text-yellow-400 transition-colors font-medium flex items-center gap-1" title="Remote Flashlight">
-                <span id="dock-torch-icon">💡</span>
-                <span id="dock-torch-label">Torch</span>
+            <!-- Admin Custom Wallpaper & Theme Engine Button (Header Trigger) -->
+            <button onclick="openWallpaperModal()" class="hover:text-purple-400 text-gray-300 transition-colors font-medium flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-800/80 border border-gray-700 hover:border-purple-500 text-xs shadow-sm cursor-pointer" title="Admin Custom Wallpaper & Theme Manager">
+                <span>🎨</span>
+                <span class="font-semibold text-[11px]">Theme</span>
             </button>
-            <button id="siren-btn" onclick="toggleSiren()" class="hover:text-red-400 transition-colors font-medium flex items-center gap-1">
-                <span>🔔</span>
-                <span>Ring</span>
-            </button>
-            <div class="flex items-center gap-1 font-mono">
-                <span id="battery-icon">🔋</span>
-                <span id="battery-text">--%</span>
-            </div>
             <span id="clock" class="font-mono text-gray-300">00:00</span>
             <button onclick="location.reload()" title="Disconnect" class="hover:text-red-400 font-bold ml-1">⏻</button>
         </div>
@@ -1753,9 +1746,12 @@
 
 
                 if (data.percent !== undefined) {
-                    document.getElementById('battery-text').textContent = `${data.percent}%`;
-                    document.getElementById('device-battery-detail').textContent = `${data.percent}% (${data.charging ? 'Charging' : 'On Battery'})`;
-                    document.getElementById('battery-icon').textContent = data.charging ? '⚡' : '🔋';
+                    const topBatText = document.getElementById('battery-text');
+                    if (topBatText) topBatText.textContent = `${data.percent}%`;
+                    const devBatDetail = document.getElementById('device-battery-detail');
+                    if (devBatDetail) devBatDetail.textContent = `${data.percent}% (${data.charging ? 'Charging' : 'On Battery'})`;
+                    const topBatIcon = document.getElementById('battery-icon');
+                    if (topBatIcon) topBatIcon.textContent = data.charging ? '⚡' : '🔋';
                     if (typeof updateWidgetBattery === 'function') {
                         updateWidgetBattery(data.percent, data.charging);
                     }
