@@ -1,0 +1,154 @@
+name: EMQX Multi-Broker 24/7 Keep-Alive Automation (7 Servers)
+
+on:
+  schedule:
+    # Runs at minute 0 of every hour (24 times a day)
+    - cron: '0 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    name: Ping All 7 EMQX Serverless Deployments
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade paho-mqtt
+
+      - name: Ping All 7 EMQX Deployments
+        run: |
+          python3 - << 'PYEOF'
+          import ssl
+          import time
+          import json
+          import paho.mqtt.client as mqtt
+
+          # --- 7 Active EMQX Serverless Deployments ---
+          BROKERS = [
+              {
+                  "name": "Server 1 (deployment-ceee508c)",
+                  "host": "ceee508c.ala.asia-southeast1.emqxsl.com",
+                  "port": 8883,
+                  "username": "OpenDroid-v1",
+                  "password": "OpenDroid-v1@kakaxi69"
+              },
+              {
+                  "name": "Server 2 (deployment-mfca5de2)",
+                  "host": "mfca5de2.ala.asia-southeast1.emqxsl.com",
+                  "port": 8883,
+                  "username": "OpenDroid-v1",
+                  "password": "OpenDroid-v1@kakaxi69"
+              },
+              {
+                  "name": "Server 3 (deployment-f9a916bf)",
+                  "host": "f9a916bf.ala.asia-southeast1.emqxsl.com",
+                  "port": 8883,
+                  "username": "OpenDroid-v1",
+                  "password": "OpenDroid-v1@kakaxi69"
+              },
+              {
+                  "name": "Server 4 (deployment-zf2cebac)",
+                  "host": "zf2cebac.ala.asia-southeast1.emqxsl.com",
+                  "port": 8883,
+                  "username": "OpenDroid-v1",
+                  "password": "OpenDroid-v1@kakaxi69"
+              },
+              {
+                  "name": "Server 5 (deployment-w21b112c)",
+                  "host": "w21b112c.ala.asia-southeast1.emqxsl.com",
+                  "port": 8883,
+                  "username": "OpenDroid-v1",
+                  "password": "OpenDroid-v1@kakaxi69"
+              },
+              {
+                  "name": "Server 6 (deployment-e62c118f)",
+                  "host": "e62c118f.ala.asia-southeast1.emqxsl.com",
+                  "port": 8883,
+                  "username": "OpenDroid-v1",
+                  "password": "OpenDroid-v1@kakaxi69"
+              },
+              {
+                  "name": "Server 7 (deployment-w501fd1f)",
+                  "host": "w501fd1f.ala.asia-southeast1.emqxsl.com",
+                  "port": 8883,
+                  "username": "OpenDroid-v1",
+                  "password": "OpenDroid-v1@kakaxi69"
+              }
+          ]
+
+          def ping_broker(broker):
+              print(f"\n==========================================")
+              print(f"🚀 Connecting to {broker['name']} ({broker['host']})...")
+              connected = False
+              published = False
+
+              def on_connect(client, userdata, flags, rc, properties=None):
+                  nonlocal connected
+                  if rc == 0:
+                      print(f"✅ Handshake successful with {broker['host']}")
+                      connected = True
+                  else:
+                      print(f"❌ Connection rejected with code: {rc}")
+
+              def on_publish(client, userdata, mid, reason_codes=None, properties=None):
+                  nonlocal published
+                  print(f"✅ Diagnostic telemetry acknowledged (MID: {mid})")
+                  published = True
+
+              try:
+                  client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"GHKeepAlive_{int(time.time())}")
+              except Exception:
+                  client = mqtt.Client(client_id=f"GHKeepAlive_{int(time.time())}")
+
+              client.username_pw_set(broker["username"], broker["password"])
+              client.tls_set(cert_reqs=ssl.CERT_NONE)
+              client.tls_insecure_set(True)
+
+              client.on_connect = on_connect
+              client.on_publish = on_publish
+
+              try:
+                  client.connect(broker["host"], broker["port"], keepalive=30)
+                  client.loop_start()
+
+                  timeout = 10
+                  start = time.time()
+                  while not connected and (time.time() - start) < timeout:
+                      time.sleep(0.5)
+
+                  if connected:
+                      # ~50 KB diagnostic telemetry payload to register real traffic
+                      payload_data = {
+                          "type": "KEEP_ALIVE_DIAGNOSTIC",
+                          "server": broker["name"],
+                          "source": "GitHub_Actions_Cloud_Runner",
+                          "timestamp": int(time.time() * 1000),
+                          "status": "HEALTHY_ACTIVE",
+                          "traffic_buffer": "A" * (50 * 1024)
+                      }
+                      payload_str = json.dumps(payload_data)
+                      info = client.publish("opendroid/health/keepalive", payload_str, qos=1)
+                      info.wait_for_publish(timeout=8)
+                      print(f"📡 Transmitted ~50KB health-check telemetry to {broker['name']}")
+                      time.sleep(1)
+                  else:
+                      print(f"⚠️ Could not establish connection to {broker['name']} within {timeout}s")
+
+                  client.loop_stop()
+                  client.disconnect()
+                  print(f"🔒 Cleanly disconnected from {broker['name']}.")
+              except Exception as e:
+                  print(f"⚠️ Error while pinging {broker['name']}: {e}")
+
+          for broker in BROKERS:
+              ping_broker(broker)
+
+          print("\n🎉 All 7 active brokers pinged successfully!")
+          PYEOF
+

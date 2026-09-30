@@ -231,22 +231,46 @@ class LocalFileServerService : Service() {
         }
     }
 
-    // Dedicated EMQX Serverless Private Cluster (SSL Encrypted)
-    private fun initCloudBridge() {
+        // --- 7-Server Multi-Broker Cascade Pool (Resilient Auto-Failover) ---
+    private val EMQX_BROKERS = listOf(
+        "ssl://ceee508c.ala.asia-southeast1.emqxsl.com:8883",
+        "ssl://mfca5de2.ala.asia-southeast1.emqxsl.com:8883",
+        "ssl://f9a916bf.ala.asia-southeast1.emqxsl.com:8883",
+        "ssl://zf2cebac.ala.asia-southeast1.emqxsl.com:8883",
+        "ssl://w21b112c.ala.asia-southeast1.emqxsl.com:8883",
+        "ssl://e62c118f.ala.asia-southeast1.emqxsl.com:8883",
+        "ssl://w501fd1f.ala.asia-southeast1.emqxsl.com:8883",
+        "ssl://broker.emqx.io:8883"
+    )
+    @Volatile
+    private var activeBrokerIndex = 0
+
+    private fun initCloudBridge(brokerIdx: Int = 0) {
         serviceScope.launch {
+            val safeIdx = brokerIdx % EMQX_BROKERS.size
+            activeBrokerIndex = safeIdx
+            val brokerUrl = EMQX_BROKERS[safeIdx]
             try {
-                val brokerUrl = "ssl://ceee508c.ala.asia-southeast1.emqxsl.com:8883"
+                Log.d("CloudBridge", "Attempting connection to Broker [$safeIdx]: $brokerUrl")
                 val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
+
+                try {
+                    mqttClient?.disconnectForcibly(1000, 1000)
+                    mqttClient?.close()
+                } catch (_: Exception) {}
+
                 mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
                 val options = MqttConnectOptions().apply {
-                    userName = "OpenDroid-v1"
-                    password = "OpenDroid-v1@kakaxi69".toCharArray()
+                    if (!brokerUrl.contains("broker.emqx.io")) {
+                        userName = "OpenDroid-v1"
+                        password = "OpenDroid-v1@kakaxi69".toCharArray()
+                    }
                     socketFactory = SSLSocketFactory.getDefault()
                     isCleanSession = true
-                    connectionTimeout = 15
+                    connectionTimeout = 10
                     keepAliveInterval = 30
-                    isAutomaticReconnect = true
+                    isAutomaticReconnect = false
                 }
                 if (accountTag.isNotEmpty() && openDroidDeviceId.isNotEmpty()) {
                     try {
@@ -266,7 +290,7 @@ class LocalFileServerService : Service() {
 
                 mqttClient?.setCallback(object : MqttCallbackExtended {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                        Log.d("CloudBridge", "Connected to Dedicated EMQX: $currentPairingCode")
+                        Log.d("CloudBridge", "Connected to Broker [$activeBrokerIndex]: $serverURI")
                         isCloudConnected = true
                         serviceScope.launch(Dispatchers.Main) {
                             onCloudStatusChanged?.invoke(true)
@@ -277,10 +301,14 @@ class LocalFileServerService : Service() {
                     }
 
                     override fun connectionLost(cause: Throwable?) {
-                        Log.w("CloudBridge", "Connection lost", cause)
+                        Log.w("CloudBridge", "Connection lost on [$activeBrokerIndex] $brokerUrl. Auto-cascading to next server...", cause)
                         isCloudConnected = false
                         serviceScope.launch(Dispatchers.Main) {
                             onCloudStatusChanged?.invoke(false)
+                        }
+                        serviceScope.launch {
+                            kotlinx.coroutines.delay(2000)
+                            initCloudBridge(activeBrokerIndex + 1)
                         }
                     }
 
@@ -312,9 +340,20 @@ class LocalFileServerService : Service() {
                         onCloudStatusChanged?.invoke(true)
                     }
                     subscribeToCode(currentPairingCode)
+                    subscribeToAccountChannels()
+                    startPresenceHeartbeat()
+                    Log.d("CloudBridge", "Successfully connected and active on Broker [$activeBrokerIndex]: $brokerUrl")
                 }
             } catch (e: Exception) {
-                Log.e("CloudBridge", "Dedicated EMQX Connect Error", e)
+                Log.e("CloudBridge", "Failed to connect to Broker [$safeIdx]: $brokerUrl. Cascading...", e)
+                isCloudConnected = false
+                serviceScope.launch(Dispatchers.Main) {
+                    onCloudStatusChanged?.invoke(false)
+                }
+                serviceScope.launch {
+                    kotlinx.coroutines.delay(2000)
+                    initCloudBridge(safeIdx + 1)
+                }
             }
         }
     }

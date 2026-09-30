@@ -1,4 +1,4 @@
-﻿﻿<html lang="en">
+﻿﻿﻿﻿﻿﻿﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -61,7 +61,7 @@
             <div class="flex items-center justify-between pb-3 border-b border-gray-800">
                 <div class="flex items-center gap-2">
                     <span class="text-xl">🎨</span>
-                    <h3 class="font-bold text-sm">Add Wallpaper & Theme Manager</h3>
+                    <h3 class="font-bold text-sm">Admin Wallpaper & Theme Manager</h3>
                 </div>
                 <button onclick="closeWallpaperModal()" class="text-gray-400 hover:text-white text-lg">✕</button>
             </div>
@@ -1376,34 +1376,51 @@
 
 
         // Dedicated EMQX Serverless Secure Connection
-        function connectViaCloud() {
+        function connectViaCloud(serverIdx = 0) {
             const code = document.getElementById('pairing-code-input').value.trim();
             if (code.length !== 6) {
                 alert('Please enter the 6-digit code from your phone');
                 return;
             }
             currentPairingCode = code;
+            if (serverIdx >= EMQX_SERVERS.length) {
+                showToast('All servers unreachable for 6-Digit Code. Please retry.', 'error');
+                document.getElementById('pair-modal').classList.remove('hidden');
+                return;
+            }
+
+            activeServerIndex = serverIdx;
+            const currentBroker = EMQX_SERVERS[activeServerIndex];
             document.getElementById('pair-modal').classList.add('hidden');
-            document.getElementById('ws-status-taskbar').textContent = '● Connecting...';
+            document.getElementById('ws-status-taskbar').textContent = `● [${activeServerIndex + 1}/${EMQX_SERVERS.length}] ${currentBroker.name}...`;
 
+            if (cloudConnectWatchdog) clearTimeout(cloudConnectWatchdog);
+            cloudConnectWatchdog = setTimeout(() => {
+                console.warn(`[Watchdog] 6-Digit code timed out on ${currentBroker.name}. Cascading...`);
+                connectViaCloud(activeServerIndex + 1);
+            }, 5000);
 
-
-
-            mqttClient = mqtt.connect('wss://ceee508c.ala.asia-southeast1.emqxsl.com:8084/mqtt', {
-                username: 'OpenDroid-v1',
-                password: 'OpenDroid-v1@kakaxi69',
+            const clientOptions = {
                 keepalive: 60,
                 clientId: 'OpenDroidWeb_' + Math.random().toString(16).substring(2, 8)
-            });
-            
+            };
+            if (currentBroker.user) clientOptions.username = currentBroker.user;
+            if (currentBroker.pass) clientOptions.password = currentBroker.pass;
+
+            try {
+                mqttClient = mqtt.connect(`wss://${currentBroker.host}:${currentBroker.port}/mqtt`, clientOptions);
+            } catch (err) {
+                if (cloudConnectWatchdog) clearTimeout(cloudConnectWatchdog);
+                connectViaCloud(activeServerIndex + 1);
+                return;
+            }
+
             mqttClient.on('connect', () => {
-                document.getElementById('ws-status-taskbar').textContent = '● Pinging Phone...';
+                if (cloudConnectWatchdog) clearTimeout(cloudConnectWatchdog);
+                document.getElementById('ws-status-taskbar').textContent = `● Pinging Phone (${currentBroker.name})...`;
                 document.getElementById('ws-status-taskbar').className = 'text-yellow-400 text-xs font-semibold';
                 
                 mqttClient.subscribe(`opendroid/${currentPairingCode}/pc`, { qos: 1 });
-
-
-
 
                 if (handshakeInterval) clearInterval(handshakeInterval);
                 handshakeInterval = setInterval(() => {
@@ -1412,8 +1429,12 @@
                 sendCommand({ action: 'HANDSHAKE', code: currentPairingCode });
             });
 
-
-
+            mqttClient.on('error', (err) => {
+                if (cloudConnectWatchdog) {
+                    clearTimeout(cloudConnectWatchdog);
+                    connectViaCloud(activeServerIndex + 1);
+                }
+            });
 
             mqttClient.on('message', (topic, payload) => {
                 try {
@@ -1481,6 +1502,22 @@
         }
 
 
+        
+        // --- 7-Server Multi-Broker Cascade Pool ---
+        const EMQX_SERVERS = [
+            { name: "Server 1", host: "ceee508c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 2", host: "mfca5de2.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 3", host: "f9a916bf.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 4", host: "zf2cebac.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 5", host: "w21b112c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 6", host: "e62c118f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 7", host: "w501fd1f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Public Lifeline", host: "broker.emqx.io", port: 8084, user: "", pass: "" }
+        ];
+        let activeServerIndex = 0;
+        let accountConnectWatchdog = null;
+        let cloudConnectWatchdog = null;
+
         async function connectViaAccount() {
             const email = document.getElementById('account-email-input').value.trim();
             const pin = (document.getElementById('account-pin-input')?.value || '').trim();
@@ -1496,49 +1533,94 @@
             accountTag = await getAccountTag(accountEmail, pin);
             localStorage.setItem('opendroid_account_email', accountEmail);
 
-
-            const loginBtn = document.getElementById('account-login-btn');
-            loginBtn.textContent = 'Connecting to Secure Hub...';
-            loginBtn.disabled = true;
-
-
-            initAccountMqtt();
+            initAccountMqtt(0);
         }
 
+        function initAccountMqtt(serverIdx = 0) {
+            if (serverIdx >= EMQX_SERVERS.length) {
+                const loginBtn = document.getElementById('account-login-btn');
+                if (loginBtn) {
+                    loginBtn.textContent = '⚠️ All 7 Servers Busy (Click to Retry)';
+                    loginBtn.disabled = false;
+                    loginBtn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 cursor-pointer";
+                }
+                showToast('All 7 servers are currently unreachable. Please check phone internet and retry.', 'error');
+                return;
+            }
 
-        function initAccountMqtt() {
+            activeServerIndex = serverIdx;
+            const currentBroker = EMQX_SERVERS[activeServerIndex];
+            const loginBtn = document.getElementById('account-login-btn');
+            if (loginBtn) {
+                loginBtn.textContent = `[${activeServerIndex + 1}/${EMQX_SERVERS.length}] Connecting to ${currentBroker.name}...`;
+                loginBtn.disabled = true;
+                loginBtn.className = "w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 opacity-90";
+            }
+
             if (mqttClient) {
                 try { mqttClient.end(true); } catch (_e) {}
             }
             isCloudMode = true;
 
+            if (accountConnectWatchdog) clearTimeout(accountConnectWatchdog);
+            // 5-Second Anti-Freeze Connection Watchdog
+            accountConnectWatchdog = setTimeout(() => {
+                console.warn(`[Watchdog] ${currentBroker.name} timed out. Auto-cascading to next server...`);
+                showToast(`${currentBroker.name} busy/full. Trying ${activeServerIndex + 2 <= EMQX_SERVERS.length ? EMQX_SERVERS[activeServerIndex + 1]?.name : 'next'}...`, 'warning');
+                initAccountMqtt(activeServerIndex + 1);
+            }, 5000);
 
-            mqttClient = mqtt.connect('wss://ceee508c.ala.asia-southeast1.emqxsl.com:8084/mqtt', {
-                username: 'OpenDroid-v1',
-                password: 'OpenDroid-v1@kakaxi69',
+            const clientOptions = {
                 keepalive: 60,
                 clientId: 'OpenDroidWeb_' + Math.random().toString(16).substring(2, 8)
-            });
+            };
+            if (currentBroker.user) clientOptions.username = currentBroker.user;
+            if (currentBroker.pass) clientOptions.password = currentBroker.pass;
 
+            try {
+                mqttClient = mqtt.connect(`wss://${currentBroker.host}:${currentBroker.port}/mqtt`, clientOptions);
+            } catch (err) {
+                console.error("Connect exception:", err);
+                if (accountConnectWatchdog) clearTimeout(accountConnectWatchdog);
+                initAccountMqtt(activeServerIndex + 1);
+                return;
+            }
 
             mqttClient.on('connect', () => {
+                if (accountConnectWatchdog) clearTimeout(accountConnectWatchdog);
                 document.getElementById('account-devices-container').classList.remove('hidden');
-                document.getElementById('account-login-btn').textContent = '✓ Connected to Account Hub';
-
+                if (loginBtn) {
+                    loginBtn.textContent = `✓ Connected to ${currentBroker.name}`;
+                    loginBtn.className = "w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5";
+                }
+                const taskbarStatus = document.getElementById('ws-status-taskbar');
+                if (taskbarStatus) {
+                    taskbarStatus.textContent = `● ${currentBroker.name}`;
+                    taskbarStatus.className = "text-green-400 text-xs font-semibold";
+                }
 
                 // 1. Listen for presence heartbeats of all devices under this account
                 const presenceTopic = `opendroid/acc/${accountTag}/devices/+/presence`;
                 mqttClient.subscribe(presenceTopic, { qos: 1 });
 
-
                 // 2. Immediate Active Discovery Ping: triggers all online phones to report presence in <100ms
                 const discoverTopic = `opendroid/acc/${accountTag}/discover`;
                 mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES' }), { qos: 1 });
 
-
-                showToast(`Signed in as ${accountEmail}. Discovering devices...`, 'success');
+                showToast(`Signed in on ${currentBroker.name}. Discovering devices...`, 'success');
             });
 
+            mqttClient.on('error', (err) => {
+                console.error(`MQTT Error on ${currentBroker.name}:`, err);
+                if (accountConnectWatchdog) {
+                    clearTimeout(accountConnectWatchdog);
+                    initAccountMqtt(activeServerIndex + 1);
+                }
+            });
+
+            mqttClient.on('close', () => {
+                console.log(`Connection closed on ${currentBroker.name}`);
+            });
 
             mqttClient.on('message', (topic, payload) => {
                 try {
