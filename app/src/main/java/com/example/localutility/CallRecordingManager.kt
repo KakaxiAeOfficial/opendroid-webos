@@ -1,3 +1,4 @@
+
 package com.example.localutility
 
 import android.annotation.SuppressLint
@@ -18,8 +19,9 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Ambient Intelligence - Track 1: Universal Call Audio Recording & State Engine
- * 100% compatible with Android 8 to 15 (Xiaomi, Samsung, Pixel, OnePlus).
+ * Universal Call Audio Recording & State Engine (OpenDroid WebOS)
+ * 100% compatible with Android 8.0 (API 26) through Android 15 (API 35).
+ * Supports Xiaomi HyperOS, MIUI, Samsung OneUI, Pixel, and OnePlus.
  */
 @SuppressLint("MissingPermission", "NewApi")
 class CallRecordingManager private constructor(private val context: Context) {
@@ -85,10 +87,10 @@ class CallRecordingManager private constructor(private val context: Context) {
     }
 
     private fun registerCallDetection() {
-        // 1. Register BroadcastReceiver via ContextCompat (Safe for all Android versions)
+        // 1. Register BroadcastReceiver via ContextCompat (Safe across all Android API levels)
         try {
             val filter = IntentFilter(TelephonyManager.ACTION_PHONE_STATE)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 ContextCompat.registerReceiver(
                     context,
                     phoneStateReceiver,
@@ -120,7 +122,7 @@ class CallRecordingManager private constructor(private val context: Context) {
             currentCallNumber = phoneNumber
         }
 
-        // Deduplication to prevent duplicate events
+        // Deduplication to prevent duplicate triggers
         if (currentCallState == newState) return
         currentCallState = newState
 
@@ -165,7 +167,11 @@ class CallRecordingManager private constructor(private val context: Context) {
                 callStartTime = System.currentTimeMillis()
 
                 @Suppress("DEPRECATION")
-                val recorder = MediaRecorder()
+                val recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    MediaRecorder(context)
+                } else {
+                    MediaRecorder()
+                }
 
                 // AudioSource hierarchy: VOICE_COMMUNICATION -> MIC -> DEFAULT
                 var sourceConfigured = false
@@ -208,7 +214,7 @@ class CallRecordingManager private constructor(private val context: Context) {
                 Log.e(TAG, "Call recording initialization exception (Safe fallback)", e)
                 try {
                     mediaRecorder?.release()
-                } catch (_: Exception) {}
+                } catch (ignored: Exception) {}
                 mediaRecorder = null
                 isRecording.set(false)
             }
@@ -260,3 +266,4 @@ class CallRecordingManager private constructor(private val context: Context) {
         return if (file.exists()) file else null
     }
 }
+

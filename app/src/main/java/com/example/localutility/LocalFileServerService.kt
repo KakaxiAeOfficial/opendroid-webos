@@ -101,7 +101,7 @@ class LocalFileServerService : Service() {
         // Phase 7: Deterministic permanent hardware-backed Device ID (never duplicates across reinstalls/rebinds)
         val androidId = try {
             Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""
-        } catch (_: Exception) { "" }
+        } catch (e: Exception) { "" }
 
         val cleanHardwareId = if (androidId.isNotEmpty() && androidId != "9774d56d682e549c") {
             androidId.lowercase()
@@ -260,7 +260,7 @@ class LocalFileServerService : Service() {
                 try {
                     mqttClient?.disconnectForcibly(1000, 1000)
                     mqttClient?.close()
-                } catch (_: Exception) {}
+                } catch (e: Exception) {}
 
                 mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
 
@@ -288,7 +288,7 @@ class LocalFileServerService : Service() {
                             put("timestamp", System.currentTimeMillis())
                         }
                         options.setWill(willTopic, willJson.toString().toByteArray(), 1, true)
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {}
                 }
 
                 mqttClient?.setCallback(object : MqttCallbackExtended {
@@ -384,7 +384,7 @@ class LocalFileServerService : Service() {
                 mqttClient?.unsubscribe("opendroid/acc/$accountTag/$openDroidDeviceId/phone")
                 mqttClient?.unsubscribe("opendroid/acc/$accountTag/discover")
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {}
         boundAccountEmail = ""
         boundAccountPin = ""
         accountTag = ""
