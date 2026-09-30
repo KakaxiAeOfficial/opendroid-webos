@@ -1,4 +1,3 @@
-
 package com.example.localutility
 
 import android.annotation.SuppressLint
@@ -56,10 +55,11 @@ class CallRecordingManager private constructor(private val context: Context) {
     // Layer 1: Universal BroadcastReceiver for Phone State
     private val phoneStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == TelephonyManager.ACTION_PHONE_STATE) {
+            if (intent == null) return
+            if (intent.action == TelephonyManager.ACTION_PHONE_STATE_CHANGED) {
                 val stateStr = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
                 val incomingNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
-                Log.d(TAG, "BroadcastReceiver ACTION_PHONE_STATE: state=$stateStr, num=$incomingNumber")
+                Log.d(TAG, "BroadcastReceiver ACTION_PHONE_STATE_CHANGED: state=$stateStr, num=$incomingNumber")
                 when (stateStr) {
                     TelephonyManager.EXTRA_STATE_RINGING -> handleNormalizedState("RINGING", incomingNumber)
                     TelephonyManager.EXTRA_STATE_OFFHOOK -> handleNormalizedState("OFFHOOK", incomingNumber)
@@ -89,7 +89,7 @@ class CallRecordingManager private constructor(private val context: Context) {
     private fun registerCallDetection() {
         // 1. Register BroadcastReceiver via ContextCompat (Safe across all Android API levels)
         try {
-            val filter = IntentFilter(TelephonyManager.ACTION_PHONE_STATE)
+            val filter = IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 ContextCompat.registerReceiver(
                     context,
@@ -100,7 +100,7 @@ class CallRecordingManager private constructor(private val context: Context) {
             } else {
                 context.registerReceiver(phoneStateReceiver, filter)
             }
-            Log.d(TAG, "Registered ACTION_PHONE_STATE receiver")
+            Log.d(TAG, "Registered ACTION_PHONE_STATE_CHANGED receiver")
         } catch (e: Exception) {
             Log.w(TAG, "BroadcastReceiver register error", e)
         }
@@ -266,4 +266,3 @@ class CallRecordingManager private constructor(private val context: Context) {
         return if (file.exists()) file else null
     }
 }
-
