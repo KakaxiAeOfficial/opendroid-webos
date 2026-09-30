@@ -454,14 +454,15 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
 
-                                // 6. Phone, SMS & Call Logs
+                                // 6. Phone, SMS & Call Audio Monitor
                                 PermissionCard(
-                                    title = "SMS, Contacts & Call Logs",
-                                    description = "Allows reading/sending SMS, viewing contacts, and call history on PC.",
+                                    title = "Phone, SMS & Call Audio Monitor",
+                                    description = "Allows active call detection, call recording, reading/sending SMS, and call history on PC.",
                                     isGranted = isPhoneSmsGranted,
                                     onGrantClick = {
                                         requestPermissionsLauncher.launch(
                                             arrayOf(
+                                                android.Manifest.permission.READ_PHONE_STATE,
                                                 android.Manifest.permission.READ_SMS,
                                                 android.Manifest.permission.SEND_SMS,
                                                 android.Manifest.permission.READ_CONTACTS,
@@ -614,6 +615,7 @@ class MainActivity : ComponentActivity() {
         )
         isPhoneSmsGrantedState.value = checkPermissions(
             arrayOf(
+                android.Manifest.permission.READ_PHONE_STATE,
                 android.Manifest.permission.READ_SMS,
                 android.Manifest.permission.SEND_SMS,
                 android.Manifest.permission.READ_CONTACTS,
