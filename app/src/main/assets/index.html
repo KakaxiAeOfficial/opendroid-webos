@@ -1,4 +1,4 @@
-﻿﻿<html lang="en">
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -349,6 +349,11 @@
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('secret-window')">
             <div class="app-tile bg-gradient-to-tr from-rose-700 to-red-900 shadow-red-900/50">📸</div>
             <span class="text-xs font-medium text-center mt-1">Secret</span>
+        </div>
+        <!-- Terminal & System Diagnostics Console -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('terminal-window')">
+            <div class="app-tile bg-gradient-to-tr from-gray-900 via-slate-900 to-black border border-emerald-500/40 shadow-emerald-950/50">💻</div>
+            <span class="text-xs font-medium text-center mt-1">Terminal</span>
         </div>
     </div>
 
@@ -1943,7 +1948,17 @@
             }, 2500);
         }
 
-        function handleIncomingData(data) {
+                function handleIncomingData(data) {
+            // --- Phase 1: Remote Shell Output Dispatcher ---
+            if (data.type === 'SHELL_OUTPUT') {
+                const indicator = document.getElementById('terminal-loading-indicator');
+                if (indicator) indicator.classList.add('hidden');
+
+                const isFail = data.exitCode !== 0;
+                appendTerminalOutputLine('output', data.output || ('[Command completed with exit code ' + data.exitCode + ']'), isFail);
+                return;
+            }
+
             if (data.type === 'HANDSHAKE_ACK' || data.type === 'BATTERY') {
                 if (handshakeInterval) {
                     clearInterval(handshakeInterval);
@@ -4731,6 +4746,157 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
         initWidgetDropzone();
+        // --- Phase 1: Remote Web Terminal & Shell Runner Engine ---
+        let terminalCommandHistory = [];
+        let terminalHistoryCursor = -1;
+
+        function submitTerminalCommand() {
+            const input = document.getElementById('terminal-command-input');
+            const cmd = (input?.value || '').trim();
+            if (!cmd) return;
+            input.value = '';
+            runQuickTerminalCommand(cmd);
+        }
+
+        function runQuickTerminalCommand(cmd) {
+            cmd = (cmd || '').trim();
+            if (!cmd) return;
+
+            if (cmd.toLowerCase() === 'clear') {
+                clearTerminalOutput();
+                return;
+            }
+
+            if (terminalCommandHistory.length === 0 || terminalCommandHistory[terminalCommandHistory.length - 1] !== cmd) {
+                terminalCommandHistory.push(cmd);
+                if (terminalCommandHistory.length > 50) terminalCommandHistory.shift();
+            }
+            terminalHistoryCursor = terminalCommandHistory.length;
+
+            appendTerminalOutputLine('prompt', 'opendroid@android:~$ ' + cmd);
+
+            const indicator = document.getElementById('terminal-loading-indicator');
+            if (indicator) indicator.classList.remove('hidden');
+
+            scrollTerminalOutputToBottom();
+
+            const reqId = 'sh_' + Date.now();
+            sendCommand({
+                action: 'EXEC_SHELL',
+                command: cmd,
+                requestId: reqId
+            });
+        }
+
+        function clearTerminalOutput() {
+            const linesContainer = document.getElementById('terminal-output-lines');
+            if (linesContainer) linesContainer.innerHTML = '';
+            const indicator = document.getElementById('terminal-loading-indicator');
+            if (indicator) indicator.classList.add('hidden');
+        }
+
+        function appendTerminalOutputLine(type, text, isError = false) {
+            const container = document.getElementById('terminal-output-lines');
+            if (!container) return;
+
+            const line = document.createElement('div');
+            if (type === 'prompt') {
+                line.className = 'text-emerald-400 font-bold border-t border-white/5 pt-1 mt-1';
+                line.textContent = text;
+            } else {
+                line.className = isError 
+                    ? 'bg-rose-950/30 border border-rose-800/40 text-rose-300 p-2 rounded whitespace-pre-wrap font-mono'
+                    : 'bg-gray-900/60 text-gray-200 p-2 rounded whitespace-pre-wrap font-mono select-text';
+                line.textContent = text;
+            }
+            container.appendChild(line);
+            scrollTerminalOutputToBottom();
+        }
+
+        function scrollTerminalOutputToBottom() {
+            const screen = document.getElementById('terminal-screen');
+            if (screen) {
+                requestAnimationFrame(() => {
+                    screen.scrollTop = screen.scrollHeight;
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const termInput = document.getElementById('terminal-command-input');
+            if (termInput) {
+                termInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        submitTerminalCommand();
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        if (terminalCommandHistory.length > 0) {
+                            if (terminalHistoryCursor > 0) terminalHistoryCursor--;
+                            termInput.value = terminalCommandHistory[terminalHistoryCursor] || '';
+                        }
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (terminalHistoryCursor < terminalCommandHistory.length - 1) {
+                            terminalHistoryCursor++;
+                            termInput.value = terminalCommandHistory[terminalHistoryCursor] || '';
+                        } else {
+                            terminalHistoryCursor = terminalCommandHistory.length;
+                            termInput.value = '';
+                        }
+                    }
+                });
+            }
+        });
+
 </script>
+    <!-- Remote Web Terminal & Shell Console Window -->
+    <div id="terminal-window" class="window hidden w-[680px] h-[480px] top-16 left-28 bg-gray-950 border border-gray-800 shadow-2xl rounded-2xl flex flex-col overflow-hidden text-gray-100 z-30 select-text">
+        <div class="title-bar bg-gray-900 px-4 py-2.5 flex items-center justify-between border-b border-gray-800 select-none">
+            <div class="flex items-center gap-2">
+                <span class="text-emerald-400 font-bold text-sm">💻</span>
+                <span class="font-bold text-xs text-gray-200">Remote Shell Console (sh)</span>
+                <span class="text-[10px] text-emerald-400/80 bg-emerald-950/70 border border-emerald-700/50 px-2 py-0.5 rounded-full font-mono">5G IPC</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="clearTerminalOutput()" class="text-gray-400 hover:text-yellow-400 text-xs px-2 py-0.5 rounded hover:bg-white/5 transition-all" title="Clear Terminal">🧹 Clear</button>
+                <button onclick="wm.minimizeWindow('terminal-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10">_</button>
+                <button onclick="wm.maximizeWindow('terminal-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10">□</button>
+                <button onclick="wm.closeWindow('terminal-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-1.5 py-0.5 rounded hover:bg-white/10">✕</button>
+            </div>
+        </div>
+
+        <!-- Quick Diagnostic Chips Bar -->
+        <div class="bg-gray-900/70 border-b border-gray-800/80 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto text-[11px] font-mono select-none">
+            <span class="text-gray-400 text-[10px] font-sans mr-1">Quick:</span>
+            <button onclick="runQuickTerminalCommand('dumpsys battery')" class="bg-gray-800 hover:bg-gray-700 text-emerald-300 px-2 py-0.5 rounded border border-gray-700 hover:border-emerald-500 transition-all whitespace-nowrap">🔋 dumpsys battery</button>
+            <button onclick="runQuickTerminalCommand('getprop ro.product.model')" class="bg-gray-800 hover:bg-gray-700 text-emerald-300 px-2 py-0.5 rounded border border-gray-700 hover:border-emerald-500 transition-all whitespace-nowrap">📱 getprop model</button>
+            <button onclick="runQuickTerminalCommand('pm list packages -3')" class="bg-gray-800 hover:bg-gray-700 text-emerald-300 px-2 py-0.5 rounded border border-gray-700 hover:border-emerald-500 transition-all whitespace-nowrap">📦 list user apps</button>
+            <button onclick="runQuickTerminalCommand('df -h')" class="bg-gray-800 hover:bg-gray-700 text-emerald-300 px-2 py-0.5 rounded border border-gray-700 hover:border-emerald-500 transition-all whitespace-nowrap">💾 df -h</button>
+            <button onclick="runQuickTerminalCommand('top -n 1')" class="bg-gray-800 hover:bg-gray-700 text-emerald-300 px-2 py-0.5 rounded border border-gray-700 hover:border-emerald-500 transition-all whitespace-nowrap">⚡ top -n 1</button>
+            <button onclick="runQuickTerminalCommand('ping -c 3 8.8.8.8')" class="bg-gray-800 hover:bg-gray-700 text-emerald-300 px-2 py-0.5 rounded border border-gray-700 hover:border-emerald-500 transition-all whitespace-nowrap">🌐 ping 8.8.8.8</button>
+        </div>
+
+        <!-- Terminal Output Screen -->
+        <div id="terminal-screen" class="flex-1 bg-black/90 p-3 overflow-y-auto font-mono text-[11px] leading-relaxed space-y-1">
+            <div class="text-emerald-500 font-semibold mb-2">
+                OpenDroid WebOS Virtual Terminal v1.0 [Linux/Android Subsystem]<br>
+                Type commands or click quick diagnostic chips above. Arrow keys ↑ / ↓ for history.
+            </div>
+            <div id="terminal-output-lines" class="space-y-1.5"></div>
+            <div id="terminal-loading-indicator" class="hidden text-amber-400 animate-pulse font-mono text-[11px] py-1">
+                ⏳ Running command on device... (watchdog timeout: 15s)
+            </div>
+        </div>
+
+        <!-- Terminal Command Input Bar -->
+        <div class="bg-gray-900 border-t border-gray-800 p-2.5 flex items-center gap-2 font-mono text-xs select-none">
+            <span class="text-emerald-400 font-bold whitespace-nowrap">opendroid@android:~$</span>
+            <input type="text" id="terminal-command-input" placeholder="e.g. getprop, pm list packages, ping..." class="flex-1 bg-gray-950 border border-gray-700 text-emerald-300 rounded px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" autocomplete="off" spellcheck="false">
+            <button onclick="submitTerminalCommand()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded text-xs transition-all shadow hover:shadow-emerald-900/50">Run ↵</button>
+        </div>
+    </div>
 </body>
 </html>
+
+
