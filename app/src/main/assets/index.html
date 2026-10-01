@@ -1,4 +1,4 @@
-﻿﻿<html lang="en">
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -468,7 +468,11 @@
             </div>
 
             <!-- Quick Action Shortcuts -->
-            <div class="grid grid-cols-6 gap-1 pt-1">
+            <div class="grid grid-cols-7 gap-1 pt-1">
+                <button onclick="launchOpenDroidOnPhone()" class="flex flex-col items-center justify-center bg-indigo-950/70 hover:bg-indigo-900/80 p-1.5 rounded-xl text-center transition-all group border border-indigo-700/40" title="Launch OpenDroid UI on phone screen remotely">
+                    <span class="text-sm group-hover:scale-110 transition-transform">📱</span>
+                    <span class="text-[9px] text-indigo-300 mt-0.5 font-medium">Launch</span>
+                </button>
                 <button onclick="toggleSiren()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/80 p-1.5 rounded-xl text-center transition-all group" title="Ring / Find Phone">
                     <span class="text-sm group-hover:scale-110 transition-transform">🔔</span>
                     <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Ring</span>
@@ -1008,28 +1012,13 @@
                     </button>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <button onclick="sendCommand({action: 'FETCH_LOCATION'})" class="px-2.5 py-1 bg-white hover:bg-gray-100 border rounded text-[11px] font-semibold text-gray-700 shadow-sm flex items-center gap-1">
+                    <button onclick="sendCommand({action: 'FETCH_LOCATION'})" class="px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-300 rounded text-[11px] font-semibold text-gray-700 shadow-xs flex items-center gap-1.5 transition-colors">
                         <span>🔄</span><span>Refresh</span>
                     </button>
-                    <button onclick="toggleSiren()" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1">
-                        <span>🔔</span><span>Ring Alarm</span>
-                    </button>
-                    <!-- Phase 2: Step 2.2 Remote Screen Lock Button -->
-                    <button onclick="lockDeviceScreen()" class="px-2.5 py-1 bg-gray-900 hover:bg-black text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1">
-                        <span>🔒</span><span>Lock Screen</span>
-                    </button>
-                    <!-- Phase 2: Step 2.3 Stealth Mode Controls -->
-                    <button id="stealth-mode-btn" onclick="toggleStealthMode()" class="px-2.5 py-1 bg-purple-900 hover:bg-purple-800 text-purple-100 border border-purple-700 rounded text-[11px] font-semibold shadow-sm flex items-center gap-1" title="Hide/Unhide app icon from phone launcher">
-                        <span>🥷</span><span id="stealth-mode-btn-text">Hide App Icon</span>
-                    </button>
-                    <button onclick="launchOpenDroidOnPhone()" class="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1" title="Open OpenDroid UI on phone screen remotely">
-                        <span>📱</span><span>Launch App</span>
-                    </button>
-                    <!-- Phase 1: Smart Geofencing & Route Trail Buttons -->
-                    <button id="geofence-toggle-btn" onclick="toggleSafeZonesPanel()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1" title="Manage Safe-Zones and Geofence alerts">
+                    <button id="geofence-toggle-btn" onclick="toggleSafeZonesPanel()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold shadow-xs flex items-center gap-1.5 transition-colors" title="Manage Safe-Zones and Geofence alerts">
                         <span>🛡️</span><span>Safe-Zones</span>
                     </button>
-                    <button id="trail-toggle-btn" onclick="toggleRouteTrail()" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1" title="Show/hide location route timeline">
+                    <button id="trail-toggle-btn" onclick="toggleRouteTrail()" class="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-bold shadow-xs flex items-center gap-1.5 transition-colors" title="Show/hide location route timeline">
                         <span>📍</span><span id="trail-btn-label">Hide Trail</span>
                     </button>
                 </div>
