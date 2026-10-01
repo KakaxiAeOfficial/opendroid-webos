@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<html lang="en">
+﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1025,11 +1025,54 @@
                     <button onclick="launchOpenDroidOnPhone()" class="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1" title="Open OpenDroid UI on phone screen remotely">
                         <span>📱</span><span>Launch App</span>
                     </button>
+                    <!-- Phase 1: Smart Geofencing & Route Trail Buttons -->
+                    <button id="geofence-toggle-btn" onclick="toggleSafeZonesPanel()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1" title="Manage Safe-Zones and Geofence alerts">
+                        <span>🛡️</span><span>Safe-Zones</span>
+                    </button>
+                    <button id="trail-toggle-btn" onclick="toggleRouteTrail()" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-semibold shadow-sm flex items-center gap-1" title="Show/hide location route timeline">
+                        <span>📍</span><span id="trail-btn-label">Hide Trail</span>
+                    </button>
                 </div>
             </div>
 
-            <div id="map-container" class="flex-1 bg-gray-200 relative">
+            <div id="map-container" class="flex-1 bg-gray-200 relative overflow-hidden">
                 <div id="map" class="absolute inset-0"></div>
+
+                <!-- Phase 1: Smart Geofence Safe-Zones Floating Management Panel -->
+                <div id="safe-zones-panel" class="hidden absolute top-2 right-2 bottom-8 w-72 bg-gray-900/95 backdrop-blur-md text-white border border-gray-700 rounded-xl shadow-2xl z-[500] flex flex-col p-3 transition-all">
+                    <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                        <div class="flex items-center gap-1.5 font-bold text-xs text-emerald-400">
+                            <span>🛡️</span><span>Safe-Zones & Geofencing</span>
+                        </div>
+                        <button onclick="toggleSafeZonesPanel()" class="text-gray-400 hover:text-white text-xs">✕</button>
+                    </div>
+
+                    <!-- Create New Zone Form -->
+                    <div class="mt-2.5 p-2 bg-gray-800/80 rounded-lg border border-gray-700/60 text-xs space-y-2">
+                        <div class="font-semibold text-[11px] text-gray-300">Create New Safe-Zone:</div>
+                        <input id="new-geofence-name" type="text" placeholder="Zone Name (e.g. Home, School)" class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-emerald-500">
+                        <div class="flex items-center gap-2">
+                            <label class="text-[10px] text-gray-400">Radius:</label>
+                            <select id="new-geofence-radius" class="flex-1 bg-gray-900 border border-gray-700 rounded px-1.5 py-0.5 text-xs text-white">
+                                <option value="200">200 Meters</option>
+                                <option value="500" selected>500 Meters (Standard)</option>
+                                <option value="1000">1 Kilometer</option>
+                                <option value="2000">2 Kilometers</option>
+                            </select>
+                        </div>
+                        <button onclick="addGeofenceAtCurrentLocation()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 rounded text-[11px] transition-colors shadow flex items-center justify-center gap-1">
+                            <span>📍</span><span>Add Zone at Current GPS</span>
+                        </button>
+                    </div>
+
+                    <!-- Active Zones List -->
+                    <div class="mt-2 flex-1 flex flex-col min-h-0">
+                        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Active Safe-Zones:</div>
+                        <div id="safe-zones-list" class="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                            <div class="text-center text-gray-500 text-[11px] py-4">No active safe-zones. Create one above!</div>
+                        </div>
+                    </div>
+                </div>
                 <div class="absolute bottom-1 right-2 z-[400] bg-gray-900/80 backdrop-blur text-white text-[10px] font-mono px-2 py-0.5 rounded shadow pointer-events-none">
                     OpenDroid GPS Engine by kakaxi_ae • Live
                 </div>
@@ -1118,6 +1161,13 @@
         let mapInstance = null;
         let mapMarker = null;
         let mapCircle = null;
+
+        // Phase 1: Smart Geofencing & Route Trail State
+        let activeGeofences = [];
+        let geofenceCircles = {};
+        let routePolyline = null;
+        let isRouteTrailVisible = true;
+        let locationHistoryPoints = [];
 
         let isLiveCallListening = false;
 
@@ -1737,6 +1787,14 @@
             const findPhoneWin = document.getElementById('find-phone-window');
             if (findPhoneWin && !findPhoneWin.classList.contains('hidden')) {
                 sendCommand({ action: 'FETCH_LOCATION' });
+                sendCommand({ action: 'FETCH_GEOFENCES' });
+                sendCommand({ action: 'FETCH_LOCATION_HISTORY' });
+            }
+            const mapWin = document.getElementById('map-window');
+            if (mapWin && !mapWin.classList.contains('hidden')) {
+                sendCommand({ action: 'FETCH_LOCATION' });
+                sendCommand({ action: 'FETCH_GEOFENCES' });
+                sendCommand({ action: 'FETCH_LOCATION_HISTORY' });
             }
 
             // Always request fresh storage and battery stats
@@ -2023,6 +2081,39 @@
             else if (data.type === 'LOCATION') {
                 latestLocation = data;
                 renderMap(data);
+                if (data.lat && data.lng) {
+                    locationHistoryPoints.push(data);
+                    if (locationHistoryPoints.length > 150) locationHistoryPoints.shift();
+                    if (isRouteTrailVisible) renderRouteTrail(locationHistoryPoints);
+                }
+            }
+            // --- Phase 1: Smart Geofencing & Safety Alerts ---
+            else if (data.type === 'GEOFENCE_ALERT') {
+                playGeofenceAudioAlert(data.event);
+                const isEnter = data.event === 'ENTER';
+                const toastMsg = isEnter ? `🟢 Entered Safe Zone: ${data.geofenceName}` : `🔴 Exited Safe Zone: ${data.geofenceName}`;
+                showToast(toastMsg, isEnter ? 'success' : 'error');
+                sendCommand({ action: 'FETCH_GEOFENCES' });
+            } else if (data.type === 'GEOFENCES_LIST') {
+                activeGeofences = data.data || [];
+                renderGeofencesOnMap();
+                renderGeofencesListUI();
+            } else if (data.type === 'GEOFENCE_ADDED_ACK') {
+                showToast(`Safe-Zone '${data.geofence?.name || 'Zone'}' activated! 🛡️`, 'success');
+                if (data.allGeofences) {
+                    activeGeofences = data.allGeofences;
+                    renderGeofencesOnMap();
+                    renderGeofencesListUI();
+                }
+            } else if (data.type === 'GEOFENCE_REMOVED_ACK') {
+                showToast('Safe-Zone removed', 'info');
+                if (data.allGeofences) {
+                    activeGeofences = data.allGeofences;
+                    renderGeofencesOnMap();
+                    renderGeofencesListUI();
+                }
+            } else if (data.type === 'LOCATION_HISTORY') {
+                renderRouteTrail(data.data || []);
             }
             // --- Music & Videos List Receivers ---
             else if (data.type === 'AUDIO_TRACKS_LIST') {
@@ -3991,8 +4082,207 @@
                 setTimeout(() => {
                     if (mapInstance) mapInstance.invalidateSize();
                 }, 200);
+
+                // Auto render safe-zones and trail points
+                renderGeofencesOnMap();
+                if (isRouteTrailVisible && locationHistoryPoints.length > 0) {
+                    renderRouteTrail(locationHistoryPoints);
+                }
             } catch (e) {
                 console.error("Leaflet render error:", e);
+            }
+        }
+
+        // =========================================================================
+        // --- Phase 1: Smart Geofencing & Route Trail Engine ---
+        // =========================================================================
+        function toggleSafeZonesPanel() {
+            const panel = document.getElementById('safe-zones-panel');
+            if (!panel) return;
+            const isHidden = panel.classList.contains('hidden');
+            if (isHidden) {
+                panel.classList.remove('hidden');
+                sendCommand({ action: 'FETCH_GEOFENCES' });
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+
+        function addGeofenceAtCurrentLocation() {
+            const nameInput = document.getElementById('new-geofence-name');
+            const radiusSelect = document.getElementById('new-geofence-radius');
+            const name = nameInput ? nameInput.value.trim() : '';
+            const radius = radiusSelect ? parseFloat(radiusSelect.value) : 500;
+
+            if (!name) {
+                showToast('Please enter a name for the safe-zone!', 'warning');
+                return;
+            }
+
+            if (!latestLocation || !latestLocation.lat || !latestLocation.lng) {
+                showToast('Current GPS coordinates not available yet. Please refresh GPS first.', 'warning');
+                return;
+            }
+
+            const lat = parseFloat(latestLocation.lat);
+            const lng = parseFloat(latestLocation.lng);
+
+            sendCommand({
+                action: 'ADD_GEOFENCE',
+                id: 'geo_' + Date.now(),
+                name: name,
+                lat: lat,
+                lng: lng,
+                radius: radius
+            });
+
+            if (nameInput) nameInput.value = '';
+            showToast(`Saving safe-zone '${name}'...`, 'info');
+        }
+
+        function removeGeofence(id) {
+            if (!id) return;
+            sendCommand({
+                action: 'REMOVE_GEOFENCE',
+                id: id
+            });
+            if (geofenceCircles[id] && mapInstance) {
+                try { mapInstance.removeLayer(geofenceCircles[id]); } catch(e) {}
+                delete geofenceCircles[id];
+            }
+        }
+
+        function renderGeofencesOnMap() {
+            if (!mapInstance || !Array.isArray(activeGeofences)) return;
+
+            Object.values(geofenceCircles).forEach(c => {
+                try { mapInstance.removeLayer(c); } catch(e) {}
+            });
+            geofenceCircles = {};
+
+            activeGeofences.forEach(zone => {
+                const lat = parseFloat(zone.lat);
+                const lng = parseFloat(zone.lng);
+                const radius = parseFloat(zone.radius) || 500;
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    const circle = L.circle([lat, lng], {
+                        radius: radius,
+                        color: zone.isInside ? '#10b981' : '#059669',
+                        fillColor: zone.isInside ? '#34d399' : '#10b981',
+                        fillOpacity: 0.18,
+                        weight: 2,
+                        dashArray: zone.isInside ? null : '4, 6'
+                    }).addTo(mapInstance);
+
+                    circle.bindPopup(`
+                        <div class="text-xs font-sans">
+                            <div class="font-bold text-gray-800 flex items-center gap-1">
+                                <span>🛡️</span><span>${zone.name}</span>
+                            </div>
+                            <div class="text-[11px] text-gray-600 mt-0.5">Radius: ${Math.round(radius)}m</div>
+                            <div class="text-[10px] ${zone.isInside ? 'text-green-600 font-bold' : 'text-gray-500'} mt-0.5">
+                                ${zone.isInside ? '● Device currently INSIDE' : '○ Device currently OUTSIDE'}
+                            </div>
+                            <button onclick="removeGeofence('${zone.id}')" class="mt-1.5 px-2 py-0.5 bg-red-600 text-white rounded text-[10px] font-bold">
+                                🗑️ Remove Zone
+                            </button>
+                        </div>
+                    `);
+                    geofenceCircles[zone.id] = circle;
+                }
+            });
+        }
+
+        function renderGeofencesListUI() {
+            const listEl = document.getElementById('safe-zones-list');
+            if (!listEl) return;
+
+            if (!activeGeofences || activeGeofences.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-4">No active safe-zones. Create one above!</div>';
+                return;
+            }
+
+            listEl.innerHTML = activeGeofences.map(zone => `
+                <div class="p-2 bg-gray-800/90 rounded-lg border border-gray-700 flex items-center justify-between text-xs">
+                    <div class="min-w-0 flex-1 pr-2">
+                        <div class="font-bold text-white flex items-center gap-1.5 truncate">
+                            <span>🛡️</span>
+                            <span>${zone.name}</span>
+                            ${zone.isInside ? '<span class="px-1.5 py-0.2 bg-green-900/60 text-green-400 border border-green-700/60 rounded text-[9px]">INSIDE</span>' : ''}
+                        </div>
+                        <div class="text-[10px] text-gray-400 mt-0.5">
+                            ${Math.round(zone.radius || 500)}m • ${parseFloat(zone.lat).toFixed(4)}, ${parseFloat(zone.lng).toFixed(4)}
+                        </div>
+                    </div>
+                    <button onclick="removeGeofence('${zone.id}')" class="text-red-400 hover:text-red-300 p-1 rounded hover:bg-red-950/40 text-xs transition-colors" title="Delete Safe-Zone">
+                        🗑️
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function toggleRouteTrail() {
+            isRouteTrailVisible = !isRouteTrailVisible;
+            const label = document.getElementById('trail-btn-label');
+            if (label) label.textContent = isRouteTrailVisible ? 'Hide Trail' : 'Show Trail';
+
+            if (!isRouteTrailVisible) {
+                if (routePolyline && mapInstance) {
+                    mapInstance.removeLayer(routePolyline);
+                    routePolyline = null;
+                }
+            } else {
+                sendCommand({ action: 'FETCH_LOCATION_HISTORY' });
+            }
+        }
+
+        function renderRouteTrail(points) {
+            locationHistoryPoints = points || [];
+            if (!mapInstance || !isRouteTrailVisible) return;
+
+            if (routePolyline) {
+                try { mapInstance.removeLayer(routePolyline); } catch(e) {}
+                routePolyline = null;
+            }
+
+            if (!points || points.length === 0) return;
+
+            const latlngs = points.map(p => [parseFloat(p.lat), parseFloat(p.lng)]).filter(pt => !isNaN(pt[0]) && !isNaN(pt[1]));
+            if (latlngs.length < 2) return;
+
+            routePolyline = L.polyline(latlngs, {
+                color: '#0284c7',
+                weight: 3.5,
+                opacity: 0.75,
+                dashArray: '5, 8'
+            }).addTo(mapInstance);
+        }
+
+        function playGeofenceAudioAlert(eventType) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                const now = ctx.currentTime;
+                if (eventType === 'ENTER') {
+                    osc.frequency.setValueAtTime(587.33, now);
+                    osc.frequency.setValueAtTime(880.00, now + 0.15);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else {
+                    osc.frequency.setValueAtTime(783.99, now);
+                    osc.frequency.setValueAtTime(440.00, now + 0.18);
+                    gain.gain.setValueAtTime(0.35, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                }
+            } catch(e) {
+                console.warn("Audio chime synthesis warning:", e);
             }
         }
 
@@ -4376,4 +4666,5 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 </script>
 </body>
 </html>
+
 
