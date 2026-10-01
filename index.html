@@ -11,7 +11,8 @@
     <style>
         body {
             overflow: hidden;
-            background: url('wallpaper.png') no-repeat center center fixed;
+            background-color: #0f172a;
+            background: #0f172a url('wallpaper.png') no-repeat center center fixed;
             background-size: cover;
             user-select: none;
         }
@@ -87,20 +88,14 @@
                             <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
                             <div class="p-1 text-center text-[10px] text-gray-300">Minimal Dark</div>
                         </div>
-                        <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
-                            <img src="https://images.unsplash.com/photo-1579783902614-a3fb3927b675?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
+                        <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
+                            <img src="https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=300&auto=format&fit=crop" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
                             <div class="p-1 text-center text-[10px] text-gray-300">Artistic Abstract</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="pt-2 border-t border-gray-800">
-                    <label class="text-gray-400 block mb-1 font-semibold">Or Enter Custom Image URL:</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="custom-wallpaper-url-input" placeholder="https://example.com/wallpaper.jpg" class="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500">
-                        <button onclick="applyCustomWallpaperUrl()" class="bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">Apply</button>
-                    </div>
-                </div>
+
 
                 <div class="pt-2 border-t border-gray-800 flex items-center justify-between">
                     <div>
@@ -1096,14 +1091,42 @@
 
     <script>
         // --- Admin Custom Wallpaper Engine ---
+        const VALID_WALLPAPER_PRESETS = [
+            'wallpaper.png',
+            'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2560&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2560&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=2560&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2560&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=2560&auto=format&fit=crop'
+        ];
+
         function initCustomWallpaper() {
-            const saved = localStorage.getItem('opendroid_admin_wallpaper');
-            if (saved && !saved.includes('photo-1578632767115-351597cf2477')) {
-                document.body.style.backgroundImage = `url('${saved}')`;
-            } else {
-                document.body.style.backgroundImage = "url('wallpaper.png')";
+            let saved = localStorage.getItem('opendroid_admin_wallpaper');
+            
+            // Check if saved value is a valid preset or genuine uploaded base64 data URL
+            const isValid = saved && (
+                saved === 'wallpaper.png' ||
+                saved.startsWith('data:image/') ||
+                VALID_WALLPAPER_PRESETS.includes(saved)
+            );
+
+            // Auto-cleanup: If localStorage holds an old invalid custom link from testing, reset to default wallpaper
+            if (!isValid) {
+                saved = 'wallpaper.png';
                 localStorage.setItem('opendroid_admin_wallpaper', 'wallpaper.png');
             }
+
+            // Apply wallpaper with error fallback so it NEVER fails to white
+            const img = new Image();
+            img.onload = () => {
+                document.body.style.backgroundImage = "url('" + saved + "')";
+            };
+            img.onerror = () => {
+                document.body.style.backgroundImage = "url('wallpaper.png')";
+                localStorage.setItem('opendroid_admin_wallpaper', 'wallpaper.png');
+            };
+            img.src = saved;
+            document.body.style.backgroundImage = "url('" + saved + "')";
         }
         window.addEventListener('DOMContentLoaded', initCustomWallpaper);
 
@@ -1122,12 +1145,7 @@
             closeWallpaperModal();
         }
 
-        function applyCustomWallpaperUrl() {
-            const input = document.getElementById('custom-wallpaper-url-input');
-            const url = (input?.value || '').trim();
-            if (!url) return;
-            setWallpaperPreset(url);
-        }
+
 
         function onWallpaperFileUpload(e) {
             const file = e.target.files[0];
