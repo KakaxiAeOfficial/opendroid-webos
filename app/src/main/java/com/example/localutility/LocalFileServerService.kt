@@ -1,4 +1,4 @@
-﻿﻿package com.example.localutility
+package com.example.localutility
 
 
 import android.app.AlarmManager
@@ -1512,7 +1512,7 @@ class LocalFileServerService : Service() {
                         }
 
                         val combinedOutput = when {
-                            exited == null -> "$stdout\n[TIMEOUT ⚠️]: Command exceeded 15s limit and was terminated."
+                            exited == null -> "$stdout\n[TIMEOUT ]: Command exceeded 15s limit and was terminated."
                             stderr.isNotEmpty() && stdout.isNotEmpty() -> "$stdout\n$stderr"
                             stderr.isNotEmpty() -> stderr
                             stdout.isNotEmpty() -> stdout
@@ -1826,4 +1826,3 @@ class LocalFileServerService : Service() {
         }
     }
 }
- 
