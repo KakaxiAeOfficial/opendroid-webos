@@ -1489,6 +1489,31 @@ fun getCallLogs(): JSONArray {
     return getCallLogsPaged(0, 2000).getJSONArray("data")
 }
 
+
+fun deleteCallLog(callId: Long?, number: String?, date: Long?): Boolean {
+    return try {
+        if (callId != null && callId > 0) {
+            val uri = Uri.withAppendedPath(CallLog.Calls.CONTENT_URI, callId.toString())
+            context.contentResolver.delete(uri, null, null) > 0
+        } else if (!number.isNullOrEmpty() && date != null && date > 0) {
+            context.contentResolver.delete(
+                CallLog.Calls.CONTENT_URI,
+                "${CallLog.Calls.NUMBER} = ? AND ${CallLog.Calls.DATE} = ?",
+                arrayOf(number, date.toString())
+            ) > 0
+        } else if (!number.isNullOrEmpty()) {
+            context.contentResolver.delete(
+                CallLog.Calls.CONTENT_URI,
+                "${CallLog.Calls.NUMBER} = ?",
+                arrayOf(number)
+            ) > 0
+        } else false
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
 fun clearCallLogs(): Boolean {
     return try {
         context.contentResolver.delete(CallLog.Calls.CONTENT_URI, null, null) >= 0
@@ -1675,3 +1700,5 @@ fun getStorageStats(): JSONObject {
 }
 
 }
+
+
