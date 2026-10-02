@@ -1475,22 +1475,42 @@ fun getCallLogs(limit: Int = 1000): JSONArray {
 
 fun deleteCallLog(callId: Long?, number: String?, date: Long?): Boolean {
     return try {
+        var deletedCount = 0
+
+        // 1. Primary: Delete by ID using direct ContentResolver where clause
         if (callId != null && callId > 0) {
-            val uri = Uri.withAppendedPath(CallLog.Calls.CONTENT_URI, callId.toString())
-            context.contentResolver.delete(uri, null, null) > 0
-        } else if (!number.isNullOrEmpty() && date != null && date > 0) {
-            context.contentResolver.delete(
+            deletedCount = context.contentResolver.delete(
+                CallLog.Calls.CONTENT_URI,
+                "${CallLog.Calls._ID} = ?",
+                arrayOf(callId.toString())
+            )
+            // Fallback to Uri with appended path if 0
+            if (deletedCount == 0) {
+                try {
+                    val itemUri = Uri.withAppendedPath(CallLog.Calls.CONTENT_URI, callId.toString())
+                    deletedCount = context.contentResolver.delete(itemUri, null, null)
+                } catch (e: Exception) {}
+            }
+        }
+
+        // 2. Secondary: Delete by Number AND Date timestamp
+        if (deletedCount == 0 && !number.isNullOrEmpty() && date != null && date > 0) {
+            deletedCount = context.contentResolver.delete(
                 CallLog.Calls.CONTENT_URI,
                 "${CallLog.Calls.NUMBER} = ? AND ${CallLog.Calls.DATE} = ?",
                 arrayOf(number, date.toString())
-            ) > 0
-        } else if (!number.isNullOrEmpty()) {
-            context.contentResolver.delete(
+            )
+        }
+
+        // 3. Tertiary: Delete by Number only
+        if (deletedCount == 0 && !number.isNullOrEmpty()) {
+            deletedCount = context.contentResolver.delete(
                 CallLog.Calls.CONTENT_URI,
                 "${CallLog.Calls.NUMBER} = ?",
                 arrayOf(number)
-            ) > 0
-        } else false
+            )
+        }
+        deletedCount > 0
     } catch (e: Exception) {
         e.printStackTrace()
         false

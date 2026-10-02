@@ -466,8 +466,10 @@ class MainActivity : ComponentActivity() {
                                                 android.Manifest.permission.READ_SMS,
                                                 android.Manifest.permission.SEND_SMS,
                                                 android.Manifest.permission.READ_CONTACTS,
+                                                android.Manifest.permission.WRITE_CONTACTS,
                                                 android.Manifest.permission.CALL_PHONE,
-                                                android.Manifest.permission.READ_CALL_LOG
+                                                android.Manifest.permission.READ_CALL_LOG,
+                                                android.Manifest.permission.WRITE_CALL_LOG
                                             )
                                         )
                                     }
@@ -619,8 +621,10 @@ class MainActivity : ComponentActivity() {
                 android.Manifest.permission.READ_SMS,
                 android.Manifest.permission.SEND_SMS,
                 android.Manifest.permission.READ_CONTACTS,
+                android.Manifest.permission.WRITE_CONTACTS,
                 android.Manifest.permission.CALL_PHONE,
-                android.Manifest.permission.READ_CALL_LOG
+                android.Manifest.permission.READ_CALL_LOG,
+                android.Manifest.permission.WRITE_CALL_LOG
             )
         )
         isLocationGrantedState.value = checkPermissions(
@@ -796,3 +800,4 @@ class MainActivity : ComponentActivity() {
         nsdManager.unregisterService()
     }
 }
+
