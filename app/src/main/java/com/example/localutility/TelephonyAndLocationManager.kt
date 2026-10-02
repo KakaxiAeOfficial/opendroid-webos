@@ -1331,9 +1331,20 @@ fun sendSms(to: String, message: String): Boolean {
 
 }
 
-fun getContacts(): JSONArray {
+fun getContactsPaged(offset: Int = 0, limit: Int = 150): JSONObject {
+    val result = JSONObject()
     val array = JSONArray()
+    var totalCount = 0
     try {
+        // 1. Get total contacts count
+        val countCursor = context.contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            arrayOf(ContactsContract.CommonDataKinds.Phone._ID),
+            null, null, null
+        )
+        totalCount = countCursor?.use { it.count } ?: 0
+
+        // 2. Fetch paginated chunk
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
@@ -1341,10 +1352,16 @@ fun getContacts(): JSONArray {
             ContactsContract.CommonDataKinds.Phone.TYPE,
             ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
         )
+        val sortOrder = if (limit > 0) {
+            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC LIMIT $limit OFFSET $offset"
+        } else {
+            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC"
+        }
+
         val cursor = context.contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             projection,
-            null, null, "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC LIMIT 2000"
+            null, null, sortOrder
         )
         cursor?.use {
             val idIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
@@ -1370,7 +1387,17 @@ fun getContacts(): JSONArray {
             }
         }
     } catch (e: Exception) { e.printStackTrace() }
-    return array
+
+    result.put("data", array)
+    result.put("offset", offset)
+    result.put("limit", limit)
+    result.put("total", totalCount)
+    result.put("hasMore", (offset + array.length()) < totalCount)
+    return result
+}
+
+fun getContacts(): JSONArray {
+    return getContactsPaged(0, 5000).getJSONArray("data")
 }
 
 fun makeCall(number: String) {
@@ -1383,9 +1410,26 @@ fun makeCall(number: String) {
     } catch (e: Exception) { e.printStackTrace() }
 }
 
-fun getCallLogs(): JSONArray {
+fun getCallLogsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
+    val result = JSONObject()
     val array = JSONArray()
+    var totalCount = 0
     try {
+        // 1. Get total call logs count
+        val countCursor = context.contentResolver.query(
+            CallLog.Calls.CONTENT_URI,
+            arrayOf(CallLog.Calls._ID),
+            null, null, null
+        )
+        totalCount = countCursor?.use { it.count } ?: 0
+
+        // 2. Fetch paginated chunk
+        val sortOrder = if (limit > 0) {
+            "${CallLog.Calls.DATE} DESC LIMIT $limit OFFSET $offset"
+        } else {
+            "${CallLog.Calls.DATE} DESC"
+        }
+
         val cursor = context.contentResolver.query(
             CallLog.Calls.CONTENT_URI,
             arrayOf(
@@ -1398,7 +1442,7 @@ fun getCallLogs(): JSONArray {
             ),
             null,
             null,
-            "${CallLog.Calls.DATE} DESC LIMIT 500"
+            sortOrder
         )
         cursor?.use {
             val idIdx = it.getColumnIndex(CallLog.Calls._ID)
@@ -1407,9 +1451,7 @@ fun getCallLogs(): JSONArray {
             val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
             val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
             val durIdx = it.getColumnIndex(CallLog.Calls.DURATION)
-            var count = 0
-            while (it.moveToNext() && count < 500) {
-                count++
+            while (it.moveToNext()) {
                 val typeInt = if (typeIdx != -1) it.getInt(typeIdx) else 0
                 val typeStr = when (typeInt) {
                     CallLog.Calls.INCOMING_TYPE -> "Incoming"
@@ -1433,23 +1475,18 @@ fun getCallLogs(): JSONArray {
                 array.put(obj)
             }
         }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-    return array
+    } catch (e: Exception) { e.printStackTrace() }
+
+    result.put("data", array)
+    result.put("offset", offset)
+    result.put("limit", limit)
+    result.put("total", totalCount)
+    result.put("hasMore", (offset + array.length()) < totalCount)
+    return result
 }
 
-fun deleteCallLog(id: Long?, number: String?, date: Long?): Boolean {
-    return try {
-        if (id != null && id > 0) {
-            context.contentResolver.delete(CallLog.Calls.CONTENT_URI, "${CallLog.Calls._ID} = ?", arrayOf(id.toString())) > 0
-        } else if (!number.isNullOrEmpty() && date != null && date > 0) {
-            context.contentResolver.delete(CallLog.Calls.CONTENT_URI, "${CallLog.Calls.NUMBER} = ? AND ${CallLog.Calls.DATE} = ?", arrayOf(number, date.toString())) > 0
-        } else false
-    } catch (e: Exception) {
-        e.printStackTrace()
-        false
-    }
+fun getCallLogs(): JSONArray {
+    return getCallLogsPaged(0, 2000).getJSONArray("data")
 }
 
 fun clearCallLogs(): Boolean {
@@ -1638,5 +1675,3 @@ fun getStorageStats(): JSONObject {
 }
 
 }
-
-

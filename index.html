@@ -367,10 +367,6 @@
             <div class="app-tile bg-gradient-to-tr from-cyan-400 to-cyan-600">💬</div>
             <span class="text-xs font-medium text-center mt-1">Messages</span>
         </div>
-        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('contacts-window')">
-            <div class="app-tile bg-gradient-to-tr from-green-500 to-emerald-600">📞</div>
-            <span class="text-xs font-medium text-center mt-1">Dialer</span>
-        </div>
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('call-logs-window')">
             <div class="app-tile bg-gradient-to-tr from-emerald-500 to-green-600">📞</div>
             <span class="text-xs font-medium text-center mt-1">Call Logs</span>
@@ -3337,7 +3333,7 @@
             else if (data.type === 'SMS_LIST') {
                 renderSms(data.data);
             } else if (data.type === 'CONTACTS_LIST') {
-                renderContacts(data.data);
+                renderContacts(data.data, data.offset, data.total, data.hasMore);
             } else if (data.type === 'STORAGE_STATS') {
                 renderStorage(data.data);
             }
@@ -3372,7 +3368,7 @@
                 showToast(`ZIP created (${formatBytes(data.totalSize)})! Starting download...`, "success");
                 triggerFileDownload(data.zipPath, data.zipName);
             } else if (data.type === 'CALL_LOGS_LIST') {
-                renderCallLogs(data.data);
+                renderCallLogs(data.data, data.offset, data.total, data.hasMore);
             } else if (data.type === 'CALL_RECORDINGS_LIST') {
                 renderCallRecordings(data.data || []);
             } else if (data.type === 'CALL_RECORDING_DATA') {
@@ -6048,10 +6044,14 @@
         }
 
 
-        // --- AirDroid Call Logs System ---
+        // --- AirDroid Call Logs System (with Infinite Scroll & Full Auto-Sync) ---
         let rawCallLogs = [];
         let callLogsFilter = 'All';
         let callLogsSearch = '';
+        let totalCallLogsCount = 0;
+        let hasMoreCallLogs = false;
+        let isLoadingCallLogs = false;
+        let callLogsPrefetchTimer = null;
 
         function formatAirDroidTime(ts) {
             if (!ts) return '--';
@@ -6069,9 +6069,55 @@
             return `${monthNames[d.getMonth()]} ${d.getDate()} ${d.getFullYear()} ${timeStr}`;
         }
 
-        function renderCallLogs(logs) {
-            rawCallLogs = Array.isArray(logs) ? logs : [];
+        function renderCallLogs(data, offset = 0, total = 0, hasMore = false) {
+            let items = [];
+            let incomingOffset = 0;
+            let incomingTotal = 0;
+            let incomingHasMore = false;
+
+            if (data && typeof data === 'object' && !Array.isArray(data) && data.data) {
+                items = Array.isArray(data.data) ? data.data : [];
+                incomingOffset = typeof data.offset === 'number' ? data.offset : 0;
+                incomingTotal = typeof data.total === 'number' ? data.total : 0;
+                incomingHasMore = !!data.hasMore;
+            } else if (Array.isArray(data)) {
+                items = data;
+                incomingOffset = typeof offset === 'number' ? offset : 0;
+                incomingTotal = typeof total === 'number' ? total : items.length;
+                incomingHasMore = typeof hasMore === 'boolean' ? hasMore : false;
+            }
+
+            if (incomingOffset === 0) {
+                rawCallLogs = items;
+            } else {
+                const existingKeys = new Set(rawCallLogs.map(l => `${l.id || ''}_${l.number || ''}_${l.date || ''}`));
+                items.forEach(l => {
+                    const key = `${l.id || ''}_${l.number || ''}_${l.date || ''}`;
+                    if (!existingKeys.has(key)) {
+                        rawCallLogs.push(l);
+                        existingKeys.add(key);
+                    }
+                });
+            }
+
+            if (incomingTotal > 0) totalCallLogsCount = incomingTotal;
+            else totalCallLogsCount = Math.max(totalCallLogsCount, rawCallLogs.length);
+
+            hasMoreCallLogs = incomingHasMore;
+            isLoadingCallLogs = false;
+
             renderCurrentCallLogsView();
+
+            // Background prefetching remaining call logs in chunks
+            if (hasMoreCallLogs && !callLogsSearch.trim() && callLogsFilter === 'All') {
+                clearTimeout(callLogsPrefetchTimer);
+                callLogsPrefetchTimer = setTimeout(() => {
+                    if (hasMoreCallLogs && !isLoadingCallLogs) {
+                        isLoadingCallLogs = true;
+                        sendCommand({ action: 'FETCH_CALL_LOGS', offset: rawCallLogs.length, limit: 100 });
+                    }
+                }, 350);
+            }
         }
 
         function renderCurrentCallLogsView() {
@@ -6092,12 +6138,12 @@
                 );
             }
 
-            const totalCount = rawCallLogs.length;
+            const totalDisplay = totalCallLogsCount > 0 ? totalCallLogsCount : rawCallLogs.length;
             const incCount = rawCallLogs.filter(l => (l.type || '').toLowerCase() === 'incoming').length;
             const outCount = rawCallLogs.filter(l => (l.type || '').toLowerCase() === 'outgoing').length;
             const misCount = rawCallLogs.filter(l => (l.type || '').toLowerCase() === 'missed').length;
             if (badge) {
-                badge.textContent = `Showing ${filtered.length} of ${totalCount} calls (${incCount} Incoming, ${outCount} Outgoing, ${misCount} Missed)`;
+                badge.textContent = `Showing ${filtered.length} of ${totalDisplay} calls (${incCount} Incoming, ${outCount} Outgoing, ${misCount} Missed)`;
             }
 
             list.innerHTML = '';
@@ -6181,6 +6227,27 @@
                 `;
                 list.appendChild(row);
             });
+
+            // If loading more, append loader row
+            if (hasMoreCallLogs) {
+                const loader = document.createElement('div');
+                loader.className = "p-2.5 text-center text-gray-400 text-[11px] font-mono animate-pulse bg-gray-50";
+                loader.innerHTML = "<span>Scroll down or wait to load more calls...</span>";
+                list.appendChild(loader);
+            }
+
+            // Setup Infinite Scroll listener
+            if (!list.hasInfiniteScrollSetup) {
+                list.hasInfiniteScrollSetup = true;
+                list.addEventListener('scroll', () => {
+                    if (list.scrollTop + list.clientHeight >= list.scrollHeight - 70) {
+                        if (hasMoreCallLogs && !isLoadingCallLogs) {
+                            isLoadingCallLogs = true;
+                            sendCommand({ action: 'FETCH_CALL_LOGS', offset: rawCallLogs.length, limit: 100 });
+                        }
+                    }
+                });
+            }
         }
 
         function setCallLogsFilter(filter) {
@@ -6227,7 +6294,10 @@
         }
 
         function refreshCallLogs() {
-            sendCommand({ action: 'FETCH_CALL_LOGS' });
+            rawCallLogs = [];
+            totalCallLogsCount = 0;
+            isLoadingCallLogs = true;
+            sendCommand({ action: 'FETCH_CALL_LOGS', offset: 0, limit: 100 });
             sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
         }
 
@@ -6241,6 +6311,7 @@
         function promptClearAllCallLogs() {
             if (confirm("Are you sure you want to clear call history?")) {
                 rawCallLogs = [];
+                totalCallLogsCount = 0;
                 renderCurrentCallLogsView();
                 sendCommand({ action: 'CLEAR_CALL_LOGS' });
             }
@@ -6248,6 +6319,7 @@
 
         function deleteSingleCallLog(id, number, date) {
             rawCallLogs = rawCallLogs.filter(l => !(l.id === id || (l.number === number && l.date === date)));
+            if (totalCallLogsCount > 0) totalCallLogsCount--;
             renderCurrentCallLogsView();
             sendCommand({ action: 'DELETE_CALL_LOG', id: id, number: number, date: date });
         }
@@ -6371,20 +6443,71 @@
         }
 
 
-        // --- AirDroid Contacts Management System ---
+        // --- AirDroid Contacts Management System (with Infinite Scroll & Full Auto-Sync) ---
         let rawContacts = [];
         let selectedContact = null;
         let selectedContactIds = new Set();
         let activeContactGroup = 'all';
         let contactGroups = ['Coworkers', 'Friends', 'Family', 'VIP'];
         let contactsSearch = '';
+        let totalContactsCount = 0;
+        let hasMoreContacts = false;
+        let isLoadingContacts = false;
+        let contactsPrefetchTimer = null;
 
-        function renderContacts(contacts) {
-            rawContacts = Array.isArray(contacts) ? contacts : [];
-            rawContacts.forEach(c => {
+        function renderContacts(data, offset = 0, total = 0, hasMore = false) {
+            let items = [];
+            let incomingOffset = 0;
+            let incomingTotal = 0;
+            let incomingHasMore = false;
+
+            if (data && typeof data === 'object' && !Array.isArray(data) && data.data) {
+                items = Array.isArray(data.data) ? data.data : [];
+                incomingOffset = typeof data.offset === 'number' ? data.offset : 0;
+                incomingTotal = typeof data.total === 'number' ? data.total : 0;
+                incomingHasMore = !!data.hasMore;
+            } else if (Array.isArray(data)) {
+                items = data;
+                incomingOffset = typeof offset === 'number' ? offset : 0;
+                incomingTotal = typeof total === 'number' ? total : items.length;
+                incomingHasMore = typeof hasMore === 'boolean' ? hasMore : false;
+            }
+
+            items.forEach(c => {
                 if (!c.group) c.group = 'All';
             });
+
+            if (incomingOffset === 0) {
+                rawContacts = items;
+            } else {
+                const existingKeys = new Set(rawContacts.map(c => `${c.id || ''}_${c.number || ''}_${c.name || ''}`));
+                items.forEach(c => {
+                    const key = `${c.id || ''}_${c.number || ''}_${c.name || ''}`;
+                    if (!existingKeys.has(key)) {
+                        rawContacts.push(c);
+                        existingKeys.add(key);
+                    }
+                });
+            }
+
+            if (incomingTotal > 0) totalContactsCount = incomingTotal;
+            else totalContactsCount = Math.max(totalContactsCount, rawContacts.length);
+
+            hasMoreContacts = incomingHasMore;
+            isLoadingContacts = false;
+
             renderCurrentContactsView();
+
+            // Background prefetching remaining contacts in chunks
+            if (hasMoreContacts && !contactsSearch.trim() && activeContactGroup === 'all') {
+                clearTimeout(contactsPrefetchTimer);
+                contactsPrefetchTimer = setTimeout(() => {
+                    if (hasMoreContacts && !isLoadingContacts) {
+                        isLoadingContacts = true;
+                        sendCommand({ action: 'FETCH_CONTACTS', offset: rawContacts.length, limit: 150 });
+                    }
+                }, 350);
+            }
         }
 
         function renderCurrentContactsView() {
@@ -6409,9 +6532,10 @@
                 );
             }
 
+            const totalDisplay = (activeContactGroup === 'all' && totalContactsCount > 0) ? totalContactsCount : filtered.length;
             const groupDisplay = activeContactGroup === 'all' ? 'Contacts with number' : activeContactGroup;
             if (groupLabel) {
-                groupLabel.textContent = `${groupDisplay} (${filtered.length})`;
+                groupLabel.textContent = `${groupDisplay} (${totalDisplay})`;
             }
 
             if (btnDelete) {
@@ -6517,6 +6641,27 @@
                 });
             });
 
+            // If loading more, append loader item
+            if (hasMoreContacts) {
+                const loader = document.createElement('div');
+                loader.className = "p-2.5 text-center text-gray-400 text-[11px] font-mono animate-pulse bg-gray-50";
+                loader.innerHTML = "<span>Scroll down or wait to load more contacts...</span>";
+                listScroll.appendChild(loader);
+            }
+
+            // Setup Infinite Scroll listener
+            if (!listScroll.hasInfiniteScrollSetup) {
+                listScroll.hasInfiniteScrollSetup = true;
+                listScroll.addEventListener('scroll', () => {
+                    if (listScroll.scrollTop + listScroll.clientHeight >= listScroll.scrollHeight - 70) {
+                        if (hasMoreContacts && !isLoadingContacts) {
+                            isLoadingContacts = true;
+                            sendCommand({ action: 'FETCH_CONTACTS', offset: rawContacts.length, limit: 150 });
+                        }
+                    }
+                });
+            }
+
             if (!selectedContact && filtered.length > 0) {
                 selectContact(filtered[0]);
             } else if (selectedContact) {
@@ -6619,7 +6764,10 @@
         }
 
         function refreshContacts() {
-            sendCommand({ action: 'FETCH_CONTACTS' });
+            rawContacts = [];
+            totalContactsCount = 0;
+            isLoadingContacts = true;
+            sendCommand({ action: 'FETCH_CONTACTS', offset: 0, limit: 150 });
             showNotificationToast({ app: 'Contacts', title: 'Syncing', text: 'Fetching latest contacts from device...' });
         }
 
@@ -6641,6 +6789,7 @@
                 const targetId = selectedContact.id;
                 const targetNum = selectedContact.number;
                 rawContacts = rawContacts.filter(c => !(c.id === targetId || c.number === targetNum));
+                if (totalContactsCount > 0) totalContactsCount--;
                 selectedContact = null;
                 renderCurrentContactsView();
                 sendCommand({ action: 'DELETE_CONTACT', id: targetId, number: targetNum });
@@ -6652,6 +6801,7 @@
             if (confirm(`Are you sure you want to delete ${selectedContactIds.size} selected contact(s)?`)) {
                 selectedContactIds.forEach(idOrNum => {
                     rawContacts = rawContacts.filter(c => !(c.id === idOrNum || c.number === idOrNum));
+                    if (totalContactsCount > 0) totalContactsCount--;
                     sendCommand({ action: 'DELETE_CONTACT', id: isNaN(idOrNum) ? null : Number(idOrNum), number: String(idOrNum) });
                 });
                 selectedContactIds.clear();
@@ -6720,6 +6870,7 @@
                     notes
                 };
                 rawContacts.unshift(newObj);
+                totalContactsCount++;
                 selectedContact = newObj;
                 sendCommand({ action: 'ADD_CONTACT', name, number, email });
             }
@@ -6743,7 +6894,7 @@
             if (!list) return;
             list.innerHTML = '';
 
-            const allCount = rawContacts.length;
+            const allCount = totalContactsCount > 0 ? totalContactsCount : rawContacts.length;
             const allDiv = document.createElement('div');
             allDiv.className = `px-3 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center ${activeContactGroup === 'all' ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-700'}`;
             allDiv.innerHTML = `<span>Contacts with number</span><span class="text-gray-400">(${allCount})</span>`;
@@ -7846,5 +7997,3 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
-
-
