@@ -1,4 +1,4 @@
-﻿﻿﻿﻿<html lang="en">
+﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -372,7 +372,7 @@
             <span class="text-xs font-medium text-center mt-1">Dialer</span>
         </div>
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('call-logs-window')">
-            <div class="app-tile bg-gradient-to-tr from-teal-500 to-emerald-700">📑</div>
+            <div class="app-tile bg-gradient-to-tr from-emerald-500 to-green-600">📞</div>
             <span class="text-xs font-medium text-center mt-1">Call Logs</span>
         </div>
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('contacts-window')">
@@ -1197,89 +1197,386 @@
     </div>
 
 
-    <!-- Window: Dialer & Contacts -->
-    <div id="contacts-window" class="window hidden" style="display: none; width: 360px; height: 500px; top: 100px; left: 360px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+    <!-- Window: Dialer & Contacts (AirDroid Revamp) -->
+    <div id="contacts-window" class="window hidden" style="display: none; width: 980px; height: 620px; top: 60px; left: 190px; min-width: 780px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+        <!-- Title Bar -->
+        <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
-                <span class="text-xs">📞</span>
-                <span class="font-semibold text-xs">Dialer & Contacts</span>
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">📇</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Contacts</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
-                <button onclick="wm.minimizeWindow('contacts-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
-                <button onclick="wm.maximizeWindow('contacts-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
-                <button onclick="wm.closeWindow('contacts-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-1.5 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+                <button onclick="wm.minimizeWindow('contacts-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('contacts-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('contacts-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
-        <div class="flex-1 flex flex-col bg-white overflow-hidden">
-            <div class="p-3 bg-gray-50 border-b flex gap-2">
-                <input type="text" id="dial-number" placeholder="Enter number..." class="border rounded-lg px-3 py-1.5 text-base flex-1 font-mono focus:ring-1 focus:ring-green-500">
-                <button onclick="makeCall()" class="bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 font-bold shadow">📞 Call</button>
+
+        <!-- AirDroid Contacts Toolbar -->
+        <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
+            <!-- Left: Search Box -->
+            <div class="relative flex items-center">
+                <input type="text" id="contacts-search-input" oninput="onContactsSearch(this.value)" placeholder="Search" class="w-48 lg:w-56 pl-7 pr-6 py-1 text-xs bg-white border border-gray-300 rounded shadow-2xs focus:outline-none focus:border-blue-500 transition-all text-gray-800 placeholder-gray-400">
+                <span class="absolute left-2 text-gray-400 text-[11px] pointer-events-none">🔍</span>
+                <button id="contacts-search-clear" onclick="clearContactsSearch()" class="hidden absolute right-1.5 text-gray-400 hover:text-gray-600 text-[10px] font-bold">✕</button>
             </div>
-            <div id="contacts-list" class="flex-1 overflow-y-auto divide-y text-xs"></div>
+
+            <!-- Right: Delete(N), Refresh, + New contact, Dialer, Export -->
+            <div class="flex items-center gap-2">
+                <button id="btn-delete-contacts" onclick="deleteSelectedContacts()" disabled class="px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                    <span>Delete( 0 )</span>
+                </button>
+                <button onclick="refreshContacts()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1">
+                    <span>Refresh</span>
+                </button>
+                <button onclick="openNewContactModal()" class="px-3 py-1 bg-[#108ee9] hover:bg-blue-600 text-white font-medium text-xs rounded shadow-xs transition-all flex items-center gap-1">
+                    <span>+ New contact</span>
+                </button>
+                <button onclick="toggleDialerDrawer()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1" title="Toggle Dialer Keypad">
+                    <span>🔢 Dialer</span>
+                </button>
+                <button onclick="exportContactsVcf()" class="px-2 py-1 hover:bg-gray-100 text-gray-600 rounded transition-all text-xs" title="Export Contacts as .VCF">
+                    <span>📥 Export</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main 2-Column Body -->
+        <div class="flex-1 flex overflow-hidden bg-white relative">
+            <!-- Left Column: Groups Selector, Alphabet Index, Contacts List -->
+            <div class="w-80 lg:w-96 border-r border-gray-200 flex flex-col bg-[#fcfdfe]">
+                <!-- Group Dropdown Selector Bar -->
+                <div class="p-2 border-b border-gray-200 bg-white relative">
+                    <button id="btn-contact-group-dropdown" onclick="toggleContactGroupDropdown()" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-gray-100 flex items-center justify-between text-xs font-semibold text-gray-800 transition-all">
+                        <span id="contact-group-label" class="truncate">Contacts with number (0)</span>
+                        <span class="text-gray-400 text-[10px]">▼</span>
+                    </button>
+
+                    <!-- AirDroid Groups Popup Menu (image_2c041e.png) -->
+                    <div id="contact-groups-menu" class="hidden absolute top-full left-2 right-2 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1.5 z-40 text-xs">
+                        <div id="contact-groups-list" class="max-h-60 overflow-y-auto divide-y divide-gray-50">
+                            <!-- Populated dynamically -->
+                        </div>
+                        <div class="pt-1.5 px-3 border-t border-gray-100 mt-1">
+                            <button onclick="promptAddContactGroup()" class="text-blue-600 hover:text-blue-800 font-medium text-xs flex items-center gap-1">
+                                <span>+ Add group</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contacts List + Alphabet Index Strip -->
+                <div class="flex-1 flex overflow-hidden relative">
+                    <!-- Alphabet Vertical Index Strip (AirDroid left margin) -->
+                    <div id="contacts-alphabet-strip" class="w-5 py-1 flex flex-col items-center justify-between text-[9px] font-bold text-gray-400 select-none border-r border-gray-100 overflow-y-auto bg-gray-50/50">
+                        <!-- # A B C D ... Z -->
+                    </div>
+
+                    <!-- Scrollable Contacts List -->
+                    <div id="contacts-list-scroll" class="flex-1 overflow-y-auto divide-y divide-gray-100">
+                        <div class="p-8 text-center text-gray-400 text-xs">Loading contacts...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Contact Details Panel -->
+            <div id="contact-detail-panel" class="flex-1 flex flex-col bg-white overflow-y-auto p-6 relative">
+                <!-- Empty state default -->
+                <div id="contact-empty-state" class="flex-1 flex flex-col items-center justify-center text-gray-400 select-none">
+                    <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center text-4xl mb-3 text-gray-300">👤</div>
+                    <div class="font-semibold text-sm text-gray-600 mb-1">No Contact Selected</div>
+                    <div class="text-xs text-gray-400 max-w-xs text-center">Select a contact from the list to view phone numbers, send messages, or place calls.</div>
+                </div>
+
+                <!-- Contact Full Details (Hidden when none selected) -->
+                <div id="contact-card-content" class="hidden flex-1 flex flex-col justify-between">
+                    <div>
+                        <!-- Contact Header -->
+                        <div class="flex items-center gap-4 pb-6 border-b border-gray-200">
+                            <div id="cd-avatar-circle" class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-3xl font-bold shadow-inner">
+                                👤
+                            </div>
+                            <div>
+                                <div id="cd-name" class="text-xl font-bold text-gray-800 leading-snug">Contact Name</div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span id="cd-group-badge" class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[11px] font-medium border border-blue-200/50">All Contacts</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Details Table -->
+                        <div class="py-6 space-y-4">
+                            <!-- Mobile Number Row with AirDroid Quick Action Buttons -->
+                            <div class="flex items-center text-xs">
+                                <span class="w-24 text-gray-400 font-medium">Mobile</span>
+                                <span id="cd-phone-number" class="text-gray-800 font-mono text-sm font-semibold select-text flex-1">--</span>
+                                <div class="flex items-center gap-4">
+                                    <button onclick="sendSmsToCurrentContact()" class="text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-all">
+                                        <span class="text-base">💬</span>
+                                        <span>Send message</span>
+                                    </button>
+                                    <button onclick="callCurrentContact()" class="text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-all">
+                                        <span class="text-base">📞</span>
+                                        <span>Call</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Email Row -->
+                            <div id="cd-email-row" class="flex items-center text-xs">
+                                <span class="w-24 text-gray-400 font-medium">Email</span>
+                                <span id="cd-email" class="text-gray-800 select-text flex-1">--</span>
+                            </div>
+
+                            <!-- Notes Row -->
+                            <div id="cd-notes-row" class="flex items-start text-xs">
+                                <span class="w-24 text-gray-400 font-medium pt-0.5">Notes</span>
+                                <span id="cd-notes" class="text-gray-600 select-text flex-1 whitespace-pre-wrap">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Action Bar -->
+                    <div class="pt-4 border-t border-gray-200 flex justify-between items-center">
+                        <button onclick="deleteCurrentContact()" class="px-3 py-1.5 rounded hover:bg-rose-50 text-rose-600 text-xs font-medium transition-all flex items-center gap-1">
+                            <span>🗑️ Delete contact</span>
+                        </button>
+                        <button onclick="openEditContactModal()" class="px-6 py-2 bg-[#108ee9] hover:bg-blue-600 text-white font-medium text-xs rounded-lg shadow-xs transition-all">
+                            Edit
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Built-in Phone Dialer Drawer -->
+            <div id="contacts-dialer-drawer" class="hidden absolute top-0 right-0 bottom-0 w-72 bg-gray-900/95 backdrop-blur text-white shadow-2xl border-l border-gray-700 p-4 flex flex-col justify-between z-30 transition-all">
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-1.5 font-bold text-xs text-gray-200">
+                            <span>📞</span>
+                            <span>Phone Dialer</span>
+                        </div>
+                        <button onclick="toggleDialerDrawer()" class="text-gray-400 hover:text-white text-xs">✕</button>
+                    </div>
+
+                    <!-- Screen Input -->
+                    <div class="bg-gray-800 border border-gray-700 rounded-lg p-2.5 mb-4 flex items-center justify-between">
+                        <input type="text" id="dialer-screen" placeholder="Enter number..." class="bg-transparent text-lg font-mono text-white focus:outline-none w-full select-text">
+                        <button onclick="dialerBackspace()" class="text-gray-400 hover:text-white px-1.5 text-sm font-bold" title="Backspace">⌫</button>
+                    </div>
+
+                    <!-- Keypad Grid -->
+                    <div class="grid grid-cols-3 gap-2.5 text-center">
+                        <button onclick="dialerPress('1')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">1</div>
+                            <div class="text-[9px] text-gray-400">&nbsp;</div>
+                        </button>
+                        <button onclick="dialerPress('2')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">2</div>
+                            <div class="text-[9px] text-gray-400">ABC</div>
+                        </button>
+                        <button onclick="dialerPress('3')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">3</div>
+                            <div class="text-[9px] text-gray-400">DEF</div>
+                        </button>
+                        <button onclick="dialerPress('4')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">4</div>
+                            <div class="text-[9px] text-gray-400">GHI</div>
+                        </button>
+                        <button onclick="dialerPress('5')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">5</div>
+                            <div class="text-[9px] text-gray-400">JKL</div>
+                        </button>
+                        <button onclick="dialerPress('6')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">6</div>
+                            <div class="text-[9px] text-gray-400">MNO</div>
+                        </button>
+                        <button onclick="dialerPress('7')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">7</div>
+                            <div class="text-[9px] text-gray-400">PQRS</div>
+                        </button>
+                        <button onclick="dialerPress('8')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">8</div>
+                            <div class="text-[9px] text-gray-400">TUV</div>
+                        </button>
+                        <button onclick="dialerPress('9')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">9</div>
+                            <div class="text-[9px] text-gray-400">WXYZ</div>
+                        </button>
+                        <button onclick="dialerPress('*')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">*</div>
+                            <div class="text-[9px] text-gray-400">&nbsp;</div>
+                        </button>
+                        <button onclick="dialerPress('0')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">0</div>
+                            <div class="text-[9px] text-gray-400">+</div>
+                        </button>
+                        <button onclick="dialerPress('#')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
+                            <div class="text-base font-bold">#</div>
+                            <div class="text-[9px] text-gray-400">&nbsp;</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Call & SMS Buttons -->
+                <div class="space-y-2 mt-4">
+                    <button onclick="dialerTriggerCall()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-98 rounded-xl font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all">
+                        <span>📞</span>
+                        <span>Call</span>
+                    </button>
+                    <button onclick="dialerTriggerSms()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-cyan-400 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5">
+                        <span>💬</span>
+                        <span>Send SMS</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
-
-    <!-- Window: Call Logs & Audio Recordings -->
-    <div id="call-logs-window" class="window hidden" style="display: none; width: 450px; height: 520px; top: 110px; left: 370px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+    <!-- Window: Call Logs & Audio Recordings (AirDroid Revamp) -->
+    <div id="call-logs-window" class="window hidden" style="display: none; width: 880px; height: 580px; top: 65px; left: 240px; min-width: 680px; min-height: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+        <!-- Title Bar -->
+        <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
-                <span class="text-xs">📑</span>
-                <span class="font-semibold text-xs">Call History & Audio Logs</span>
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-emerald-500 to-green-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">📞</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Call Logs</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
-                <button onclick="wm.minimizeWindow('call-logs-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
-                <button onclick="wm.maximizeWindow('call-logs-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
-                <button onclick="wm.closeWindow('call-logs-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-1.5 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+                <button onclick="wm.minimizeWindow('call-logs-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('call-logs-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('call-logs-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
-        <div class="flex-1 bg-white overflow-hidden flex flex-col">
-            <!-- Tabs: Call History vs Audio Recordings -->
-            <div class="flex border-b text-xs font-semibold bg-gray-100 p-1 gap-1">
-                <button id="call-tab-logs" onclick="switchCallLogTab('logs')" class="flex-1 py-1.5 rounded bg-white text-blue-600 shadow-sm transition-all text-center">
-                    📞 Call History
-                </button>
-                <button id="call-tab-records" onclick="switchCallLogTab('records')" class="flex-1 py-1.5 rounded text-gray-500 hover:text-gray-800 transition-all text-center flex items-center justify-center gap-1.5">
-                    <span>🎙️ Call Recordings</span>
+
+        <!-- AirDroid Call Logs Subheader Filter & Action Toolbar -->
+        <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
+            <!-- Filter Tabs -->
+            <div class="flex items-center gap-1">
+                <button id="cl-tab-all" onclick="setCallLogsFilter('All')" class="px-3 py-1 rounded font-medium text-xs bg-white text-blue-600 shadow-2xs border border-gray-200 transition-all">All</button>
+                <button id="cl-tab-incoming" onclick="setCallLogsFilter('Incoming')" class="px-3 py-1 rounded font-medium text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition-all">Incoming</button>
+                <button id="cl-tab-outgoing" onclick="setCallLogsFilter('Outgoing')" class="px-3 py-1 rounded font-medium text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition-all">Outgoing</button>
+                <button id="cl-tab-missed" onclick="setCallLogsFilter('Missed')" class="px-3 py-1 rounded font-medium text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition-all">Missed</button>
+                <button id="cl-tab-records" onclick="setCallLogsFilter('Recordings')" class="px-3 py-1 rounded font-medium text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition-all flex items-center gap-1">
+                    <span>🎙️ Recordings</span>
                     <span id="call-records-badge" class="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.2 rounded-full font-mono hidden">0</span>
                 </button>
+                <button onclick="refreshCallLogs()" class="p-1.5 rounded hover:bg-gray-200 text-gray-600 ml-1 transition-all" title="Refresh">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                </button>
             </div>
 
-
-            <!-- Tab 1: Call Logs List -->
-            <div id="call-logs-section" class="flex-1 flex flex-col overflow-hidden">
-                <div class="p-2 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
-                    <span>Recent 200 calls</span>
-                    <button onclick="sendCommand({action: 'FETCH_CALL_LOGS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
+            <!-- Right Controls: Search, Quick Call, Clear History -->
+            <div class="flex items-center gap-2">
+                <div class="relative flex items-center">
+                    <input type="text" id="cl-search-input" oninput="onCallLogsSearch(this.value)" placeholder="Search calls..." class="w-36 lg:w-44 pl-7 pr-5 py-1 text-xs bg-white border border-gray-300 rounded shadow-2xs focus:outline-none focus:border-blue-500 transition-all text-gray-800 placeholder-gray-400">
+                    <span class="absolute left-2 text-gray-400 text-[11px] pointer-events-none">🔍</span>
+                    <button id="cl-search-clear" onclick="clearCallLogsSearch()" class="hidden absolute right-1.5 text-gray-400 hover:text-gray-600 text-[10px] font-bold">✕</button>
                 </div>
-                <div id="call-logs-list" class="flex-1 overflow-y-auto divide-y text-xs">
-                    <div class="p-4 text-center text-gray-400 text-xs">Loading call logs...</div>
-                </div>
+                <button onclick="promptQuickCall()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-emerald-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1" title="Make a call">
+                    <span>📞 Call</span>
+                </button>
+                <button onclick="promptClearAllCallLogs()" class="px-2 py-1 hover:bg-rose-50 border border-transparent hover:border-rose-200 text-rose-600 font-medium text-xs rounded transition-all flex items-center gap-1" title="Clear Call History">
+                    <span>🗑️ Clear</span>
+                </button>
             </div>
+        </div>
 
+        <!-- Section 1: Call Logs Table -->
+        <div id="call-logs-section" class="flex-1 flex flex-col overflow-hidden bg-white">
+            <!-- Table Header -->
+            <div class="bg-[#fcfdfe] border-b border-gray-200 px-3 py-2 text-xs font-semibold text-gray-600 flex items-center select-none">
+                <div class="w-10 text-center"></div>
+                <div class="w-56 lg:w-64 truncate">Name</div>
+                <div class="w-44 truncate">Number</div>
+                <div class="flex-1 min-w-[140px] truncate">Time</div>
+                <div class="w-24 text-right pr-4">Duration</div>
+                <div class="w-28 text-center">Actions</div>
+            </div>
+            <!-- Table Body -->
+            <div id="call-logs-list" class="flex-1 overflow-y-auto divide-y divide-gray-100 text-xs">
+                <div class="p-8 text-center text-gray-400 text-xs">Loading call logs...</div>
+            </div>
+            <!-- Status Bar -->
+            <div class="bg-[#f7f8fa] border-t border-gray-200 px-3 py-1.5 text-[11px] text-gray-500 flex justify-between items-center select-none font-mono">
+                <span id="cl-status-stats">Showing 0 calls</span>
+                <span class="text-gray-400">OpenDroid Telephony</span>
+            </div>
+        </div>
 
-            <!-- Tab 2: Call Recordings List & Audio Player -->
-            <div id="call-records-section" class="hidden flex-1 flex flex-col overflow-hidden">
-                <div class="p-2 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
-                    <span>Recorded Call Audio Files</span>
-                    <button onclick="sendCommand({action: 'FETCH_CALL_RECORDINGS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
+        <!-- Section 2: Call Recordings & Audio Player -->
+        <div id="call-records-section" class="hidden flex-1 flex flex-col overflow-hidden bg-white">
+            <div class="p-2 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
+                <span>Recorded Call Audio Files</span>
+                <button onclick="sendCommand({action: 'FETCH_CALL_RECORDINGS'})" class="text-blue-600 hover:underline">🔄 Refresh</button>
+            </div>
+            <!-- Mini In-Window Audio Player -->
+            <div id="call-audio-player-bar" class="hidden p-2.5 bg-gray-900 text-white border-b flex items-center gap-2 text-xs">
+                <span class="text-emerald-400 animate-pulse text-xs">▶</span>
+                <div class="flex-1 truncate">
+                    <div id="call-audio-playing-name" class="font-semibold text-[11px] truncate">Playing audio...</div>
                 </div>
-                <!-- Mini In-Window Audio Player -->
-                <div id="call-audio-player-bar" class="hidden p-2.5 bg-gray-900 text-white border-b flex items-center gap-2 text-xs">
-                    <span class="text-emerald-400 animate-pulse text-xs">▶</span>
-                    <div class="flex-1 truncate">
-                        <div id="call-audio-playing-name" class="font-semibold text-[11px] truncate">Playing audio...</div>
-                    </div>
-                    <audio id="call-audio-element" controls class="h-7 w-48 scale-90 origin-right"></audio>
-                    <button onclick="closeCallAudioPlayer()" class="text-gray-400 hover:text-white p-1 text-xs">✕</button>
-                </div>
-                <div id="call-records-list" class="flex-1 overflow-y-auto divide-y text-xs">
-                    <div class="p-4 text-center text-gray-400 text-xs">Loading recordings...</div>
-                </div>
+                <audio id="call-audio-element" controls class="h-7 w-48 scale-90 origin-right"></audio>
+                <button onclick="closeCallAudioPlayer()" class="text-gray-400 hover:text-white p-1 text-xs">✕</button>
+            </div>
+            <div id="call-records-list" class="flex-1 overflow-y-auto divide-y text-xs">
+                <div class="p-6 text-center text-gray-400 text-xs">Loading recordings...</div>
             </div>
         </div>
     </div>
 
+    <!-- Modals for Contacts -->
+    <!-- Modal: New/Edit Contact -->
+    <div id="modal-contact-form" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-96 border border-gray-200 overflow-hidden text-xs">
+            <div class="bg-gray-900 text-white px-4 py-2.5 flex justify-between items-center font-semibold">
+                <span id="modal-contact-title">New Contact</span>
+                <button onclick="closeContactModal()" class="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div class="p-4 space-y-3">
+                <input type="hidden" id="cf-id">
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="cf-name" placeholder="Contact Name" class="w-full border rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none">
+                </div>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block text-[11px] font-medium text-gray-700 mb-1">Phone Number</label>
+                        <input type="text" id="cf-number" placeholder="+123456789" class="w-full border rounded-lg px-2.5 py-1.5 font-mono focus:border-blue-500 focus:outline-none">
+                    </div>
+                    <div class="w-28">
+                        <label class="block text-[11px] font-medium text-gray-700 mb-1">Type</label>
+                        <select id="cf-type" class="w-full border rounded-lg px-2 py-1.5 focus:border-blue-500 focus:outline-none bg-white">
+                            <option value="Mobile">Mobile</option>
+                            <option value="Home">Home</option>
+                            <option value="Work">Work</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-700 mb-1">Email (Optional)</label>
+                    <input type="email" id="cf-email" placeholder="example@email.com" class="w-full border rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-700 mb-1">Group</label>
+                    <select id="cf-group" class="w-full border rounded-lg px-2 py-1.5 focus:border-blue-500 focus:outline-none bg-white">
+                        <option value="All">All Contacts</option>
+                        <option value="Family">Family</option>
+                        <option value="Friends">Friends</option>
+                        <option value="Coworkers">Coworkers</option>
+                        <option value="VIP">VIP</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                    <textarea id="cf-notes" rows="2" placeholder="Additional notes..." class="w-full border rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none"></textarea>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-2.5 border-t border-gray-100 flex justify-end gap-2">
+                <button onclick="closeContactModal()" class="px-3 py-1.5 rounded border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium">Cancel</button>
+                <button onclick="saveContactForm()" class="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs">Save Contact</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Window: Apps -->
     <div id="apps-window" class="window hidden" style="display: none; width: 420px; height: 500px; top: 130px; left: 390px;">
@@ -5131,8 +5428,8 @@
                     'secret-window': { title: 'Stealth Capture', icon: '🕵️' },
                     'file-window': { title: 'Internal Storage', icon: '📁' },
                     'sms-window': { title: 'Messages', icon: '💬' },
-                    'contacts-window': { title: 'Dialer & Contacts', icon: '📞' },
-                    'call-logs-window': { title: 'Call Logs', icon: '📑' },
+                    'contacts-window': { title: 'Contacts', icon: '📇' },
+                    'call-logs-window': { title: 'Call Logs', icon: '📞' },
                     'apps-window': { title: 'Applications', icon: '📱' },
                     'photos-window': { title: 'Photos Gallery', icon: '🖼️' },
                     'music-window': { title: 'Music Player', icon: '🎵' },
@@ -5751,35 +6048,224 @@
         }
 
 
+        // --- AirDroid Call Logs System ---
+        let rawCallLogs = [];
+        let callLogsFilter = 'All';
+        let callLogsSearch = '';
+
+        function formatAirDroidTime(ts) {
+            if (!ts) return '--';
+            const d = new Date(ts);
+            if (isNaN(d.getTime())) return String(ts);
+            const now = new Date();
+            const isToday = d.toDateString() === now.toDateString();
+            const yesterday = new Date();
+            yesterday.setDate(now.getDate() - 1);
+            const isYesterday = d.toDateString() === yesterday.toDateString();
+            const timeStr = d.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            if (isToday) return `Today at ${timeStr}`;
+            if (isYesterday) return `Yesterday at ${timeStr}`;
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            return `${monthNames[d.getMonth()]} ${d.getDate()} ${d.getFullYear()} ${timeStr}`;
+        }
+
         function renderCallLogs(logs) {
+            rawCallLogs = Array.isArray(logs) ? logs : [];
+            renderCurrentCallLogsView();
+        }
+
+        function renderCurrentCallLogsView() {
             const list = document.getElementById('call-logs-list');
-            list.innerHTML = '';
-            if (!logs || logs.length === 0) {
-                list.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">No call logs found</div>';
-                return;
+            const badge = document.getElementById('cl-status-stats');
+            if (!list) return;
+
+            let filtered = rawCallLogs.slice();
+            if (callLogsFilter !== 'All' && callLogsFilter !== 'Recordings') {
+                filtered = filtered.filter(l => (l.type || '').toLowerCase() === callLogsFilter.toLowerCase());
             }
-            logs.forEach(log => {
-                const isMissed = log.type === 'Missed';
-                const isIncoming = log.type === 'Incoming';
-                const badgeColor = isMissed ? 'text-red-500 bg-red-50' : (isIncoming ? 'text-blue-500 bg-blue-50' : 'text-green-500 bg-green-50');
-                const dateStr = new Date(log.date).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
 
+            if (callLogsSearch.trim()) {
+                const q = callLogsSearch.toLowerCase();
+                filtered = filtered.filter(l => 
+                    (l.name || '').toLowerCase().includes(q) || 
+                    (l.number || '').toLowerCase().includes(q)
+                );
+            }
 
-                list.innerHTML += `
-                    <div class="p-3 hover:bg-gray-50 flex justify-between items-center cursor-pointer" onclick="document.getElementById('dial-number').value='${log.number}'; wm.openWindow('contacts-window')">
-                        <div>
-                            <div class="font-semibold text-gray-800">${log.name !== 'Unknown' ? log.name : log.number}</div>
-                            <div class="text-[11px] text-gray-400">${log.number} • ${dateStr}</div>
-                        </div>
-                        <div class="text-right">
-                            <span class="px-2 py-0.5 rounded text-[10px] font-medium ${badgeColor}">${log.type}</span>
-                            <div class="text-[10px] text-gray-400 mt-0.5">${log.duration}</div>
-                        </div>
+            const totalCount = rawCallLogs.length;
+            const incCount = rawCallLogs.filter(l => (l.type || '').toLowerCase() === 'incoming').length;
+            const outCount = rawCallLogs.filter(l => (l.type || '').toLowerCase() === 'outgoing').length;
+            const misCount = rawCallLogs.filter(l => (l.type || '').toLowerCase() === 'missed').length;
+            if (badge) {
+                badge.textContent = `Showing ${filtered.length} of ${totalCount} calls (${incCount} Incoming, ${outCount} Outgoing, ${misCount} Missed)`;
+            }
+
+            list.innerHTML = '';
+            if (filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="p-12 text-center text-gray-400 select-none flex flex-col items-center justify-center">
+                        <div class="text-3xl mb-2">📞</div>
+                        <div class="font-medium text-xs text-gray-600">No call logs found</div>
+                        <div class="text-[11px] text-gray-400 mt-1">${callLogsSearch ? 'Try a different search keyword' : 'Call history is empty'}</div>
                     </div>
                 `;
+                return;
+            }
+
+            filtered.forEach(log => {
+                const isMissed = (log.type || '').toLowerCase() === 'missed';
+                const isIncoming = (log.type || '').toLowerCase() === 'incoming';
+                const isOutgoing = (log.type || '').toLowerCase() === 'outgoing';
+
+                let arrowHtml = '';
+                if (isOutgoing) {
+                    arrowHtml = `
+                        <div class="w-6 h-6 rounded flex items-center justify-center bg-emerald-50 text-emerald-600" title="Outgoing Call">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="7" y1="17" x2="17" y2="7"></line>
+                                <polyline points="7 7 17 7 17 17"></polyline>
+                            </svg>
+                        </div>
+                    `;
+                } else if (isIncoming) {
+                    arrowHtml = `
+                        <div class="w-6 h-6 rounded flex items-center justify-center bg-blue-50 text-blue-600" title="Incoming Call">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="17" y1="7" x2="7" y2="17"></line>
+                                <polyline points="17 17 7 17 7 7"></polyline>
+                            </svg>
+                        </div>
+                    `;
+                } else {
+                    arrowHtml = `
+                        <div class="w-6 h-6 rounded flex items-center justify-center bg-rose-50 text-rose-600" title="Missed Call">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="17" y1="7" x2="7" y2="17"></line>
+                                <polyline points="17 17 7 17 7 7"></polyline>
+                            </svg>
+                        </div>
+                    `;
+                }
+
+                const timeStr = formatAirDroidTime(log.date);
+                const nameDisplay = (log.name && log.name !== 'Unknown') ? log.name : log.number;
+                const numberDisplay = log.number || '--';
+                const durDisplay = log.duration || (isMissed ? '00:00' : '--');
+
+                const row = document.createElement('div');
+                row.className = "px-3 py-2.5 hover:bg-[#f0f7ff] transition-colors flex items-center justify-between group cursor-default select-none border-b border-gray-50";
+
+                row.innerHTML = `
+                    <div class="w-10 flex items-center justify-center">${arrowHtml}</div>
+                    <div class="w-56 lg:w-64 flex items-center gap-2.5 truncate pr-2">
+                        <div class="w-7 h-7 rounded-full bg-gray-200/80 flex items-center justify-center text-gray-500 text-xs shrink-0 font-medium">👤</div>
+                        <span class="font-semibold text-gray-800 truncate" title="${nameDisplay}">${nameDisplay}</span>
+                    </div>
+                    <div class="w-44 text-gray-600 font-mono text-[11px] truncate pr-2">${numberDisplay}</div>
+                    <div class="flex-1 min-w-[140px] text-gray-500 text-[11px] truncate pr-2">${timeStr}</div>
+                    <div class="w-24 text-right pr-4 font-mono text-[11px] text-gray-600">${durDisplay}</div>
+                    <div class="w-28 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="triggerCall('${numberDisplay}')" class="p-1.5 rounded hover:bg-emerald-100 text-emerald-600 transition-all" title="Call ${numberDisplay}">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                        </button>
+                        <button onclick="openSmsForContact('${numberDisplay}', '${nameDisplay.replace(/'/g, "\\'")}')" class="p-1.5 rounded hover:bg-blue-100 text-blue-600 transition-all" title="Send SMS">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        </button>
+                        <button onclick="navigator.clipboard.writeText('${numberDisplay}'); showNotificationToast({app:'Call Logs', title:'Copied', text:'Number copied to clipboard!'})" class="p-1.5 rounded hover:bg-gray-200 text-gray-500 transition-all" title="Copy Number">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                        <button onclick="deleteSingleCallLog(${log.id || 'null'}, '${numberDisplay}', ${log.date || 0})" class="p-1.5 rounded hover:bg-rose-100 text-rose-500 transition-all" title="Delete Log">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(row);
             });
         }
 
+        function setCallLogsFilter(filter) {
+            callLogsFilter = filter;
+            const tabs = ['All', 'Incoming', 'Outgoing', 'Missed', 'Recordings'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`cl-tab-${t.toLowerCase()}`);
+                if (btn) {
+                    if (t.toLowerCase() === filter.toLowerCase()) {
+                        btn.className = "px-3 py-1 rounded font-medium text-xs bg-white text-blue-600 shadow-2xs border border-gray-200 transition-all flex items-center gap-1";
+                    } else {
+                        btn.className = "px-3 py-1 rounded font-medium text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-200/60 transition-all flex items-center gap-1";
+                    }
+                }
+            });
+
+            const secLogs = document.getElementById('call-logs-section');
+            const secRecs = document.getElementById('call-records-section');
+
+            if (filter === 'Recordings') {
+                if (secLogs) secLogs.classList.add('hidden');
+                if (secRecs) {
+                    secRecs.classList.remove('hidden');
+                    sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
+                }
+            } else {
+                if (secLogs) secLogs.classList.remove('hidden');
+                if (secRecs) secRecs.classList.add('hidden');
+                renderCurrentCallLogsView();
+            }
+        }
+
+        function onCallLogsSearch(val) {
+            callLogsSearch = val;
+            const clearBtn = document.getElementById('cl-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !val);
+            renderCurrentCallLogsView();
+        }
+
+        function clearCallLogsSearch() {
+            const input = document.getElementById('cl-search-input');
+            if (input) input.value = '';
+            onCallLogsSearch('');
+        }
+
+        function refreshCallLogs() {
+            sendCommand({ action: 'FETCH_CALL_LOGS' });
+            sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
+        }
+
+        function promptQuickCall() {
+            const num = prompt("Enter phone number to call:");
+            if (num && num.trim()) {
+                triggerCall(num.trim());
+            }
+        }
+
+        function promptClearAllCallLogs() {
+            if (confirm("Are you sure you want to clear call history?")) {
+                rawCallLogs = [];
+                renderCurrentCallLogsView();
+                sendCommand({ action: 'CLEAR_CALL_LOGS' });
+            }
+        }
+
+        function deleteSingleCallLog(id, number, date) {
+            rawCallLogs = rawCallLogs.filter(l => !(l.id === id || (l.number === number && l.date === date)));
+            renderCurrentCallLogsView();
+            sendCommand({ action: 'DELETE_CALL_LOG', id: id, number: number, date: date });
+        }
+
+        function triggerCall(number) {
+            if (!number || number === '--') return;
+            sendCommand({ action: 'MAKE_CALL', number: number });
+            showNotificationToast({ app: 'Phone', title: 'Calling...', text: `Initiating call to ${number}` });
+        }
+
+        function openSmsForContact(number, name) {
+            wm.openWindow('sms-window');
+            const toInput = document.getElementById('sms-to');
+            if (toInput) {
+                toInput.value = number;
+                toInput.focus();
+            }
+        }
 
         function renderApps(apps) {
             const list = document.getElementById('apps-list');
@@ -5885,24 +6371,517 @@
         }
 
 
+        // --- AirDroid Contacts Management System ---
+        let rawContacts = [];
+        let selectedContact = null;
+        let selectedContactIds = new Set();
+        let activeContactGroup = 'all';
+        let contactGroups = ['Coworkers', 'Friends', 'Family', 'VIP'];
+        let contactsSearch = '';
+
         function renderContacts(contacts) {
-            const list = document.getElementById('contacts-list');
-            list.innerHTML = '';
-            if (!contacts || contacts.length === 0) {
-                list.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">No contacts found</div>';
+            rawContacts = Array.isArray(contacts) ? contacts : [];
+            rawContacts.forEach(c => {
+                if (!c.group) c.group = 'All';
+            });
+            renderCurrentContactsView();
+        }
+
+        function renderCurrentContactsView() {
+            const listScroll = document.getElementById('contacts-list-scroll');
+            const alphaStrip = document.getElementById('contacts-alphabet-strip');
+            const groupLabel = document.getElementById('contact-group-label');
+            const btnDelete = document.getElementById('btn-delete-contacts');
+
+            if (!listScroll) return;
+
+            let filtered = rawContacts.slice();
+            if (activeContactGroup && activeContactGroup !== 'all') {
+                filtered = filtered.filter(c => (c.group || 'All').toLowerCase() === activeContactGroup.toLowerCase());
+            }
+
+            if (contactsSearch.trim()) {
+                const q = contactsSearch.toLowerCase();
+                filtered = filtered.filter(c => 
+                    (c.name || '').toLowerCase().includes(q) || 
+                    (c.number || '').toLowerCase().includes(q) ||
+                    (c.email || '').toLowerCase().includes(q)
+                );
+            }
+
+            const groupDisplay = activeContactGroup === 'all' ? 'Contacts with number' : activeContactGroup;
+            if (groupLabel) {
+                groupLabel.textContent = `${groupDisplay} (${filtered.length})`;
+            }
+
+            if (btnDelete) {
+                const count = selectedContactIds.size;
+                btnDelete.innerHTML = `<span>Delete( ${count} )</span>`;
+                if (count > 0) {
+                    btnDelete.disabled = false;
+                    btnDelete.className = "px-2.5 py-1 bg-rose-50 border border-rose-300 text-rose-600 hover:bg-rose-100 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer";
+                } else {
+                    btnDelete.disabled = true;
+                    btnDelete.className = "px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1";
+                }
+            }
+
+            filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
+            const letterGroups = {};
+            filtered.forEach(c => {
+                let firstChar = (c.name || '').trim().charAt(0).toUpperCase();
+                if (!firstChar.match(/^[A-Z]$/)) {
+                    firstChar = '#';
+                }
+                if (!letterGroups[firstChar]) {
+                    letterGroups[firstChar] = [];
+                }
+                letterGroups[firstChar].push(c);
+            });
+
+            if (alphaStrip) {
+                alphaStrip.innerHTML = '';
+                const allLetters = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
+                allLetters.forEach(ch => {
+                    const hasContacts = !!letterGroups[ch];
+                    const span = document.createElement('span');
+                    span.textContent = ch;
+                    span.className = `cursor-pointer px-1 hover:text-blue-600 transition-colors ${hasContacts ? 'text-gray-700 font-bold' : 'text-gray-300 pointer-events-none'}`;
+                    span.onclick = () => {
+                        const targetHeader = document.getElementById(`sec-alpha-${ch}`);
+                        if (targetHeader) {
+                            targetHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    };
+                    alphaStrip.appendChild(span);
+                });
+            }
+
+            listScroll.innerHTML = '';
+            if (filtered.length === 0) {
+                listScroll.innerHTML = `
+                    <div class="p-8 text-center text-gray-400 select-none flex flex-col items-center justify-center">
+                        <div class="text-3xl mb-2">📇</div>
+                        <div class="font-medium text-xs text-gray-600">No contacts found</div>
+                        <div class="text-[11px] text-gray-400 mt-1">${contactsSearch ? 'Try a different search keyword' : 'Contacts list is empty'}</div>
+                    </div>
+                `;
                 return;
             }
-            contacts.forEach(c => {
-                list.innerHTML += `<div class="p-3 hover:bg-gray-50 cursor-pointer flex justify-between items-center" onclick="document.getElementById('dial-number').value = '${c.number}'">
-                    <span class="font-medium text-gray-800">${c.name}</span>
-                    <span class="text-gray-500 font-mono text-[11px]">${c.number}</span>
-                </div>`;
+
+            const sortedLetters = Object.keys(letterGroups).sort((a, b) => {
+                if (a === '#') return -1;
+                if (b === '#') return 1;
+                return a.localeCompare(b);
+            });
+
+            sortedLetters.forEach(letter => {
+                const header = document.createElement('div');
+                header.id = `sec-alpha-${letter}`;
+                header.className = "bg-gray-100/80 px-3 py-1 text-[11px] font-bold text-gray-500 sticky top-0 z-10 border-b border-gray-200 select-none";
+                header.textContent = letter;
+                listScroll.appendChild(header);
+
+                letterGroups[letter].forEach(contact => {
+                    const isSelected = selectedContact && (selectedContact.id === contact.id || (selectedContact.number === contact.number && selectedContact.name === contact.name));
+                    const isChecked = selectedContactIds.has(contact.id || contact.number);
+
+                    const row = document.createElement('div');
+                    row.className = `px-3 py-2 flex items-center justify-between cursor-pointer border-b border-gray-50 transition-colors select-none ${
+                        isSelected ? 'bg-[#eef2f6] text-blue-900' : 'hover:bg-gray-50/80 text-gray-700'
+                    }`;
+
+                    let avatarHtml = '';
+                    if (contact.photo) {
+                        avatarHtml = `<img src="${contact.photo}" class="w-8 h-8 rounded-full object-cover shrink-0">`;
+                    } else {
+                        avatarHtml = `<div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-semibold shrink-0">👤</div>`;
+                    }
+
+                    row.onclick = () => {
+                        selectContact(contact);
+                    };
+
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2.5 truncate flex-1 pr-2">
+                            <input type="checkbox" class="rounded text-blue-600 cursor-pointer" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="toggleContactSelection('${contact.id || contact.number}', this.checked)">
+                            ${avatarHtml}
+                            <div class="truncate">
+                                <div class="font-medium text-xs text-gray-800 truncate" title="${contact.name}">${contact.name}</div>
+                                <div class="text-[10px] text-gray-400 font-mono truncate">${contact.number || ''}</div>
+                            </div>
+                        </div>
+                    `;
+                    listScroll.appendChild(row);
+                });
+            });
+
+            if (!selectedContact && filtered.length > 0) {
+                selectContact(filtered[0]);
+            } else if (selectedContact) {
+                renderContactDetails(selectedContact);
+            }
+        }
+
+        function selectContact(contact) {
+            selectedContact = contact;
+            renderContactDetails(contact);
+            const listScroll = document.getElementById('contacts-list-scroll');
+            if (listScroll) {
+                const rows = listScroll.querySelectorAll('div[class*="cursor-pointer"]');
+                rows.forEach(r => {
+                    const nameEl = r.querySelector('.font-medium');
+                    if (nameEl && nameEl.textContent === contact.name) {
+                        r.className = r.className.replace(/hover:bg-gray-50\/80/g, '').replace(/bg-\[#eef2f6\]/g, '') + ' bg-[#eef2f6] text-blue-900';
+                    } else {
+                        r.className = r.className.replace(/bg-\[#eef2f6\] text-blue-900/g, 'hover:bg-gray-50/80 text-gray-700');
+                    }
+                });
+            }
+        }
+
+        function renderContactDetails(c) {
+            const emptyState = document.getElementById('contact-empty-state');
+            const cardContent = document.getElementById('contact-card-content');
+            if (!c) {
+                if (emptyState) emptyState.classList.remove('hidden');
+                if (cardContent) cardContent.classList.add('hidden');
+                return;
+            }
+
+            if (emptyState) emptyState.classList.add('hidden');
+            if (cardContent) cardContent.classList.remove('hidden');
+
+            document.getElementById('cd-name').textContent = c.name || 'Unknown Contact';
+            document.getElementById('cd-phone-number').textContent = c.number || '--';
+            document.getElementById('cd-group-badge').textContent = c.group || 'All Contacts';
+            
+            const emailRow = document.getElementById('cd-email-row');
+            const emailEl = document.getElementById('cd-email');
+            if (c.email) {
+                emailRow.classList.remove('hidden');
+                emailEl.textContent = c.email;
+            } else {
+                emailRow.classList.add('hidden');
+            }
+
+            const notesRow = document.getElementById('cd-notes-row');
+            const notesEl = document.getElementById('cd-notes');
+            if (c.notes) {
+                notesRow.classList.remove('hidden');
+                notesEl.textContent = c.notes;
+            } else {
+                notesRow.classList.add('hidden');
+            }
+
+            const avatar = document.getElementById('cd-avatar-circle');
+            if (avatar) {
+                if (c.photo) {
+                    avatar.innerHTML = `<img src="${c.photo}" class="w-full h-full rounded-full object-cover">`;
+                } else {
+                    avatar.innerHTML = `<span class="text-3xl text-gray-400">👤</span>`;
+                }
+            }
+        }
+
+        function toggleContactSelection(idOrNum, checked) {
+            if (checked) {
+                selectedContactIds.add(idOrNum);
+            } else {
+                selectedContactIds.delete(idOrNum);
+            }
+            const btnDelete = document.getElementById('btn-delete-contacts');
+            if (btnDelete) {
+                const count = selectedContactIds.size;
+                btnDelete.innerHTML = `<span>Delete( ${count} )</span>`;
+                if (count > 0) {
+                    btnDelete.disabled = false;
+                    btnDelete.className = "px-2.5 py-1 bg-rose-50 border border-rose-300 text-rose-600 hover:bg-rose-100 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer";
+                } else {
+                    btnDelete.disabled = true;
+                    btnDelete.className = "px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1";
+                }
+            }
+        }
+
+        function onContactsSearch(val) {
+            contactsSearch = val;
+            const clearBtn = document.getElementById('contacts-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !val);
+            renderCurrentContactsView();
+        }
+
+        function clearContactsSearch() {
+            const input = document.getElementById('contacts-search-input');
+            if (input) input.value = '';
+            onContactsSearch('');
+        }
+
+        function refreshContacts() {
+            sendCommand({ action: 'FETCH_CONTACTS' });
+            showNotificationToast({ app: 'Contacts', title: 'Syncing', text: 'Fetching latest contacts from device...' });
+        }
+
+        function sendSmsToCurrentContact() {
+            if (selectedContact && selectedContact.number) {
+                openSmsForContact(selectedContact.number, selectedContact.name);
+            }
+        }
+
+        function callCurrentContact() {
+            if (selectedContact && selectedContact.number) {
+                triggerCall(selectedContact.number);
+            }
+        }
+
+        function deleteCurrentContact() {
+            if (!selectedContact) return;
+            if (confirm(`Are you sure you want to delete contact "${selectedContact.name}"?`)) {
+                const targetId = selectedContact.id;
+                const targetNum = selectedContact.number;
+                rawContacts = rawContacts.filter(c => !(c.id === targetId || c.number === targetNum));
+                selectedContact = null;
+                renderCurrentContactsView();
+                sendCommand({ action: 'DELETE_CONTACT', id: targetId, number: targetNum });
+            }
+        }
+
+        function deleteSelectedContacts() {
+            if (selectedContactIds.size === 0) return;
+            if (confirm(`Are you sure you want to delete ${selectedContactIds.size} selected contact(s)?`)) {
+                selectedContactIds.forEach(idOrNum => {
+                    rawContacts = rawContacts.filter(c => !(c.id === idOrNum || c.number === idOrNum));
+                    sendCommand({ action: 'DELETE_CONTACT', id: isNaN(idOrNum) ? null : Number(idOrNum), number: String(idOrNum) });
+                });
+                selectedContactIds.clear();
+                selectedContact = null;
+                renderCurrentContactsView();
+            }
+        }
+
+        function openNewContactModal() {
+            document.getElementById('modal-contact-title').textContent = "New Contact";
+            document.getElementById('cf-id').value = '';
+            document.getElementById('cf-name').value = '';
+            document.getElementById('cf-number').value = '';
+            document.getElementById('cf-type').value = 'Mobile';
+            document.getElementById('cf-email').value = '';
+            document.getElementById('cf-group').value = 'All';
+            document.getElementById('cf-notes').value = '';
+            document.getElementById('modal-contact-form').classList.remove('hidden');
+        }
+
+        function openEditContactModal() {
+            if (!selectedContact) return;
+            document.getElementById('modal-contact-title').textContent = "Edit Contact";
+            document.getElementById('cf-id').value = selectedContact.id || '';
+            document.getElementById('cf-name').value = selectedContact.name || '';
+            document.getElementById('cf-number').value = selectedContact.number || '';
+            document.getElementById('cf-type').value = selectedContact.type || 'Mobile';
+            document.getElementById('cf-email').value = selectedContact.email || '';
+            document.getElementById('cf-group').value = selectedContact.group || 'All';
+            document.getElementById('cf-notes').value = selectedContact.notes || '';
+            document.getElementById('modal-contact-form').classList.remove('hidden');
+        }
+
+        function closeContactModal() {
+            document.getElementById('modal-contact-form').classList.add('hidden');
+        }
+
+        function saveContactForm() {
+            const name = document.getElementById('cf-name').value.trim();
+            const number = document.getElementById('cf-number').value.trim();
+            const type = document.getElementById('cf-type').value;
+            const email = document.getElementById('cf-email').value.trim();
+            const group = document.getElementById('cf-group').value;
+            const notes = document.getElementById('cf-notes').value.trim();
+            const id = document.getElementById('cf-id').value;
+
+            if (!name || !number) {
+                alert("Please enter both Name and Phone Number.");
+                return;
+            }
+
+            if (id) {
+                const idx = rawContacts.findIndex(c => String(c.id) === String(id));
+                if (idx !== -1) {
+                    rawContacts[idx] = { ...rawContacts[idx], name, number, type, email, group, notes };
+                    selectedContact = rawContacts[idx];
+                }
+            } else {
+                const newObj = {
+                    id: Date.now(),
+                    name,
+                    number,
+                    type,
+                    email,
+                    group,
+                    notes
+                };
+                rawContacts.unshift(newObj);
+                selectedContact = newObj;
+                sendCommand({ action: 'ADD_CONTACT', name, number, email });
+            }
+
+            closeContactModal();
+            renderCurrentContactsView();
+            showNotificationToast({ app: 'Contacts', title: 'Saved', text: `Contact ${name} saved successfully.` });
+        }
+
+        function toggleContactGroupDropdown() {
+            const menu = document.getElementById('contact-groups-menu');
+            if (!menu) return;
+            menu.classList.toggle('hidden');
+            if (!menu.classList.contains('hidden')) {
+                renderContactGroupsList();
+            }
+        }
+
+        function renderContactGroupsList() {
+            const list = document.getElementById('contact-groups-list');
+            if (!list) return;
+            list.innerHTML = '';
+
+            const allCount = rawContacts.length;
+            const allDiv = document.createElement('div');
+            allDiv.className = `px-3 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center ${activeContactGroup === 'all' ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-700'}`;
+            allDiv.innerHTML = `<span>Contacts with number</span><span class="text-gray-400">(${allCount})</span>`;
+            allDiv.onclick = () => {
+                activeContactGroup = 'all';
+                toggleContactGroupDropdown();
+                renderCurrentContactsView();
+            };
+            list.appendChild(allDiv);
+
+            contactGroups.forEach(grp => {
+                const count = rawContacts.filter(c => (c.group || '').toLowerCase() === grp.toLowerCase()).length;
+                const div = document.createElement('div');
+                div.className = `px-3 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center group ${activeContactGroup.toLowerCase() === grp.toLowerCase() ? 'bg-blue-50 font-semibold text-blue-700' : 'text-gray-700'}`;
+                div.innerHTML = `
+                    <span>${grp}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-400">(${count})</span>
+                        <button onclick="event.stopPropagation(); promptRenameGroup('${grp}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-[10px]" title="Rename">✏️</button>
+                        <button onclick="event.stopPropagation(); deleteGroup('${grp}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-600 text-[10px]" title="Delete">🗑️</button>
+                    </div>
+                `;
+                div.onclick = () => {
+                    activeContactGroup = grp;
+                    toggleContactGroupDropdown();
+                    renderCurrentContactsView();
+                };
+                list.appendChild(div);
             });
         }
 
+        function promptAddContactGroup() {
+            const name = prompt("Enter new group name:");
+            if (name && name.trim()) {
+                const clean = name.trim();
+                if (!contactGroups.includes(clean)) {
+                    contactGroups.push(clean);
+                    const sel = document.getElementById('cf-group');
+                    if (sel) {
+                        const opt = document.createElement('option');
+                        opt.value = clean;
+                        opt.textContent = clean;
+                        sel.appendChild(opt);
+                    }
+                }
+                renderContactGroupsList();
+            }
+        }
+
+        function promptRenameGroup(grp) {
+            const newName = prompt(`Rename group "${grp}" to:`, grp);
+            if (newName && newName.trim() && newName.trim() !== grp) {
+                const clean = newName.trim();
+                const idx = contactGroups.indexOf(grp);
+                if (idx !== -1) contactGroups[idx] = clean;
+                rawContacts.forEach(c => {
+                    if (c.group === grp) c.group = clean;
+                });
+                if (activeContactGroup === grp) activeContactGroup = clean;
+                renderContactGroupsList();
+                renderCurrentContactsView();
+            }
+        }
+
+        function deleteGroup(grp) {
+            if (confirm(`Delete group "${grp}"? (Contacts will not be deleted)`)) {
+                contactGroups = contactGroups.filter(g => g !== grp);
+                rawContacts.forEach(c => {
+                    if (c.group === grp) c.group = 'All';
+                });
+                if (activeContactGroup === grp) activeContactGroup = 'all';
+                renderContactGroupsList();
+                renderCurrentContactsView();
+            }
+        }
+
+        function toggleDialerDrawer() {
+            const drawer = document.getElementById('contacts-dialer-drawer');
+            if (drawer) drawer.classList.toggle('hidden');
+        }
+
+        function dialerPress(digit) {
+            const screen = document.getElementById('dialer-screen');
+            if (screen) {
+                screen.value += digit;
+            }
+        }
+
+        function dialerBackspace() {
+            const screen = document.getElementById('dialer-screen');
+            if (screen) {
+                screen.value = screen.value.slice(0, -1);
+            }
+        }
+
+        function dialerTriggerCall() {
+            const screen = document.getElementById('dialer-screen');
+            if (screen && screen.value.trim()) {
+                triggerCall(screen.value.trim());
+            }
+        }
+
+        function dialerTriggerSms() {
+            const screen = document.getElementById('dialer-screen');
+            if (screen && screen.value.trim()) {
+                openSmsForContact(screen.value.trim(), 'Dialed Number');
+            }
+        }
+
+        function exportContactsVcf() {
+            if (rawContacts.length === 0) {
+                alert("No contacts to export.");
+                return;
+            }
+            let vcf = "";
+            rawContacts.forEach(c => {
+                vcf += "BEGIN:VCARD\r\nVERSION:3.0\r\n";
+                vcf += `FN:${c.name || 'Unknown'}\r\n`;
+                if (c.number) vcf += `TEL;TYPE=CELL:${c.number}\r\n`;
+                if (c.email) vcf += `EMAIL:${c.email}\r\n`;
+                if (c.notes) vcf += `NOTE:${c.notes}\r\n`;
+                vcf += "END:VCARD\r\n";
+            });
+            const blob = new Blob([vcf], { type: 'text/vcard' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `OpenDroid_Contacts_${new Date().toISOString().slice(0,10)}.vcf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotificationToast({ app: 'Contacts', title: 'Export Complete', text: 'Contacts exported to .vcf file!' });
+        }
 
         function makeCall() {
-            const num = document.getElementById('dial-number').value;
+            const screen = document.getElementById('dialer-screen');
+            const num = screen ? screen.value : '';
             if(num) sendCommand({ action: 'MAKE_CALL', number: num });
         }
         // --- Target 5: Notification Toast System with Inline Quick Reply ---
@@ -6867,4 +7846,5 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
+
 

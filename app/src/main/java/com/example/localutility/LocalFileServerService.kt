@@ -1483,6 +1483,48 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+            "DELETE_CALL_LOG" -> {
+                val id = if (json.has("id")) json.optLong("id", -1L) else -1L
+                val number = json.optString("number", "")
+                val date = if (json.has("date")) json.optLong("date", -1L) else -1L
+                teleManager.deleteCallLog(if (id > 0) id else null, number, if (date > 0) date else null)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CALL_LOGS_LIST")
+                    put("data", teleManager.getCallLogs())
+                }.toString())
+            }
+
+            "CLEAR_CALL_LOGS" -> {
+                teleManager.clearCallLogs()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CALL_LOGS_LIST")
+                    put("data", teleManager.getCallLogs())
+                }.toString())
+            }
+
+            "ADD_CONTACT" -> {
+                val name = json.optString("name", "")
+                val number = json.optString("number", "")
+                val email = json.optString("email", "")
+                if (name.isNotEmpty() && number.isNotEmpty()) {
+                    teleManager.addContact(name, number, if (email.isNotEmpty()) email else null)
+                }
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CONTACTS_LIST")
+                    put("data", teleManager.getContacts())
+                }.toString())
+            }
+
+            "DELETE_CONTACT" -> {
+                val id = if (json.has("id")) json.optLong("id", -1L) else -1L
+                val number = json.optString("number", "")
+                teleManager.deleteContact(if (id > 0) id else null, number)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CONTACTS_LIST")
+                    put("data", teleManager.getContacts())
+                }.toString())
+            }
+
 
             "FETCH_STORAGE" -> {
                 broadcastMessage(JSONObject().apply {
@@ -1875,4 +1917,5 @@ class LocalFileServerService : Service() {
         }
     }
 }
+
 

