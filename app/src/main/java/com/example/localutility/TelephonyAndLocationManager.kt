@@ -949,6 +949,112 @@ fun createFolder(parentPath: String, folderName: String): Boolean {
 
 }
 
+
+    fun copyFileOrFolder(sourcePath: String, destDirPath: String): Boolean {
+        return try {
+            val src = File(sourcePath)
+            if (!src.exists()) return false
+            val destDir = if (destDirPath.isEmpty()) Environment.getExternalStorageDirectory() else File(destDirPath)
+            if (!destDir.exists()) destDir.mkdirs()
+            val target = File(destDir, src.name)
+            copyRecursive(src, target)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    private fun copyRecursive(src: File, dst: File) {
+        if (src.isDirectory) {
+            if (!dst.exists()) dst.mkdirs()
+            src.listFiles()?.forEach { child ->
+                copyRecursive(child, File(dst, child.name))
+            }
+        } else {
+            FileInputStream(src).use { input ->
+                FileOutputStream(dst).use { output ->
+                    input.copyTo(output, bufferSize = 64 * 1024)
+                }
+            }
+        }
+    }
+
+    fun moveFileOrFolder(sourcePath: String, destDirPath: String): Boolean {
+        return try {
+            val src = File(sourcePath)
+            if (!src.exists()) return false
+            val destDir = if (destDirPath.isEmpty()) Environment.getExternalStorageDirectory() else File(destDirPath)
+            if (!destDir.exists()) destDir.mkdirs()
+            val target = File(destDir, src.name)
+            if (src.renameTo(target)) {
+                true
+            } else {
+                copyRecursive(src, target)
+                deleteFileOrFolder(src.absolutePath)
+                true
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    fun getFileOrFolderDetails(path: String): JSONObject {
+        val json = JSONObject()
+        try {
+            val file = File(path)
+            if (!file.exists()) {
+                json.put("error", "File not found")
+                return json
+            }
+            json.put("name", file.name)
+            json.put("path", file.absolutePath)
+            json.put("isDirectory", file.isDirectory)
+            json.put("lastModified", file.lastModified())
+            json.put("canRead", file.canRead())
+            json.put("canWrite", file.canWrite())
+            if (file.isDirectory) {
+                var totalBytes = 0L
+                var fileCount = 0
+                var dirCount = 0
+                fun walk(d: File) {
+                    d.listFiles()?.forEach { f ->
+                        if (f.isDirectory) {
+                            dirCount++
+                            walk(f)
+                        } else {
+                            fileCount++
+                            totalBytes += f.length()
+                        }
+                    }
+                }
+                walk(file)
+                json.put("size", totalBytes)
+                json.put("fileCount", fileCount)
+                json.put("dirCount", dirCount)
+            } else {
+                json.put("size", file.length())
+            }
+        } catch (e: Exception) {
+            json.put("error", e.message ?: "Unknown error")
+        }
+        return json
+    }
+
+    fun batchDelete(paths: List<String>): JSONObject {
+        val result = JSONObject()
+        var successCount = 0
+        var failCount = 0
+        for (p in paths) {
+            if (deleteFileOrFolder(p)) successCount++ else failCount++
+        }
+        result.put("successCount", successCount)
+        result.put("failCount", failCount)
+        result.put("total", paths.size)
+        return result
+    }
+
 fun createZipArchive(paths: List<String>): String? {
 
     return try {
@@ -1500,3 +1606,4 @@ fun getStorageStats(): JSONObject {
 }
 
 }
+

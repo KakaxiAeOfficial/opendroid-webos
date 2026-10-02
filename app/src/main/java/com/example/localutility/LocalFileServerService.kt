@@ -1382,6 +1382,55 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+            "COPY_FILE" -> {
+                val sourcePath = json.optString("sourcePath", "")
+                val destDirPath = json.optString("destDirPath", "")
+                val success = teleManager.copyFileOrFolder(sourcePath, destDirPath)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "FILE_OP_RESULT")
+                    put("op", "COPY")
+                    put("success", success)
+                    put("sourcePath", sourcePath)
+                    put("destDirPath", destDirPath)
+                }.toString())
+            }
+
+            "MOVE_FILE" -> {
+                val sourcePath = json.optString("sourcePath", "")
+                val destDirPath = json.optString("destDirPath", "")
+                val success = teleManager.moveFileOrFolder(sourcePath, destDirPath)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "FILE_OP_RESULT")
+                    put("op", "MOVE")
+                    put("success", success)
+                    put("sourcePath", sourcePath)
+                    put("destDirPath", destDirPath)
+                }.toString())
+            }
+
+            "GET_FILE_INFO" -> {
+                val path = json.optString("path", "")
+                val details = teleManager.getFileOrFolderDetails(path)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "FILE_INFO_RESULT")
+                    put("data", details)
+                }.toString())
+            }
+
+            "BATCH_DELETE" -> {
+                val pathsArray = json.optJSONArray("paths") ?: org.json.JSONArray()
+                val pathsList = mutableListOf<String>()
+                for (i in 0 until pathsArray.length()) {
+                    pathsList.add(pathsArray.optString(i))
+                }
+                val result = teleManager.batchDelete(pathsList)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "FILE_OP_RESULT")
+                    put("op", "BATCH_DELETE")
+                    put("result", result)
+                }.toString())
+            }
+
 
             "ZIP_AND_DOWNLOAD" -> {
                 val pathsArray = json.optJSONArray("paths") ?: JSONArray()
@@ -1826,3 +1875,4 @@ class LocalFileServerService : Service() {
         }
     }
 }
+

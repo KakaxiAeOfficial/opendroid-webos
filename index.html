@@ -1,4 +1,4 @@
-﻿﻿<html lang="en">
+﻿﻿﻿﻿<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -856,45 +856,304 @@
 
 
     <!-- Window: Files Explorer -->
-    <div id="file-window" class="window hidden" style="display: none; width: 550px; height: 520px; top: 110px; left: 370px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+    <div id="file-window" class="window hidden" style="display: none; width: 1040px; height: 640px; top: 60px; left: 160px; min-width: 760px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+        <!-- Title Bar -->
+        <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
-                <span class="text-xs">📁</span>
-                <span class="font-semibold text-xs">Internal Storage</span>
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-400 flex items-center justify-center text-white text-[10px] shadow-sm font-bold">📁</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Files</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
-                <button onclick="wm.minimizeWindow('file-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
-                <button onclick="wm.maximizeWindow('file-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
-                <button onclick="wm.closeWindow('file-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-1.5 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+                <button onclick="wm.minimizeWindow('file-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('file-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('file-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
-        <div class="flex-1 bg-white overflow-hidden flex flex-col">
-            <div class="p-2.5 bg-gray-50 border-b flex items-center gap-2 text-xs">
-                <input type="checkbox" id="select-all-files" onchange="toggleSelectAllFiles(this)" title="Select / Deselect All" class="rounded text-blue-600">
-                <button onclick="navigateUp()" class="px-2.5 py-1 bg-white border rounded hover:bg-gray-100 font-bold text-gray-700 shadow-sm">⬆ Up</button>
-                <div id="current-dir-path" class="flex-1 font-mono text-[11px] text-gray-600 truncate px-2.5 py-1 bg-white border rounded shadow-inner">/storage/emulated/0</div>
 
+        <!-- AirDroid Action Toolbar -->
+        <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
+            <!-- Left Controls: Search, View Switcher, Action Icons -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <!-- Search Box -->
+                <div class="relative flex items-center mr-1">
+                    <input type="text" id="file-search-input" oninput="onFileSearchInput(this.value)" placeholder="Search" class="w-36 lg:w-44 pl-7 pr-5 py-1 text-xs bg-white border border-gray-300 rounded shadow-xs focus:outline-none focus:border-blue-500 transition-all text-gray-800 placeholder-gray-400">
+                    <span class="absolute left-2 text-gray-400 text-[11px] pointer-events-none">🔍</span>
+                    <button id="file-search-clear" onclick="clearFileSearch()" class="hidden absolute right-1.5 text-gray-400 hover:text-gray-600 text-[10px] font-bold">✕</button>
+                </div>
 
-                <button onclick="promptCreateFolder()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded shadow-sm flex items-center gap-1" title="Create New Folder">
-                    <span>📁+</span><span>New Folder</span>
+                <div class="h-4 w-[1px] bg-gray-300 mx-0.5"></div>
+
+                <!-- View Mode Buttons -->
+                <div class="flex items-center bg-gray-200/60 p-0.5 rounded border border-gray-300/70">
+                    <button id="file-view-list-btn" onclick="setFileViewMode('list')" class="p-1 rounded text-gray-600 hover:text-gray-900 transition-all" title="List View">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    </button>
+                    <button id="file-view-grid-btn" onclick="setFileViewMode('grid')" class="p-1 rounded bg-white shadow-xs text-blue-600 transition-all" title="Grid View">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    </button>
+                </div>
+
+                <!-- Refresh Button -->
+                <button onclick="refreshCurrentDir()" class="p-1.5 rounded hover:bg-gray-200 text-gray-600 transition-all" title="Refresh">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                 </button>
-                <button id="zip-download-btn" onclick="downloadSelectedAsZip()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded shadow-sm flex items-center gap-1" title="Download selected items or folder as ZIP">
-                    <span>📦</span><span>ZIP</span>
-                </button>
-                <input type="file" id="file-upload-input" class="hidden" onchange="handleFileSelected(this.files)">
-                <button onclick="document.getElementById('file-upload-input').click()" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white font-semibold rounded shadow-sm flex items-center gap-1">
-                    <span>📤</span><span>Upload</span>
-                </button>
-                <button onclick="sendCommand({action: 'FETCH_DIR', path: currentDirPath})" class="text-blue-600 hover:underline px-1" title="Refresh">🔄</button>
+
+                <div class="h-4 w-[1px] bg-gray-300 mx-0.5"></div>
+
+                <!-- File Operations Toolbar Icons -->
+                <div class="flex items-center gap-1">
+                    <button onclick="promptCreateFolder()" class="p-1.5 rounded hover:bg-gray-200 text-gray-700 transition-all" title="New Folder">
+                        <span class="text-sm">📁⁺</span>
+                    </button>
+                    <button id="tb-rename-btn" onclick="renameSelectedFile()" disabled class="px-1.5 py-0.5 rounded border border-gray-300 bg-white hover:bg-gray-50 text-[10px] font-bold text-gray-700 disabled:opacity-35 disabled:cursor-not-allowed shadow-2xs transition-all" title="Rename (F2)">RE</button>
+                    <button id="tb-cut-btn" onclick="cutSelectedFile()" disabled class="p-1.5 rounded hover:bg-gray-200 text-gray-600 disabled:opacity-35 disabled:cursor-not-allowed text-xs transition-all" title="Cut (Ctrl+X)">✂️</button>
+                    <button id="tb-copy-btn" onclick="copySelectedFile()" disabled class="p-1.5 rounded hover:bg-gray-200 text-gray-600 disabled:opacity-35 disabled:cursor-not-allowed text-xs transition-all" title="Copy (Ctrl+C)">📑</button>
+                    <button id="tb-paste-btn" onclick="pasteFile()" disabled class="p-1.5 rounded hover:bg-gray-200 text-gray-600 disabled:opacity-35 disabled:cursor-not-allowed text-xs transition-all" title="Paste (Ctrl+V)">📋</button>
+                    <button id="tb-info-btn" onclick="showSelectedFileInfo()" disabled class="p-1.5 rounded hover:bg-gray-200 text-gray-600 disabled:opacity-35 disabled:cursor-not-allowed text-xs transition-all" title="Details / Info">ℹ️</button>
+                    <button id="tb-star-btn" onclick="toggleFavoriteSelected()" disabled class="p-1.5 rounded hover:bg-gray-200 text-amber-500 disabled:opacity-35 disabled:cursor-not-allowed text-xs transition-all" title="Add to Favorites">⭐</button>
+                    <button id="tb-delete-btn" onclick="deleteSelectedFiles()" disabled class="p-1.5 rounded hover:bg-rose-100 text-rose-600 disabled:opacity-35 disabled:cursor-not-allowed text-xs transition-all" title="Delete (Del)">🗑️</button>
+                </div>
             </div>
 
+            <!-- Right Controls: Download, Upload File, Upload Folder -->
+            <div class="flex items-center gap-2">
+                <button onclick="downloadSelectedOrCurrent()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1" title="Download selected file or batch ZIP">
+                    <span>⬇ Download</span>
+                </button>
+                <button onclick="document.getElementById('file-upload-input').click()" class="px-3 py-1 bg-[#108ee9] hover:bg-blue-600 text-white font-medium text-xs rounded shadow-xs transition-all flex items-center gap-1" title="Upload files from PC">
+                    <span>Upload file</span>
+                </button>
+                <button onclick="document.getElementById('folder-upload-input').click()" class="px-3 py-1 bg-[#108ee9] hover:bg-blue-600 text-white font-medium text-xs rounded shadow-xs transition-all flex items-center gap-1" title="Upload folder from PC">
+                    <span>Upload folder</span>
+                </button>
+                <input type="file" id="file-upload-input" class="hidden" multiple onchange="handleFileSelected(this.files)">
+                <input type="file" id="folder-upload-input" class="hidden" webkitdirectory directory onchange="handleFileSelected(this.files)">
+            </div>
+        </div>
 
-            <div id="dir-files-list" class="flex-1 overflow-y-auto divide-y text-xs">
-                <div class="p-4 text-center text-gray-400 text-xs">Loading directory...</div>
+        <!-- Path Navigation & Breadcrumbs Bar -->
+        <div class="bg-[#fcfdfe] border-b border-gray-200 px-3 py-1.5 flex items-center gap-2 text-xs select-none">
+            <div class="flex items-center gap-1 text-gray-500">
+                <button id="file-nav-back" onclick="navigateHistoryBack()" disabled class="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed font-bold" title="Back">←</button>
+                <button id="file-nav-forward" onclick="navigateHistoryForward()" disabled class="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed font-bold" title="Forward">→</button>
+                <button onclick="navigateUp()" class="p-1 rounded hover:bg-gray-100 font-bold" title="Up to Parent Folder">⬆</button>
+            </div>
+            <div class="h-4 w-[1px] bg-gray-300 mx-1"></div>
+            <!-- Clickable Breadcrumbs -->
+            <div id="file-breadcrumbs-container" class="flex-1 flex items-center gap-1 overflow-x-auto whitespace-nowrap text-gray-600 text-[11px] font-medium py-0.5">
+                <span class="text-blue-600 font-semibold cursor-pointer hover:underline" onclick="navigateToDir('/storage/emulated/0')">SD Card</span>
+                <span class="text-gray-400">/</span>
+            </div>
+        </div>
+
+        <!-- Main Two-Pane Body -->
+        <div class="flex-1 flex overflow-hidden relative bg-white" oncontextmenu="handleFileManagerContextMenu(event)">
+            <!-- Left Sidebar: Favorites & Storage Tree -->
+            <div class="w-48 lg:w-56 bg-[#f7f8fa] border-r border-gray-200 overflow-y-auto flex flex-col text-xs select-none shrink-0">
+                <!-- Favorites Section -->
+                <div class="p-2.5">
+                    <div class="flex items-center gap-1.5 text-gray-500 font-semibold text-[11px] uppercase tracking-wider mb-1.5 px-1">
+                        <span class="text-amber-500 text-xs">⭐</span>
+                        <span>Favorites ( <span id="fav-count">1</span> )</span>
+                    </div>
+                    <div id="favorites-tree-list" class="space-y-0.5">
+                        <div onclick="navigateToDir('/storage/emulated/0')" class="px-2 py-1.5 rounded-md flex items-center gap-2 hover:bg-gray-200/60 cursor-pointer text-gray-700 transition-colors font-medium">
+                            <span class="text-amber-500 text-sm">📁</span>
+                            <span class="truncate">SD Card</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="h-[1px] bg-gray-200 mx-2.5"></div>
+
+                <!-- Storage Folder Tree Section -->
+                <div class="p-2.5 flex-1 overflow-y-auto">
+                    <div class="text-gray-500 font-semibold text-[11px] uppercase tracking-wider mb-1.5 px-1">Storage</div>
+                    <div id="sidebar-folder-tree" class="space-y-0.5">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- System & External Storage Footer -->
+                <div class="p-2 border-t border-gray-200 bg-gray-100/70 text-[11px] space-y-1">
+                    <div onclick="navigateToDir('/system')" class="px-2 py-1 rounded flex items-center gap-2 hover:bg-gray-200 cursor-pointer text-gray-600 transition-colors">
+                        <span>⚙️</span><span>System</span>
+                    </div>
+                    <div onclick="promptAddExternalStorage()" class="px-2 py-1 rounded flex items-center gap-2 hover:bg-gray-200 cursor-pointer text-gray-500 transition-colors">
+                        <span class="font-bold text-blue-500 text-xs">+</span><span>Add external SD card</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Content Pane -->
+            <div id="file-content-pane" class="flex-1 bg-white flex flex-col overflow-hidden relative" onclick="deselectAllFiles(event)">
+                <!-- Grid View (Default) -->
+                <div id="files-grid-container" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3 content-start">
+                    <div class="col-span-full p-12 text-center text-gray-400 text-xs flex flex-col items-center gap-2">
+                        <div class="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+                        <span>Loading directory...</span>
+                    </div>
+                </div>
+
+                <!-- List View (Alternative) -->
+                <div id="files-list-container" class="hidden flex-1 overflow-y-auto">
+                    <table class="w-full text-left text-xs border-collapse select-none">
+                        <thead class="bg-[#f7f8fa] text-gray-500 border-b border-gray-200 sticky top-0 font-medium text-[11px]">
+                            <tr>
+                                <th class="w-8 p-2.5 text-center">
+                                    <input type="checkbox" id="list-master-cb" onchange="toggleSelectAllFiles(this)" class="rounded text-blue-600">
+                                </th>
+                                <th class="p-2.5">Name</th>
+                                <th class="w-28 p-2.5">Size</th>
+                                <th class="w-40 p-2.5">Date Modified</th>
+                                <th class="w-24 p-2.5">Type</th>
+                            </tr>
+                        </thead>
+                        <tbody id="files-list-tbody" class="divide-y divide-gray-100 text-gray-700">
+                            <!-- List rows populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Status Bar -->
+        <div class="bg-[#f0f2f5] border-t border-gray-200 px-3 py-1 flex items-center justify-between text-[11px] text-gray-500 select-none">
+            <div class="flex items-center gap-2 truncate">
+                <span id="file-status-icon">📁</span>
+                <span id="file-status-name" class="font-medium text-gray-700 truncate">SD Card</span>
+                <span class="text-gray-300">|</span>
+                <span id="file-status-date">--</span>
+                <span id="file-status-size" class="text-gray-400 font-mono"></span>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+                <span id="file-status-count" class="font-mono text-[10px] text-gray-500">0 items</span>
+                <button onclick="toggleFileHotkeysModal()" class="px-2 py-0.5 bg-white border border-gray-300 hover:bg-gray-50 rounded text-[10px] text-gray-600 shadow-2xs font-medium">Hotkeys</button>
             </div>
         </div>
     </div>
 
+    <!-- AirDroid Right-Click Context Menu -->
+    <div id="file-context-menu" class="hidden fixed bg-white border border-gray-200 rounded-lg shadow-2xl py-1 w-44 z-[100] text-xs text-gray-700 select-none divide-y divide-gray-100" style="backdrop-filter: blur(8px);">
+        <div class="py-0.5">
+            <button onclick="promptCreateFolder(); hideContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-blue-500 hover:text-white flex items-center gap-2 transition-colors">
+                <span>📁⁺</span><span>New folder</span>
+            </button>
+            <button id="cm-paste-btn" onclick="pasteFile(); hideContextMenu();" disabled class="w-full text-left px-3 py-1.5 hover:bg-blue-500 hover:text-white disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-gray-400 flex items-center gap-2 transition-colors">
+                <span>📋</span><span>Paste</span>
+            </button>
+        </div>
+        <div class="py-0.5">
+            <button onclick="refreshCurrentDir(); hideContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-blue-500 hover:text-white flex items-center gap-2 transition-colors">
+                <span>🔄</span><span>Refresh</span>
+            </button>
+        </div>
+        <div class="py-0.5">
+            <button onclick="document.getElementById('file-upload-input').click(); hideContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-blue-500 hover:text-white flex items-center gap-2 transition-colors">
+                <span>📤</span><span>Upload file</span>
+            </button>
+            <button id="cm-star-btn" onclick="toggleFavoriteSelected(); hideContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-blue-500 hover:text-white flex items-center gap-2 transition-colors">
+                <span>⭐</span><span>Add to Favorites</span>
+            </button>
+        </div>
+        <div id="cm-item-actions" class="py-0.5 hidden">
+            <button onclick="renameSelectedFile(); hideContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-blue-500 hover:text-white flex items-center gap-2 transition-colors">
+                <span>✏️</span><span>Rename</span>
+            </button>
+            <button onclick="deleteSelectedFiles(); hideContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-rose-500 hover:text-white text-rose-600 flex items-center gap-2 transition-colors">
+                <span>🗑️</span><span>Delete</span>
+            </button>
+            <button onclick="showSelectedFileInfo(); hideContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-blue-500 hover:text-white flex items-center gap-2 transition-colors">
+                <span>ℹ️</span><span>Properties</span>
+            </button>
+            <button onclick="downloadSelectedOrCurrent(); hideContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-blue-500 hover:text-white flex items-center gap-2 transition-colors">
+                <span>⬇</span><span>Download</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- File Properties / Details Modal -->
+    <div id="file-info-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-[110] flex items-center justify-center p-4">
+        <div class="bg-white border border-gray-300 rounded-xl shadow-2xl p-5 max-w-sm w-full text-xs text-gray-800 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+                <div class="flex items-center gap-2 font-bold text-sm text-gray-900">
+                    <span id="modal-info-icon" class="text-lg">📁</span>
+                    <span id="modal-info-title" class="truncate max-w-[200px]">Item Properties</span>
+                </div>
+                <button onclick="closeFileInfoModal()" class="text-gray-400 hover:text-gray-700 text-lg font-bold">✕</button>
+            </div>
+            <div class="mt-3.5 space-y-2.5" id="modal-info-body">
+                <div class="flex justify-between py-1 border-b border-gray-100">
+                    <span class="text-gray-500 font-medium">Type:</span>
+                    <span id="info-type" class="font-semibold text-gray-800">Folder</span>
+                </div>
+                <div class="flex flex-col gap-0.5 py-1 border-b border-gray-100">
+                    <span class="text-gray-500 font-medium">Location:</span>
+                    <span id="info-path" class="font-mono text-[11px] text-gray-700 break-all bg-gray-50 p-1.5 rounded border border-gray-200">/storage/emulated/0</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-100">
+                    <span class="text-gray-500 font-medium">Size:</span>
+                    <span id="info-size" class="font-semibold text-gray-800">Calculating...</span>
+                </div>
+                <div id="info-contents-row" class="flex justify-between py-1 border-b border-gray-100">
+                    <span class="text-gray-500 font-medium">Contains:</span>
+                    <span id="info-contains" class="text-gray-700">--</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-gray-100">
+                    <span class="text-gray-500 font-medium">Modified:</span>
+                    <span id="info-date" class="text-gray-700">--</span>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 flex justify-end border-t border-gray-100">
+                <button onclick="closeFileInfoModal()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-xs">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hotkeys Modal -->
+    <div id="file-hotkeys-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-[110] flex items-center justify-center p-4">
+        <div class="bg-white border border-gray-300 rounded-xl shadow-2xl p-5 max-w-sm w-full text-xs text-gray-800 animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-200">
+                <span class="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+                    <span>⌨️</span><span>File Explorer Hotkeys</span>
+                </span>
+                <button onclick="toggleFileHotkeysModal()" class="text-gray-400 hover:text-gray-700 text-lg font-bold">✕</button>
+            </div>
+            <div class="mt-3 space-y-2 text-xs divide-y divide-gray-100">
+                <div class="flex justify-between py-1">
+                    <span class="text-gray-600">Copy Selected</span>
+                    <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-300 font-bold">Ctrl + C</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span class="text-gray-600">Cut Selected</span>
+                    <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-300 font-bold">Ctrl + X</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span class="text-gray-600">Paste</span>
+                    <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-300 font-bold">Ctrl + V</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span class="text-gray-600">Delete Selected</span>
+                    <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-300 font-bold">Del / Backspace</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span class="text-gray-600">Rename File</span>
+                    <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-300 font-bold">F2</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span class="text-gray-600">Open Folder</span>
+                    <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-300 font-bold">Enter</span>
+                </div>
+                <div class="flex justify-between py-1">
+                    <span class="text-gray-600">Select All</span>
+                    <span class="font-mono bg-gray-100 px-1.5 py-0.5 rounded border border-gray-300 font-bold">Ctrl + A</span>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 flex justify-end border-t border-gray-100">
+                <button onclick="toggleFileHotkeysModal()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-xs">Close</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Live File Transfer Progress Toast -->
     <div id="transfer-progress-toast" class="hidden fixed bottom-6 right-6 bg-gray-900/95 backdrop-blur text-white p-3.5 rounded-xl shadow-2xl z-50 text-xs border border-white/10 w-80 flex flex-col gap-2">
@@ -2847,6 +3106,23 @@
                 }
             } else if (data.type === 'DIR_CONTENTS') {
                 renderDirectory(data.data);
+            } else if (data.type === 'FILE_OP_RESULT') {
+                if (data.success !== false) {
+                    showToast(`Operation ${data.op || ''} completed successfully! 📁`, "success");
+                    refreshCurrentDir();
+                } else {
+                    showToast(`File operation failed: ${data.op || 'Error'}`, "error");
+                }
+            } else if (data.type === 'FILE_INFO_RESULT') {
+                if (data.data) {
+                    const info = data.data;
+                    const sizeEl = document.getElementById('info-size');
+                    const containsEl = document.getElementById('info-contains');
+                    if (sizeEl && info.size !== undefined) sizeEl.textContent = formatBytes(info.size);
+                    if (containsEl) {
+                        containsEl.textContent = `${info.fileCount || 0} Files, ${info.dirCount || 0} Folders`;
+                    }
+                }ctory(data.data);
             } else if (data.type === 'PHOTOS_LIST') {
                 renderPhotos(data.data);
             }
@@ -3933,65 +4209,744 @@
 
 
         // --- Directory Explorer ---
+        
+        // --- AirDroid-Grade WebOS File Explorer Engine ---
+        let fileViewMode = 'grid';
+        let currentRawFilesList = [];
+        let filteredFilesList = [];
+        let selectedFilesMap = new Map();
+        let lastSelectedFile = null;
+        let fileClipboard = null;
+        let navHistoryStack = [];
+        let navHistoryIndex = -1;
+        let userFavoritesList = [
+            { name: 'SD Card', path: '/storage/emulated/0', icon: '📁' },
+            { name: 'Download', path: '/storage/emulated/0/Download', icon: '📥' },
+            { name: 'DCIM', path: '/storage/emulated/0/DCIM', icon: '📸' },
+            { name: 'Documents', path: '/storage/emulated/0/Documents', icon: '📄' }
+        ];
+
+        function setFileViewMode(mode) {
+            fileViewMode = mode;
+            const gridBtn = document.getElementById('file-view-grid-btn');
+            const listBtn = document.getElementById('file-view-list-btn');
+            const gridCont = document.getElementById('files-grid-container');
+            const listCont = document.getElementById('files-list-container');
+            if (!gridCont || !listCont) return;
+
+            if (mode === 'grid') {
+                gridBtn.className = "p-1 rounded bg-white shadow-xs text-blue-600 transition-all";
+                listBtn.className = "p-1 rounded text-gray-600 hover:text-gray-900 transition-all";
+                gridCont.classList.remove('hidden');
+                listCont.classList.add('hidden');
+            } else {
+                listBtn.className = "p-1 rounded bg-white shadow-xs text-blue-600 transition-all";
+                gridBtn.className = "p-1 rounded text-gray-600 hover:text-gray-900 transition-all";
+                listCont.classList.remove('hidden');
+                gridCont.classList.add('hidden');
+            }
+            renderCurrentFilesView();
+        }
+
         function renderDirectory(data) {
             if (!data) return;
-            currentDirPath = data.currentPath || '';
+            currentDirPath = data.currentPath || '/storage/emulated/0';
             parentDirPath = data.parentPath || '';
-            document.getElementById('current-dir-path').textContent = currentDirPath;
+            currentRawFilesList = data.files || [];
+            filteredFilesList = [...currentRawFilesList];
 
+            if (navHistoryIndex === -1 || navHistoryStack[navHistoryIndex] !== currentDirPath) {
+                navHistoryStack = navHistoryStack.slice(0, navHistoryIndex + 1);
+                navHistoryStack.push(currentDirPath);
+                navHistoryIndex = navHistoryStack.length - 1;
+            }
+            updateNavHistoryButtons();
 
-            const list = document.getElementById('dir-files-list');
-            list.innerHTML = '';
+            selectedFilesMap.clear();
+            lastSelectedFile = null;
+            updateFileToolbarState();
 
+            renderBreadcrumbs(currentDirPath);
+            updateSidebarFolderTree(currentRawFilesList);
+            renderFavoritesList();
+            renderCurrentFilesView();
+            updateFileStatusBar();
+        }
 
-            const files = data.files || [];
-            if (files.length === 0) {
-                list.innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">Folder is empty</div>';
-                return;
+        function renderBreadcrumbs(path) {
+            const container = document.getElementById('file-breadcrumbs-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let parts = [];
+            if (path.startsWith('/storage/emulated/0')) {
+                const sub = path.replace('/storage/emulated/0', '').replace(/^\/+/, '');
+                parts.push({ name: 'SD Card', path: '/storage/emulated/0' });
+                if (sub) {
+                    let cumulative = '/storage/emulated/0';
+                    sub.split('/').forEach(seg => {
+                        if (seg) {
+                            cumulative += '/' + seg;
+                            parts.push({ name: seg, path: cumulative });
+                        }
+                    });
+                }
+            } else {
+                let cumulative = '';
+                path.split('/').forEach(seg => {
+                    if (seg) {
+                        cumulative += '/' + seg;
+                        parts.push({ name: seg, path: cumulative });
+                    }
+                });
+                if (parts.length === 0) parts.push({ name: 'Root', path: '/' });
             }
 
+            parts.forEach((p, idx) => {
+                const isLast = idx === parts.length - 1;
+                const span = document.createElement('span');
+                span.className = isLast 
+                    ? "font-semibold text-gray-900 cursor-default" 
+                    : "text-blue-600 hover:text-blue-800 cursor-pointer hover:underline";
+                span.textContent = p.name;
+                if (!isLast) {
+                    span.onclick = () => navigateToDir(p.path);
+                }
+                container.appendChild(span);
 
-            files.forEach(item => {
-                const isDir = item.isDirectory;
-                const isImg = !isDir && isImageFile(item.name);
-                const isApk = !isDir && item.name.toLowerCase().endsWith('.apk');
-                const icon = isDir ? '📁' : (isImg ? '🖼️' : '📄');
-                const sizeStr = isDir ? '--' : formatBytes(item.size);
-                const safePath = item.path.replace(/\\/g, '\\\\');
-                const safeName = item.name.replace(/'/g, "\\'");
+                if (!isLast) {
+                    const sep = document.createElement('span');
+                    sep.className = "text-gray-300 mx-0.5";
+                    sep.textContent = '/';
+                    container.appendChild(sep);
+                }
+            });
+        }
 
+        function updateSidebarFolderTree(files) {
+            const tree = document.getElementById('sidebar-folder-tree');
+            if (!tree) return;
 
+            const subdirs = (files || []).filter(f => f.isDirectory);
+            let htmlTree = `
+                <div class="px-2 py-1.5 rounded-md flex items-center gap-1.5 bg-blue-50/80 text-blue-700 font-semibold cursor-pointer border border-blue-200/60" onclick="navigateToDir('/storage/emulated/0')">
+                    <span class="text-xs text-blue-500">▼</span>
+                    <span class="text-sm">📁</span>
+                    <span class="truncate">SD Card</span>
+                </div>
+                <div class="pl-4 space-y-0.5 border-l border-gray-200 ml-3.5 my-1">
+            `;
+
+            subdirs.slice(0, 30).forEach(sub => {
+                const isCur = sub.path === currentDirPath;
+                const safePath = sub.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                htmlTree += `
+                    <div onclick="navigateToDir('${safePath}')" class="px-2 py-1 rounded flex items-center gap-1.5 hover:bg-gray-200/70 cursor-pointer text-gray-700 text-[11px] truncate ${isCur ? 'bg-blue-100/70 text-blue-800 font-bold' : ''}" title="${sub.name}">
+                        <span class="text-amber-500 text-xs">📁</span>
+                        <span class="truncate">${sub.name}</span>
+                    </div>
+                `;
+            });
+
+            htmlTree += `</div>`;
+            tree.innerHTML = htmlTree;
+        }
+
+        function renderFavoritesList() {
+            const list = document.getElementById('favorites-tree-list');
+            const countEl = document.getElementById('fav-count');
+            if (countEl) countEl.textContent = userFavoritesList.length;
+            if (!list) return;
+
+            list.innerHTML = '';
+            userFavoritesList.forEach(fav => {
+                const safePath = fav.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const isCur = fav.path === currentDirPath;
                 list.innerHTML += `
-                    <div class="p-2.5 hover:bg-gray-50 flex justify-between items-center select-none">
-                        <div class="flex items-center gap-2 min-w-0 pr-2 cursor-pointer flex-1" onclick="${isDir ? `navigateToDir('${safePath}')` : (isImg ? `openImagePreview('${safePath}', '${safeName}')` : '')}">
-                            <input type="checkbox" class="file-select-cb rounded text-blue-600" data-path="${safePath}" onclick="event.stopPropagation(); updateSelectedCount();">
-                            <span class="text-base">${icon}</span>
-                            <span class="truncate font-medium text-gray-800 text-xs" title="${safeName}">${item.name}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 flex-shrink-0">
-                            <span class="text-[10px] text-gray-400 font-mono mr-1">${sizeStr}</span>
-                            ${isImg ? `<button onclick="openImagePreview('${safePath}', '${safeName}')" class="px-2 py-0.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-[11px] font-semibold border border-emerald-200 shadow-sm" title="Preview">👁</button>` : ''}
-                            ${isApk ? `<button onclick="event.stopPropagation(); triggerApkInstall('${safePath}', '${safeName}')" class="px-2 py-0.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded text-[11px] font-semibold border border-purple-200 shadow-sm" title="Install APK on Phone">📥 Install</button>` : ''}
-                            ${!isDir ? `<button onclick="triggerFileDownload('${safePath}', '${safeName}')" class="px-2 py-0.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded text-[11px] font-semibold border border-blue-200 shadow-sm" title="Download">⬇</button>` : ''}
-                            <button onclick="event.stopPropagation(); promptRenameFile('${safePath}', '${safeName}')" class="px-1.5 py-0.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-[11px] border border-gray-300 shadow-xs" title="Rename">✏️</button>
-                            <button onclick="event.stopPropagation(); confirmDeleteFile('${safePath}', '${safeName}', ${isDir})" class="px-1.5 py-0.5 bg-red-50 hover:bg-red-100 text-red-600 rounded text-[11px] border border-red-200 shadow-xs" title="Delete">🗑️</button>
-                        </div>
+                    <div onclick="navigateToDir('${safePath}')" class="px-2 py-1 rounded-md flex items-center gap-2 hover:bg-gray-200/70 cursor-pointer text-gray-700 text-[11px] truncate ${isCur ? 'bg-blue-100 text-blue-800 font-bold' : ''}">
+                        <span class="text-amber-500">${fav.icon || '📁'}</span>
+                        <span class="truncate">${fav.name}</span>
                     </div>
                 `;
             });
         }
 
+        function renderCurrentFilesView() {
+            if (fileViewMode === 'grid') {
+                renderFilesGrid(filteredFilesList);
+            } else {
+                renderFilesList(filteredFilesList);
+            }
+        }
 
+        function getAirDroidFolderIconSvg() {
+            return `
+                <svg class="w-14 h-14 drop-shadow-xs" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 28C12 23.5817 15.5817 20 20 20H48.4C51.6 20 54.6 21.6 56.4 24.3L61.6 32H108C112.418 32 116 35.5817 116 40V100C116 104.418 112.418 108 108 108H20C15.5817 108 12 104.418 12 100V28Z" fill="#F6B83D"/>
+                    <path d="M12 42C12 37.5817 15.5817 34 20 34H108C112.418 34 116 37.5817 116 42V100C116 104.418 112.418 108 108 108H20C15.5817 108 12 104.418 12 100V42Z" fill="#FFCA58"/>
+                    <path d="M12 46H116V100C116 104.418 112.418 108 108 108H20C15.5817 108 12 104.418 12 100V46Z" fill="#FFD56B"/>
+                    <rect x="22" y="32" width="84" height="2" rx="1" fill="#FFFFFF" fill-opacity="0.45"/>
+                </svg>
+            `;
+        }
+
+        function getFileIcon(name, isDir) {
+            if (isDir) return getAirDroidFolderIconSvg();
+            const lower = name.toLowerCase();
+            if (lower.match(/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/)) return '<div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-2xl shadow-xs">🖼️</div>';
+            if (lower.match(/\.(mp4|mkv|mov|avi|webm)$/)) return '<div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center text-2xl shadow-xs">🎬</div>';
+            if (lower.match(/\.(mp3|m4a|wav|ogg|flac|aac)$/)) return '<div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center text-2xl shadow-xs">🎵</div>';
+            if (lower.match(/\.(apk)$/)) return '<div class="w-12 h-12 bg-green-100 text-green-700 rounded-xl flex items-center justify-center text-2xl shadow-xs">🤖</div>';
+            if (lower.match(/\.(zip|rar|7z|tar|gz)$/)) return '<div class="w-12 h-12 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center text-2xl shadow-xs">📦</div>';
+            if (lower.match(/\.(pdf)$/)) return '<div class="w-12 h-12 bg-red-100 text-red-600 rounded-xl flex items-center justify-center text-2xl shadow-xs">📕</div>';
+            if (lower.match(/\.(txt|md|log|json|xml|kt|java|py|js|html|css)$/)) return '<div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-2xl shadow-xs">📄</div>';
+            return '<div class="w-12 h-12 bg-gray-100 text-gray-600 rounded-xl flex items-center justify-center text-2xl shadow-xs">📃</div>';
+        }
+
+        function renderFilesGrid(files) {
+            const grid = document.getElementById('files-grid-container');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            if (files.length === 0) {
+                grid.innerHTML = '<div class="col-span-full p-12 text-center text-gray-400 text-xs">Folder is empty</div>';
+                return;
+            }
+
+            files.forEach(file => {
+                const isSelected = selectedFilesMap.has(file.path);
+                const iconHtml = getFileIcon(file.name, file.isDirectory);
+
+                const card = document.createElement('div');
+                card.className = `group flex flex-col items-center justify-start p-2 rounded-xl cursor-pointer transition-all duration-100 border text-center select-none relative ${
+                    isSelected 
+                        ? 'bg-[#e6f4ff] border-[#91caff] shadow-xs ring-1 ring-[#91caff]' 
+                        : 'hover:bg-gray-100/70 border-transparent hover:border-gray-200'
+                }`;
+
+                card.onclick = (e) => {
+                    e.stopPropagation();
+                    handleFileItemClick(file, e);
+                };
+
+                card.ondblclick = (e) => {
+                    e.stopPropagation();
+                    handleFileItemDblClick(file);
+                };
+
+                card.oncontextmenu = (e) => {
+                    e.stopPropagation();
+                    handleFileItemContextMenu(file, e);
+                };
+
+                card.innerHTML = `
+                    <div class="h-14 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
+                        ${iconHtml}
+                    </div>
+                    <span class="w-full text-[11px] font-normal leading-snug line-clamp-2 text-gray-800 break-words px-1" title="${file.name}">
+                        ${file.name}
+                    </span>
+                `;
+
+                grid.appendChild(card);
+            });
+        }
+
+        function renderFilesList(files) {
+            const tbody = document.getElementById('files-list-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (files.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-400 text-xs">Folder is empty</td></tr>';
+                return;
+            }
+
+            files.forEach(file => {
+                const isSelected = selectedFilesMap.has(file.path);
+                const isDir = file.isDirectory;
+                const sizeStr = isDir ? '--' : formatBytes(file.size);
+                const dateStr = file.lastModified ? new Date(file.lastModified).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '--';
+                const typeStr = isDir ? 'Folder' : (file.name.includes('.') ? file.name.split('.').pop().toUpperCase() + ' File' : 'File');
+
+                const tr = document.createElement('tr');
+                tr.className = `cursor-pointer transition-colors border-b border-gray-100 ${
+                    isSelected ? 'bg-[#e6f4ff] text-blue-900 font-medium' : 'hover:bg-gray-50/80 text-gray-700'
+                }`;
+
+                tr.onclick = (e) => {
+                    e.stopPropagation();
+                    handleFileItemClick(file, e);
+                };
+
+                tr.ondblclick = (e) => {
+                    e.stopPropagation();
+                    handleFileItemDblClick(file);
+                };
+
+                tr.oncontextmenu = (e) => {
+                    e.stopPropagation();
+                    handleFileItemContextMenu(file, e);
+                };
+
+                tr.innerHTML = `
+                    <td class="p-2 text-center" onclick="event.stopPropagation()">
+                        <input type="checkbox" class="file-select-cb rounded text-blue-600" ${isSelected ? 'checked' : ''} onchange="toggleSingleFileCb('${file.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', this.checked)">
+                    </td>
+                    <td class="p-2 flex items-center gap-2">
+                        <span class="text-sm">${isDir ? '📁' : '📄'}</span>
+                        <span class="truncate max-w-sm" title="${file.name}">${file.name}</span>
+                    </td>
+                    <td class="p-2 text-gray-500 font-mono text-[11px]">${sizeStr}</td>
+                    <td class="p-2 text-gray-500 text-[11px]">${dateStr}</td>
+                    <td class="p-2 text-gray-400 text-[11px]">${typeStr}</td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function handleFileItemClick(file, e) {
+            if (e && (e.ctrlKey || e.metaKey)) {
+                if (selectedFilesMap.has(file.path)) {
+                    selectedFilesMap.delete(file.path);
+                } else {
+                    selectedFilesMap.set(file.path, file);
+                }
+            } else if (e && e.shiftKey && lastSelectedFile) {
+                const idx1 = filteredFilesList.findIndex(f => f.path === lastSelectedFile.path);
+                const idx2 = filteredFilesList.findIndex(f => f.path === file.path);
+                if (idx1 !== -1 && idx2 !== -1) {
+                    const start = Math.min(idx1, idx2);
+                    const end = Math.max(idx1, idx2);
+                    for (let i = start; i <= end; i++) {
+                        selectedFilesMap.set(filteredFilesList[i].path, filteredFilesList[i]);
+                    }
+                }
+            } else {
+                selectedFilesMap.clear();
+                selectedFilesMap.set(file.path, file);
+            }
+
+            lastSelectedFile = file;
+            updateFileToolbarState();
+            renderCurrentFilesView();
+            updateFileStatusBar();
+        }
+
+        function handleFileItemDblClick(file) {
+            if (file.isDirectory) {
+                navigateToDir(file.path);
+            } else if (isImageFile(file.name)) {
+                openImagePreview(file.path, file.name);
+            } else if (file.name.toLowerCase().endsWith('.apk')) {
+                triggerApkInstall(file.path, file.name);
+            } else {
+                triggerFileDownload(file.path, file.name);
+            }
+        }
+
+        function deselectAllFiles(e) {
+            if (e && e.target && e.target.closest('#file-context-menu')) return;
+            selectedFilesMap.clear();
+            lastSelectedFile = null;
+            updateFileToolbarState();
+            renderCurrentFilesView();
+            updateFileStatusBar();
+            hideContextMenu();
+        }
+
+        function toggleSingleFileCb(path, checked) {
+            const file = filteredFilesList.find(f => f.path === path);
+            if (!file) return;
+            if (checked) {
+                selectedFilesMap.set(path, file);
+            } else {
+                selectedFilesMap.delete(path);
+            }
+            updateFileToolbarState();
+            renderCurrentFilesView();
+            updateFileStatusBar();
+        }
+
+        function toggleSelectAllFiles(masterCb) {
+            if (masterCb.checked) {
+                filteredFilesList.forEach(f => selectedFilesMap.set(f.path, f));
+            } else {
+                selectedFilesMap.clear();
+            }
+            updateFileToolbarState();
+            renderCurrentFilesView();
+            updateFileStatusBar();
+        }
+
+        function updateFileToolbarState() {
+            const count = selectedFilesMap.size;
+            const single = count === 1;
+            const hasSelection = count > 0;
+            const hasClipboard = fileClipboard !== null && fileClipboard.files.length > 0;
+
+            const renameBtn = document.getElementById('tb-rename-btn');
+            const cutBtn = document.getElementById('tb-cut-btn');
+            const copyBtn = document.getElementById('tb-copy-btn');
+            const pasteBtn = document.getElementById('tb-paste-btn');
+            const infoBtn = document.getElementById('tb-info-btn');
+            const starBtn = document.getElementById('tb-star-btn');
+            const delBtn = document.getElementById('tb-delete-btn');
+
+            if (renameBtn) renameBtn.disabled = !single;
+            if (cutBtn) cutBtn.disabled = !hasSelection;
+            if (copyBtn) copyBtn.disabled = !hasSelection;
+            if (pasteBtn) pasteBtn.disabled = !hasClipboard;
+            if (infoBtn) infoBtn.disabled = !single;
+            if (starBtn) starBtn.disabled = !single;
+            if (delBtn) delBtn.disabled = !hasSelection;
+
+            const cmPaste = document.getElementById('cm-paste-btn');
+            if (cmPaste) cmPaste.disabled = !hasClipboard;
+        }
+
+        function updateFileStatusBar() {
+            const countEl = document.getElementById('file-status-count');
+            const nameEl = document.getElementById('file-status-name');
+            const dateEl = document.getElementById('file-status-date');
+            const sizeEl = document.getElementById('file-status-size');
+            const iconEl = document.getElementById('file-status-icon');
+
+            if (countEl) countEl.textContent = `${filteredFilesList.length} items`;
+
+            if (selectedFilesMap.size === 1) {
+                const file = Array.from(selectedFilesMap.values())[0];
+                if (nameEl) nameEl.textContent = file.name;
+                if (iconEl) iconEl.textContent = file.isDirectory ? '📁' : '📄';
+                if (dateEl) dateEl.textContent = file.lastModified ? new Date(file.lastModified).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '--';
+                if (sizeEl) sizeEl.textContent = file.isDirectory ? '' : `(${formatBytes(file.size)})`;
+            } else if (selectedFilesMap.size > 1) {
+                if (nameEl) nameEl.textContent = `${selectedFilesMap.size} items selected`;
+                if (iconEl) iconEl.textContent = '📦';
+                if (dateEl) dateEl.textContent = '';
+                if (sizeEl) sizeEl.textContent = '';
+            } else {
+                const currentName = currentDirPath.split('/').filter(Boolean).pop() || 'SD Card';
+                if (nameEl) nameEl.textContent = currentName;
+                if (iconEl) iconEl.textContent = '📁';
+                if (dateEl) dateEl.textContent = new Date().toLocaleDateString([], { dateStyle: 'short' });
+                if (sizeEl) sizeEl.textContent = '';
+            }
+        }
+
+        // --- Navigation & History Engine ---
         function navigateToDir(path) {
             sendCommand({ action: 'FETCH_DIR', path: path });
         }
 
-
         function navigateUp() {
             if (parentDirPath && parentDirPath !== currentDirPath) {
-                sendCommand({ action: 'FETCH_DIR', path: parentDirPath });
+                navigateToDir(parentDirPath);
             }
         }
+
+        function refreshCurrentDir() {
+            sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
+            showToast("Refreshing directory... 🔄", "info");
+        }
+
+        function navigateHistoryBack() {
+            if (navHistoryIndex > 0) {
+                navHistoryIndex--;
+                navigateToDir(navHistoryStack[navHistoryIndex]);
+            }
+        }
+
+        function navigateHistoryForward() {
+            if (navHistoryIndex < navHistoryStack.length - 1) {
+                navHistoryIndex++;
+                navigateToDir(navHistoryStack[navHistoryIndex]);
+            }
+        }
+
+        function updateNavHistoryButtons() {
+            const backBtn = document.getElementById('file-nav-back');
+            const fwdBtn = document.getElementById('file-nav-forward');
+            if (backBtn) backBtn.disabled = navHistoryIndex <= 0;
+            if (fwdBtn) fwdBtn.disabled = navHistoryIndex >= navHistoryStack.length - 1;
+        }
+
+        // --- Search & Filter ---
+        function onFileSearchInput(query) {
+            const clearBtn = document.getElementById('file-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !query);
+
+            const q = (query || '').toLowerCase().trim();
+            if (!q) {
+                filteredFilesList = [...currentRawFilesList];
+            } else {
+                filteredFilesList = currentRawFilesList.filter(f => f.name.toLowerCase().includes(q));
+            }
+            renderCurrentFilesView();
+            updateFileStatusBar();
+        }
+
+        function clearFileSearch() {
+            const input = document.getElementById('file-search-input');
+            if (input) input.value = '';
+            onFileSearchInput('');
+        }
+
+        // --- Context Menu Engine ---
+        function handleFileManagerContextMenu(e) {
+            e.preventDefault();
+            const cm = document.getElementById('file-context-menu');
+            const itemActions = document.getElementById('cm-item-actions');
+            if (!cm) return;
+
+            if (selectedFilesMap.size === 0) {
+                if (itemActions) itemActions.classList.add('hidden');
+            } else {
+                if (itemActions) itemActions.classList.remove('hidden');
+            }
+
+            cm.classList.remove('hidden');
+            const x = Math.min(e.clientX, window.innerWidth - 190);
+            const y = Math.min(e.clientY, window.innerHeight - 250);
+            cm.style.left = `${x}px`;
+            cm.style.top = `${y}px`;
+        }
+
+        function handleFileItemContextMenu(file, e) {
+            e.preventDefault();
+            if (!selectedFilesMap.has(file.path)) {
+                selectedFilesMap.clear();
+                selectedFilesMap.set(file.path, file);
+                lastSelectedFile = file;
+                updateFileToolbarState();
+                renderCurrentFilesView();
+                updateFileStatusBar();
+            }
+            handleFileManagerContextMenu(e);
+        }
+
+        function hideContextMenu() {
+            const cm = document.getElementById('file-context-menu');
+            if (cm) cm.classList.add('hidden');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#file-context-menu')) {
+                hideContextMenu();
+            }
+        });
+
+        // --- Cut / Copy / Paste Clipboard ---
+        function copySelectedFile() {
+            if (selectedFilesMap.size === 0) return;
+            fileClipboard = {
+                op: 'copy',
+                files: Array.from(selectedFilesMap.values())
+            };
+            updateFileToolbarState();
+            showToast(`Copied ${fileClipboard.files.length} item(s) to clipboard 📑`, "info");
+        }
+
+        function cutSelectedFile() {
+            if (selectedFilesMap.size === 0) return;
+            fileClipboard = {
+                op: 'cut',
+                files: Array.from(selectedFilesMap.values())
+            };
+            updateFileToolbarState();
+            showToast(`Cut ${fileClipboard.files.length} item(s) ✂️`, "info");
+        }
+
+        function pasteFile() {
+            if (!fileClipboard || fileClipboard.files.length === 0) return;
+            const op = fileClipboard.op;
+            const targetDir = currentDirPath;
+
+            fileClipboard.files.forEach(file => {
+                if (op === 'copy') {
+                    sendCommand({
+                        action: 'COPY_FILE',
+                        sourcePath: file.path,
+                        destDirPath: targetDir
+                    });
+                } else if (op === 'move' || op === 'cut') {
+                    sendCommand({
+                        action: 'MOVE_FILE',
+                        sourcePath: file.path,
+                        destDirPath: targetDir
+                    });
+                }
+            });
+
+            showToast(`${op === 'cut' ? 'Moving' : 'Copying'} ${fileClipboard.files.length} item(s)...`, "info");
+            if (op === 'cut') {
+                fileClipboard = null;
+                updateFileToolbarState();
+            }
+        }
+
+        // --- File Operations: Rename, Delete, Info, Favorites ---
+        function promptCreateFolder() {
+            const name = prompt("Enter new folder name:");
+            if (!name || !name.trim()) return;
+            sendCommand({
+                action: 'CREATE_FOLDER',
+                parentPath: currentDirPath,
+                folderName: name.trim()
+            });
+            showToast("Creating folder...", "info");
+        }
+
+        function renameSelectedFile() {
+            if (selectedFilesMap.size !== 1) return;
+            const file = Array.from(selectedFilesMap.values())[0];
+            const newName = prompt(`Rename "${file.name}" to:`, file.name);
+            if (!newName || !newName.trim() || newName.trim() === file.name) return;
+            sendCommand({
+                action: 'RENAME_FILE',
+                oldPath: file.path,
+                newName: newName.trim()
+            });
+            showToast("Renaming...", "info");
+        }
+
+        function deleteSelectedFiles() {
+            if (selectedFilesMap.size === 0) return;
+            const files = Array.from(selectedFilesMap.values());
+            const msg = files.length === 1 
+                ? `Are you sure you want to permanently delete:\n\n"${files[0].name}"?`
+                : `Are you sure you want to permanently delete these ${files.length} selected items?`;
+
+            if (!confirm(msg)) return;
+
+            if (files.length === 1) {
+                sendCommand({ action: 'DELETE_FILE', path: files[0].path });
+            } else {
+                sendCommand({
+                    action: 'BATCH_DELETE',
+                    paths: files.map(f => f.path)
+                });
+            }
+            showToast(`Deleting ${files.length} item(s)...`, "info");
+        }
+
+        function showSelectedFileInfo() {
+            if (selectedFilesMap.size !== 1) return;
+            const file = Array.from(selectedFilesMap.values())[0];
+            const modal = document.getElementById('file-info-modal');
+            if (!modal) return;
+
+            document.getElementById('modal-info-title').textContent = file.name;
+            document.getElementById('modal-info-icon').textContent = file.isDirectory ? '📁' : '📄';
+            document.getElementById('info-type').textContent = file.isDirectory ? 'Folder' : 'File';
+            document.getElementById('info-path').textContent = file.path;
+            document.getElementById('info-size').textContent = file.isDirectory ? 'Calculating...' : formatBytes(file.size);
+            document.getElementById('info-date').textContent = file.lastModified ? new Date(file.lastModified).toLocaleString() : '--';
+            document.getElementById('info-contents-row').classList.toggle('hidden', !file.isDirectory);
+
+            modal.classList.remove('hidden');
+
+            if (file.isDirectory) {
+                sendCommand({ action: 'GET_FILE_INFO', path: file.path });
+            }
+        }
+
+        function closeFileInfoModal() {
+            const modal = document.getElementById('file-info-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function toggleFileHotkeysModal() {
+            const modal = document.getElementById('file-hotkeys-modal');
+            if (modal) modal.classList.toggle('hidden');
+        }
+
+        function toggleFavoriteSelected() {
+            if (selectedFilesMap.size !== 1) return;
+            const file = Array.from(selectedFilesMap.values())[0];
+            const existingIdx = userFavoritesList.findIndex(f => f.path === file.path);
+            if (existingIdx !== -1) {
+                userFavoritesList.splice(existingIdx, 1);
+                showToast(`Removed from Favorites: ${file.name}`, "info");
+            } else {
+                userFavoritesList.push({
+                    name: file.name,
+                    path: file.path,
+                    icon: file.isDirectory ? '📁' : '📄'
+                });
+                showToast(`Added to Favorites: ${file.name} ⭐`, "success");
+            }
+            renderFavoritesList();
+        }
+
+        function promptAddExternalStorage() {
+            const path = prompt("Enter External Storage / SD Card mount path:\n(e.g. /storage/XXXX-XXXX)");
+            if (path && path.trim()) {
+                navigateToDir(path.trim());
+            }
+        }
+
+        function downloadSelectedOrCurrent() {
+            const files = Array.from(selectedFilesMap.values());
+            if (files.length === 1 && !files[0].isDirectory) {
+                triggerFileDownload(files[0].path, files[0].name);
+            } else if (files.length > 0) {
+                showToast("Compressing selected items to ZIP on phone...", "info");
+                sendCommand({
+                    action: 'ZIP_AND_DOWNLOAD',
+                    paths: files.map(f => f.path)
+                });
+            } else {
+                if (confirm(`No files selected. Download ENTIRE current folder as ZIP:\n\n"${currentDirPath}"?`)) {
+                    showToast("Compressing folder to ZIP on phone...", "info");
+                    sendCommand({
+                        action: 'ZIP_AND_DOWNLOAD',
+                        paths: [currentDirPath]
+                    });
+                }
+            }
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        // --- Keyboard Shortcuts for File Window ---
+        document.addEventListener('keydown', (e) => {
+            const fileWin = document.getElementById('file-window');
+            if (!fileWin || fileWin.classList.contains('hidden')) return;
+            if (wm.activeWindowId !== 'file-window') return;
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                e.preventDefault();
+                copySelectedFile();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+                e.preventDefault();
+                cutSelectedFile();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                e.preventDefault();
+                pasteFile();
+            } else if (e.key === 'Delete') {
+                e.preventDefault();
+                deleteSelectedFiles();
+            } else if (e.key === 'F2') {
+                e.preventDefault();
+                renameSelectedFile();
+            } else if (e.key === 'Enter' && selectedFilesMap.size === 1) {
+                e.preventDefault();
+                const file = Array.from(selectedFilesMap.values())[0];
+                handleFileItemDblClick(file);
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                navigateUp();
+            }
+        });
 
 
         // --- Phase 5: Notification History, APK Install & Emergency Wipe ---
@@ -4129,87 +5084,6 @@
             } else if (code !== null) {
                 showToast("Wipe cancelled: confirmation code did not match.", "info");
             }
-        }
-
-
-        // --- Phase 4: Advanced File & Directory Operations ---
-        function promptCreateFolder() {
-            const name = prompt("Enter new folder name:");
-            if (!name || !name.trim()) return;
-            sendCommand({
-                action: 'CREATE_FOLDER',
-                parentPath: currentDirPath,
-                folderName: name.trim()
-            });
-            showToast("Creating folder...", "info");
-        }
-
-
-        function promptRenameFile(path, oldName) {
-            const newName = prompt(`Rename "${oldName}" to:`, oldName);
-            if (!newName || !newName.trim() || newName.trim() === oldName) return;
-            sendCommand({
-                action: 'RENAME_FILE',
-                oldPath: path,
-                newName: newName.trim()
-            });
-            showToast("Renaming...", "info");
-        }
-
-
-        function confirmDeleteFile(path, name, isDir) {
-            const typeStr = isDir ? "folder and all its contents" : "file";
-            if (!confirm(`Are you sure you want to permanently delete this ${typeStr}:\n\n"${name}"?`)) return;
-            sendCommand({
-                action: 'DELETE_FILE',
-                path: path
-            });
-            showToast(`Deleting ${name}...`, "info");
-        }
-
-
-        function toggleSelectAllFiles(masterCb) {
-            const cbs = document.querySelectorAll('.file-select-cb');
-            cbs.forEach(cb => cb.checked = masterCb.checked);
-            updateSelectedCount();
-        }
-
-
-        function updateSelectedCount() {
-            const selected = document.querySelectorAll('.file-select-cb:checked').length;
-            const btn = document.getElementById('zip-download-btn');
-            if (btn) {
-                btn.innerHTML = selected > 0 ? `<span>📦</span><span>ZIP (${selected})</span>` : `<span>📦</span><span>ZIP</span>`;
-            }
-        }
-
-
-        function downloadSelectedAsZip() {
-            const cbs = document.querySelectorAll('.file-select-cb:checked');
-            const selectedPaths = [];
-            cbs.forEach(cb => selectedPaths.push(cb.getAttribute('data-path')));
-
-
-            if (selectedPaths.length === 0) {
-                if (!confirm(`No files selected. Compress and download ENTIRE current folder:\n\n"${currentDirPath}"?`)) return;
-                selectedPaths.push(currentDirPath);
-            }
-
-
-            showToast("Compressing to ZIP on phone...", "info");
-            sendCommand({
-                action: 'ZIP_AND_DOWNLOAD',
-                paths: selectedPaths
-            });
-        }
-
-
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
 
@@ -5993,3 +6867,4 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
+
