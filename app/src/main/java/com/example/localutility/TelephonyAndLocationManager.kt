@@ -1336,15 +1336,6 @@ fun getContactsPaged(offset: Int = 0, limit: Int = 150): JSONObject {
     val array = JSONArray()
     var totalCount = 0
     try {
-        // 1. Get total contacts count
-        val countCursor = context.contentResolver.query(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            arrayOf(ContactsContract.CommonDataKinds.Phone._ID),
-            null, null, null
-        )
-        totalCount = countCursor?.use { it.count } ?: 0
-
-        // 2. Fetch paginated chunk
         val projection = arrayOf(
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
             ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
@@ -1352,38 +1343,39 @@ fun getContactsPaged(offset: Int = 0, limit: Int = 150): JSONObject {
             ContactsContract.CommonDataKinds.Phone.TYPE,
             ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
         )
-        val sortOrder = if (limit > 0) {
-            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC LIMIT $limit OFFSET $offset"
-        } else {
-            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC"
-        }
-
         val cursor = context.contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             projection,
-            null, null, sortOrder
+            null, null,
+            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC"
         )
         cursor?.use {
-            val idIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-            val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-            val numIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-            val typeIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
-            val photoIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
-            while (it.moveToNext()) {
-                val phoneType = when (if (typeIdx != -1) it.getInt(typeIdx) else 0) {
-                    ContactsContract.CommonDataKinds.Phone.TYPE_HOME -> "Home"
-                    ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE -> "Mobile"
-                    ContactsContract.CommonDataKinds.Phone.TYPE_WORK -> "Work"
-                    else -> "Mobile"
+            totalCount = it.count
+            if (offset < totalCount) {
+                it.moveToPosition(offset - 1)
+                val idIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val typeIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
+                val photoIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
+                var count = 0
+                while (it.moveToNext() && (limit <= 0 || count < limit)) {
+                    count++
+                    val phoneType = when (if (typeIdx != -1) it.getInt(typeIdx) else 0) {
+                        ContactsContract.CommonDataKinds.Phone.TYPE_HOME -> "Home"
+                        ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE -> "Mobile"
+                        ContactsContract.CommonDataKinds.Phone.TYPE_WORK -> "Work"
+                        else -> "Mobile"
+                    }
+                    val obj = JSONObject().apply {
+                        put("id", if (idIdx != -1) it.getLong(idIdx) else 0L)
+                        put("name", if (nameIdx != -1) it.getString(nameIdx) ?: "Unknown" else "Unknown")
+                        put("number", if (numIdx != -1) it.getString(numIdx) ?: "Unknown" else "Unknown")
+                        put("type", phoneType)
+                        put("photo", if (photoIdx != -1) it.getString(photoIdx) ?: "" else "")
+                    }
+                    array.put(obj)
                 }
-                val obj = JSONObject().apply {
-                    put("id", if (idIdx != -1) it.getLong(idIdx) else 0L)
-                    put("name", if (nameIdx != -1) it.getString(nameIdx) ?: "Unknown" else "Unknown")
-                    put("number", if (numIdx != -1) it.getString(numIdx) ?: "Unknown" else "Unknown")
-                    put("type", phoneType)
-                    put("photo", if (photoIdx != -1) it.getString(photoIdx) ?: "" else "")
-                }
-                array.put(obj)
             }
         }
     } catch (e: Exception) { e.printStackTrace() }
@@ -1415,21 +1407,6 @@ fun getCallLogsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
     val array = JSONArray()
     var totalCount = 0
     try {
-        // 1. Get total call logs count
-        val countCursor = context.contentResolver.query(
-            CallLog.Calls.CONTENT_URI,
-            arrayOf(CallLog.Calls._ID),
-            null, null, null
-        )
-        totalCount = countCursor?.use { it.count } ?: 0
-
-        // 2. Fetch paginated chunk
-        val sortOrder = if (limit > 0) {
-            "${CallLog.Calls.DATE} DESC LIMIT $limit OFFSET $offset"
-        } else {
-            "${CallLog.Calls.DATE} DESC"
-        }
-
         val cursor = context.contentResolver.query(
             CallLog.Calls.CONTENT_URI,
             arrayOf(
@@ -1442,37 +1419,44 @@ fun getCallLogsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
             ),
             null,
             null,
-            sortOrder
+            "${CallLog.Calls.DATE} DESC"
         )
         cursor?.use {
-            val idIdx = it.getColumnIndex(CallLog.Calls._ID)
-            val numIdx = it.getColumnIndex(CallLog.Calls.NUMBER)
-            val nameIdx = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
-            val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
-            val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
-            val durIdx = it.getColumnIndex(CallLog.Calls.DURATION)
-            while (it.moveToNext()) {
-                val typeInt = if (typeIdx != -1) it.getInt(typeIdx) else 0
-                val typeStr = when (typeInt) {
-                    CallLog.Calls.INCOMING_TYPE -> "Incoming"
-                    CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
-                    CallLog.Calls.MISSED_TYPE -> "Missed"
-                    CallLog.Calls.REJECTED_TYPE -> "Missed"
-                    else -> "Other"
+            val totalInDb = it.count
+            totalCount = Math.min(totalInDb, 1000)
+            if (offset < totalCount) {
+                it.moveToPosition(offset - 1)
+                val idIdx = it.getColumnIndex(CallLog.Calls._ID)
+                val numIdx = it.getColumnIndex(CallLog.Calls.NUMBER)
+                val nameIdx = it.getColumnIndex(CallLog.Calls.CACHED_NAME)
+                val typeIdx = it.getColumnIndex(CallLog.Calls.TYPE)
+                val dateIdx = it.getColumnIndex(CallLog.Calls.DATE)
+                val durIdx = it.getColumnIndex(CallLog.Calls.DURATION)
+                var count = 0
+                while (it.moveToNext() && (limit <= 0 || count < limit) && (offset + count) < 1000) {
+                    count++
+                    val typeInt = if (typeIdx != -1) it.getInt(typeIdx) else 0
+                    val typeStr = when (typeInt) {
+                        CallLog.Calls.INCOMING_TYPE -> "Incoming"
+                        CallLog.Calls.OUTGOING_TYPE -> "Outgoing"
+                        CallLog.Calls.MISSED_TYPE -> "Missed"
+                        CallLog.Calls.REJECTED_TYPE -> "Missed"
+                        else -> "Other"
+                    }
+                    val durSec = if (durIdx != -1) it.getLong(durIdx) else 0L
+                    val durFormatted = String.format("%02d:%02d", durSec / 60, durSec % 60)
+                    val rawNum = if (numIdx != -1) it.getString(numIdx) ?: "Unknown" else "Unknown"
+                    val rawName = if (nameIdx != -1 && it.getString(nameIdx) != null) it.getString(nameIdx) else rawNum
+                    val obj = JSONObject().apply {
+                        put("id", if (idIdx != -1) it.getLong(idIdx) else 0L)
+                        put("number", rawNum)
+                        put("name", rawName)
+                        put("type", typeStr)
+                        put("date", if (dateIdx != -1) it.getLong(dateIdx) else 0L)
+                        put("duration", durFormatted)
+                    }
+                    array.put(obj)
                 }
-                val durSec = if (durIdx != -1) it.getLong(durIdx) else 0L
-                val durFormatted = String.format("%02d:%02d", durSec / 60, durSec % 60)
-                val rawNum = if (numIdx != -1) it.getString(numIdx) ?: "Unknown" else "Unknown"
-                val rawName = if (nameIdx != -1 && it.getString(nameIdx) != null) it.getString(nameIdx) else rawNum
-                val obj = JSONObject().apply {
-                    put("id", if (idIdx != -1) it.getLong(idIdx) else 0L)
-                    put("number", rawNum)
-                    put("name", rawName)
-                    put("type", typeStr)
-                    put("date", if (dateIdx != -1) it.getLong(dateIdx) else 0L)
-                    put("duration", durFormatted)
-                }
-                array.put(obj)
             }
         }
     } catch (e: Exception) { e.printStackTrace() }
@@ -1485,10 +1469,9 @@ fun getCallLogsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
     return result
 }
 
-fun getCallLogs(): JSONArray {
-    return getCallLogsPaged(0, 2000).getJSONArray("data")
+fun getCallLogs(limit: Int = 1000): JSONArray {
+    return getCallLogsPaged(0, limit).getJSONArray("data")
 }
-
 
 fun deleteCallLog(callId: Long?, number: String?, date: Long?): Boolean {
     return try {

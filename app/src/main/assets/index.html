@@ -1494,7 +1494,7 @@
             </div>
             <!-- Status Bar -->
             <div class="bg-[#f7f8fa] border-t border-gray-200 px-3 py-1.5 text-[11px] text-gray-500 flex justify-between items-center select-none font-mono">
-                <span id="cl-status-stats">Showing 0 calls</span>
+                <span id="cl-status-stats"></span>
                 <span class="text-gray-400">OpenDroid Telephony</span>
             </div>
         </div>
@@ -5501,7 +5501,7 @@
                 if(id === 'sms-window') sendCommand({action: 'FETCH_SMS'});
                 if(id === 'contacts-window') sendCommand({action: 'FETCH_CONTACTS'});
                 if(id === 'info-window') sendCommand({action: 'FETCH_STORAGE'});
-                if(id === 'call-logs-window') { sendCommand({action: 'FETCH_CALL_LOGS'}); sendCommand({action: 'FETCH_CALL_RECORDINGS'}); }
+                if(id === 'call-logs-window') { setCallLogsFilter('All'); rawCallLogs = []; isLoadingCallLogs = true; sendCommand({action: 'FETCH_CALL_LOGS', offset: 0, limit: 100}); sendCommand({action: 'FETCH_CALL_RECORDINGS'}); }
                 if(id === 'apps-window') sendCommand({action: 'FETCH_APPS'});
                 if(id === 'clipboard-window') sendCommand({action: 'FETCH_CLIPBOARD'});
                 if(id === 'file-window') sendCommand({action: 'FETCH_DIR', path: currentDirPath});
@@ -6044,14 +6044,13 @@
         }
 
 
-        // --- AirDroid Call Logs System (with Infinite Scroll & Full Auto-Sync) ---
+        // --- AirDroid Call Logs System (Clean UI & 1000-Calls Chunked Infinite Scroll) ---
         let rawCallLogs = [];
         let callLogsFilter = 'All';
         let callLogsSearch = '';
         let totalCallLogsCount = 0;
         let hasMoreCallLogs = false;
         let isLoadingCallLogs = false;
-        let callLogsPrefetchTimer = null;
 
         function formatAirDroidTime(ts) {
             if (!ts) return '--';
@@ -6100,30 +6099,22 @@
                 });
             }
 
-            if (incomingTotal > 0) totalCallLogsCount = incomingTotal;
-            else totalCallLogsCount = Math.max(totalCallLogsCount, rawCallLogs.length);
-
-            hasMoreCallLogs = incomingHasMore;
+            totalCallLogsCount = incomingTotal > 0 ? Math.min(incomingTotal, 1000) : rawCallLogs.length;
+            hasMoreCallLogs = incomingHasMore && rawCallLogs.length < 1000;
             isLoadingCallLogs = false;
 
             renderCurrentCallLogsView();
-
-            // Background prefetching remaining call logs in chunks
-            if (hasMoreCallLogs && !callLogsSearch.trim() && callLogsFilter === 'All') {
-                clearTimeout(callLogsPrefetchTimer);
-                callLogsPrefetchTimer = setTimeout(() => {
-                    if (hasMoreCallLogs && !isLoadingCallLogs) {
-                        isLoadingCallLogs = true;
-                        sendCommand({ action: 'FETCH_CALL_LOGS', offset: rawCallLogs.length, limit: 100 });
-                    }
-                }, 350);
-            }
         }
 
         function renderCurrentCallLogsView() {
             const list = document.getElementById('call-logs-list');
             const badge = document.getElementById('cl-status-stats');
             if (!list) return;
+
+            // Clean UI: Keep footer empty without cluttered count strings
+            if (badge) {
+                badge.textContent = '';
+            }
 
             let filtered = rawCallLogs.slice();
             if (callLogsFilter !== 'All' && callLogsFilter !== 'Recordings') {
@@ -6136,14 +6127,6 @@
                     (l.name || '').toLowerCase().includes(q) || 
                     (l.number || '').toLowerCase().includes(q)
                 );
-            }
-
-            const totalDisplay = totalCallLogsCount > 0 ? totalCallLogsCount : rawCallLogs.length;
-            const incCount = rawCallLogs.filter(l => (l.type || '').toLowerCase() === 'incoming').length;
-            const outCount = rawCallLogs.filter(l => (l.type || '').toLowerCase() === 'outgoing').length;
-            const misCount = rawCallLogs.filter(l => (l.type || '').toLowerCase() === 'missed').length;
-            if (badge) {
-                badge.textContent = `Showing ${filtered.length} of ${totalDisplay} calls (${incCount} Incoming, ${outCount} Outgoing, ${misCount} Missed)`;
             }
 
             list.innerHTML = '';
@@ -6229,19 +6212,19 @@
             });
 
             // If loading more, append loader row
-            if (hasMoreCallLogs) {
+            if (hasMoreCallLogs && rawCallLogs.length < 1000) {
                 const loader = document.createElement('div');
                 loader.className = "p-2.5 text-center text-gray-400 text-[11px] font-mono animate-pulse bg-gray-50";
-                loader.innerHTML = "<span>Scroll down or wait to load more calls...</span>";
+                loader.innerHTML = "<span>Scroll down to load more calls...</span>";
                 list.appendChild(loader);
             }
 
-            // Setup Infinite Scroll listener
+            // Setup Infinite Scroll listener for Call Logs
             if (!list.hasInfiniteScrollSetup) {
                 list.hasInfiniteScrollSetup = true;
                 list.addEventListener('scroll', () => {
-                    if (list.scrollTop + list.clientHeight >= list.scrollHeight - 70) {
-                        if (hasMoreCallLogs && !isLoadingCallLogs) {
+                    if (list.scrollTop + list.clientHeight >= list.scrollHeight - 60) {
+                        if (hasMoreCallLogs && !isLoadingCallLogs && rawCallLogs.length < 1000) {
                             isLoadingCallLogs = true;
                             sendCommand({ action: 'FETCH_CALL_LOGS', offset: rawCallLogs.length, limit: 100 });
                         }
@@ -6297,6 +6280,8 @@
             rawCallLogs = [];
             totalCallLogsCount = 0;
             isLoadingCallLogs = true;
+            const list = document.getElementById('call-logs-list');
+            if (list) list.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs animate-pulse">Loading calls from device...</div>';
             sendCommand({ action: 'FETCH_CALL_LOGS', offset: 0, limit: 100 });
             sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
         }
@@ -6319,7 +6304,6 @@
 
         function deleteSingleCallLog(id, number, date) {
             rawCallLogs = rawCallLogs.filter(l => !(l.id === id || (l.number === number && l.date === date)));
-            if (totalCallLogsCount > 0) totalCallLogsCount--;
             renderCurrentCallLogsView();
             sendCommand({ action: 'DELETE_CALL_LOG', id: id, number: number, date: date });
         }
@@ -6443,7 +6427,7 @@
         }
 
 
-        // --- AirDroid Contacts Management System (with Infinite Scroll & Full Auto-Sync) ---
+        // --- AirDroid Contacts Management System (Strict Bottom-Scroll On-Demand) ---
         let rawContacts = [];
         let selectedContact = null;
         let selectedContactIds = new Set();
@@ -6453,7 +6437,6 @@
         let totalContactsCount = 0;
         let hasMoreContacts = false;
         let isLoadingContacts = false;
-        let contactsPrefetchTimer = null;
 
         function renderContacts(data, offset = 0, total = 0, hasMore = false) {
             let items = [];
@@ -6497,17 +6480,8 @@
             isLoadingContacts = false;
 
             renderCurrentContactsView();
-
-            // Background prefetching remaining contacts in chunks
-            if (hasMoreContacts && !contactsSearch.trim() && activeContactGroup === 'all') {
-                clearTimeout(contactsPrefetchTimer);
-                contactsPrefetchTimer = setTimeout(() => {
-                    if (hasMoreContacts && !isLoadingContacts) {
-                        isLoadingContacts = true;
-                        sendCommand({ action: 'FETCH_CONTACTS', offset: rawContacts.length, limit: 150 });
-                    }
-                }, 350);
-            }
+            // Strictly NO background prefetch timer!
+            // Contacts only load when user scrolls all the way to the bottom.
         }
 
         function renderCurrentContactsView() {
@@ -6645,15 +6619,15 @@
             if (hasMoreContacts) {
                 const loader = document.createElement('div');
                 loader.className = "p-2.5 text-center text-gray-400 text-[11px] font-mono animate-pulse bg-gray-50";
-                loader.innerHTML = "<span>Scroll down or wait to load more contacts...</span>";
+                loader.innerHTML = "<span>Scroll down to load more contacts...</span>";
                 listScroll.appendChild(loader);
             }
 
-            // Setup Infinite Scroll listener
+            // Setup Infinite Scroll listener - STRICTLY when scrolling all the way to bottom!
             if (!listScroll.hasInfiniteScrollSetup) {
                 listScroll.hasInfiniteScrollSetup = true;
                 listScroll.addEventListener('scroll', () => {
-                    if (listScroll.scrollTop + listScroll.clientHeight >= listScroll.scrollHeight - 70) {
+                    if (listScroll.scrollTop + listScroll.clientHeight >= listScroll.scrollHeight - 40) {
                         if (hasMoreContacts && !isLoadingContacts) {
                             isLoadingContacts = true;
                             sendCommand({ action: 'FETCH_CONTACTS', offset: rawContacts.length, limit: 150 });
@@ -7997,3 +7971,5 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
+
+
