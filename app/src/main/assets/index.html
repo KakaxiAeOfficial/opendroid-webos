@@ -2001,8 +2001,11 @@
                 const presenceTopic = `opendroid/acc/${accountTag}/devices/+/presence`;
                 mqttClient.subscribe(presenceTopic, { qos: 1 });
 
+                // 2. CRITICAL FIX: Subscribe to telemetry/data wildcard for ALL devices under this account!
+                const pcWildcard = `opendroid/acc/${accountTag}/+/pc`;
+                mqttClient.subscribe(pcWildcard, { qos: 1 });
 
-                // 2. Immediate Active Discovery Ping: triggers all online phones to report presence in <100ms
+                // 3. Immediate Active Discovery Ping: triggers all online phones to report presence in <100ms
                 const discoverTopic = `opendroid/acc/${accountTag}/discover`;
                 mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES' }), { qos: 1 });
 
@@ -2094,6 +2097,47 @@
 
 
                 allDiscoveredDevices[devId] = data;
+                
+                // Auto-select and auto-sync target device immediately
+                const devKeys = Object.keys(allDiscoveredDevices);
+                if (!currentDeviceId || currentDeviceId === devId || devKeys.length === 1) {
+                    currentDeviceId = devId;
+                    const devName = data.deviceName || data.model || 'Android Phone';
+                    
+                    // Update Top Header
+                    const hdrDev = document.getElementById('header-active-device-name');
+                    if (hdrDev) hdrDev.textContent = devName;
+                    const hdrBatt = document.getElementById('header-active-device-battery');
+                    if (hdrBatt && data.battery !== undefined) hdrBatt.textContent = `${data.battery}%`;
+                    
+                    // Update Right Widget
+                    const wModel = document.getElementById('widget-device-model');
+                    if (wModel) wModel.textContent = devName;
+                    const wConn = document.getElementById('widget-connection-status');
+                    if (wConn) {
+                        wConn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span><span>Connected</span>';
+                        wConn.className = 'text-[10px] text-green-400 flex items-center gap-1 font-medium';
+                    }
+                    if (data.battery !== undefined && typeof updateWidgetBattery === 'function') {
+                        updateWidgetBattery(data.battery, data.isCharging);
+                    }
+                    
+                    // Update Bottom Taskbar
+                    const tskDev = document.getElementById('taskbar-device-name');
+                    if (tskDev) tskDev.textContent = devName;
+                    const tskBatt = document.getElementById('taskbar-battery-percent');
+                    if (tskBatt && data.battery !== undefined) tskBatt.textContent = `${data.battery}%`;
+                    
+                    // Ensure PC channel is subscribed
+                    if (mqttClient && mqttClient.connected) {
+                        mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
+                    }
+                    
+                    // Send instant handshake to fetch full storage stats, location, battery details
+                    sendCommand({ action: 'HANDSHAKE' });
+                    sendCommand({ action: 'GET_DEVICE_INFO' });
+                }
+                
                 renderDiscoveredDevices();
                 updateTopDockDeviceDropdown();
             } catch (e) {
@@ -2349,35 +2393,52 @@
 
 
         function onDeviceDropdownSelected(newDevId) {
-            if (!newDevId || newDevId === currentDeviceId) return;
+            if (!newDevId) return;
 
-
-            // 1. Unsubscribe from old device
-            if (currentDeviceId) {
-                mqttClient.unsubscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`);
+            // Tear-down active streaming sessions if switching device
+            if (currentDeviceId && currentDeviceId !== newDevId) {
+                if (window.isMirroringActive) { try { stopScreenMirror(); } catch(e) {} }
+                if (window.isCameraStreaming) { try { stopCamera(); } catch(e) {} }
+                if (window.isPushToTalkActive) { try { stopPushToTalk(); } catch(e) {} }
             }
-
-
-            // 2. Tear-down active streaming sessions if any
-            if (window.isMirroringActive) {
-                try { stopScreenMirror(); } catch(e) {}
-            }
-            if (window.isCameraStreaming) {
-                try { stopCamera(); } catch(e) {}
-            }
-            if (window.isPushToTalkActive) {
-                try { stopPushToTalk(); } catch(e) {}
-            }
-
 
             currentDeviceId = newDevId;
             const dev = allDiscoveredDevices[newDevId];
             const devName = dev?.deviceName || dev?.model || 'Device';
-            const isDevOnline = dev?.isOnline ?? false;
+            const isDevOnline = dev?.isOnline ?? true;
 
+            // Subscribe to target device channel
+            if (mqttClient && mqttClient.connected) {
+                mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
+            }
 
-            // 3. Subscribe to new target device channel
-            mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
+            // Update Top Header
+            const hdrDev = document.getElementById('header-active-device-name');
+            if (hdrDev) hdrDev.textContent = devName;
+            const hdrBatt = document.getElementById('header-active-device-battery');
+            if (hdrBatt && dev?.battery !== undefined) hdrBatt.textContent = `${dev.battery}%`;
+
+            // Update Right Widget
+            const wModel = document.getElementById('widget-device-model');
+            if (wModel) wModel.textContent = devName;
+            const wConn = document.getElementById('widget-connection-status');
+            if (wConn) {
+                wConn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span><span>Connected</span>';
+                wConn.className = 'text-[10px] text-green-400 flex items-center gap-1 font-medium';
+            }
+            if (dev?.battery !== undefined && typeof updateWidgetBattery === 'function') {
+                updateWidgetBattery(dev.battery, dev.isCharging);
+            }
+
+            // Update Bottom Taskbar
+            const tskDev = document.getElementById('taskbar-device-name');
+            if (tskDev) tskDev.textContent = devName;
+            const tskBatt = document.getElementById('taskbar-battery-percent');
+            if (tskBatt && dev?.battery !== undefined) tskBatt.textContent = `${dev.battery}%`;
+
+            // Fetch live telemetry from selected device
+            sendCommand({ action: 'HANDSHAKE' });
+            sendCommand({ action: 'GET_DEVICE_INFO' });
 
 
             // 4. Update UI according to Online vs Offline state
@@ -2411,8 +2472,13 @@
 
         function sendCommand(obj) {
             const str = JSON.stringify(obj);
-            if (accountTag && currentDeviceId && mqttClient && mqttClient.connected) {
-                mqttClient.publish(`opendroid/acc/${accountTag}/${currentDeviceId}/phone`, str, { qos: 1 });
+            if (accountTag && mqttClient && mqttClient.connected) {
+                const targetDev = currentDeviceId || Object.keys(allDiscoveredDevices)[0] || '';
+                if (targetDev) {
+                    mqttClient.publish(`opendroid/acc/${accountTag}/${targetDev}/phone`, str, { qos: 1 });
+                } else if (currentPairingCode) {
+                    mqttClient.publish(`opendroid/${currentPairingCode}/phone`, str, { qos: 1 });
+                }
             } else if (isCloudMode && mqttClient && mqttClient.connected) {
                 mqttClient.publish(`opendroid/${currentPairingCode}/phone`, str, { qos: 1 });
             } else if (localWs && localWs.readyState === WebSocket.OPEN) {
@@ -2474,6 +2540,13 @@
                     if (devBatDetail) devBatDetail.textContent = `${data.percent}% (${data.charging ? 'Charging' : 'On Battery'})`;
                     const topBatIcon = document.getElementById('battery-icon');
                     if (topBatIcon) topBatIcon.textContent = data.charging ? '⚡' : '🔋';
+                    
+                    // Update Top Header & Taskbar & Right Widget
+                    const hdrBatt = document.getElementById('header-active-device-battery');
+                    if (hdrBatt) hdrBatt.textContent = `${data.percent}%`;
+                    const tskBatt = document.getElementById('taskbar-battery-percent');
+                    if (tskBatt) tskBatt.textContent = `${data.percent}%`;
+                    
                     if (typeof updateWidgetBattery === 'function') {
                         updateWidgetBattery(data.percent, data.charging);
                     }
