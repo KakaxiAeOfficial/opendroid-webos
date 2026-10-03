@@ -1,4 +1,4 @@
-﻿package com.example.localutility
+﻿﻿package com.example.localutility
 
 
 
@@ -2295,11 +2295,17 @@ class LocalFileServerService : Service() {
 
 
             post("/upload") {
+                val targetDirParam = call.request.queryParameters["targetPath"]
+                val destDir = if (!targetDirParam.isNullOrEmpty()) File(targetDirParam) else directory
+                if (!destDir.exists()) destDir.mkdirs()
+
+                var lastUploadedName = ""
                 val multipart = call.receiveMultipart()
                 multipart.forEachPart { part ->
                     if (part is PartData.FileItem) {
-                        val fileName = part.originalFileName as String
-                        val file = File(directory, fileName)
+                        val fileName = part.originalFileName ?: "uploaded_file"
+                        lastUploadedName = fileName
+                        val file = File(destDir, fileName)
                         part.streamProvider().use { input ->
                             file.outputStream().buffered().use { output ->
                                 input.copyTo(output)
@@ -2308,7 +2314,39 @@ class LocalFileServerService : Service() {
                     }
                     part.dispose()
                 }
+
+                // If uploaded file is an APK, auto-prompt installation
+                if (lastUploadedName.endsWith(".apk", ignoreCase = true)) {
+                    val apkFile = File(destDir, lastUploadedName)
+                    if (apkFile.exists()) {
+                        try {
+                            val apkUri = androidx.core.content.FileProvider.getUriForFile(
+                                applicationContext,
+                                "${packageName}.provider",
+                                apkFile
+                            )
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            Log.e("OpenDroid", "Auto-install APK error", e)
+                        }
+                    }
+                }
                 call.respondText("Upload Complete", ContentType.Text.Plain)
+            }
+
+            get("/api/download") {
+                val filePath = call.request.queryParameters["path"] ?: ""
+                val file = File(filePath)
+                if (file.exists() && file.isFile) {
+                    call.respondBytes(file.readBytes(), ContentType.Application.OctetStream)
+                } else {
+                    call.respondText("File Not Found", status = HttpStatusCode.NotFound)
+                }
             }
 
 
@@ -2336,3 +2374,4 @@ class LocalFileServerService : Service() {
         }
     }
 }
+

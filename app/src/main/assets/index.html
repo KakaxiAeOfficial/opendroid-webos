@@ -1029,7 +1029,19 @@
 
 
     <!-- Window: Files Explorer -->
-    <div id="file-window" class="window hidden" style="display: none; width: 1040px; height: 640px; top: 60px; left: 160px; min-width: 760px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+    <div id="file-window" class="window hidden relative" style="display: none; width: 1040px; height: 640px; top: 60px; left: 160px; min-width: 760px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+        <!-- Phase 8: Full-Window Drag-and-Drop Dropzone Overlay -->
+        <div id="file-drop-overlay" class="hidden absolute inset-0 bg-blue-950/70 backdrop-blur-xs border-2 border-dashed border-cyan-400 z-50 flex flex-col items-center justify-center pointer-events-none rounded-xl transition-all">
+            <div class="bg-gray-900/95 text-white p-5 rounded-2xl shadow-2xl border border-cyan-500/50 flex flex-col items-center gap-2 max-w-sm text-center">
+                <span id="file-drop-icon" class="text-4xl animate-bounce">📥</span>
+                <div id="file-drop-title" class="font-bold text-sm text-cyan-300">Drop files here to upload</div>
+                <div id="file-drop-target-path" class="text-[10px] text-gray-300 font-mono bg-gray-800 px-2 py-1 rounded max-w-[280px] truncate">Current Folder</div>
+                <div id="file-drop-apk-badge" class="hidden text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-700/60 px-2.5 py-0.5 rounded-full font-semibold">
+                    🤖 Android APK Detected: Single-Click Installation Ready!
+                </div>
+            </div>
+        </div>
+
         <!-- Title Bar -->
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
@@ -1215,6 +1227,14 @@
                 <span id="file-status-size" class="text-gray-400 font-mono"></span>
             </div>
             <div class="flex items-center gap-3 shrink-0">
+                <!-- Phase 8: Storage Partition Quota Gauge -->
+                <div id="file-storage-quota-bar" class="hidden flex items-center gap-2 px-2 py-0.5 bg-gray-100 rounded border border-gray-200" title="Device Storage Usage">
+                    <span class="text-[10px] text-gray-500 font-medium">💾 Storage:</span>
+                    <div class="w-20 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                        <div id="file-storage-progress" class="bg-cyan-500 h-1.5 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                    <span id="file-storage-text" class="text-[9px] text-gray-600 font-mono">-- / --</span>
+                </div>
                 <span id="file-status-count" class="font-mono text-[10px] text-gray-500">0 items</span>
                 <button onclick="toggleFileHotkeysModal()" class="px-2 py-0.5 bg-white border border-gray-300 hover:bg-gray-50 rounded text-[10px] text-gray-600 shadow-2xs font-medium">Hotkeys</button>
             </div>
@@ -5044,44 +5064,58 @@
 
 
         // --- File Upload ---
+        // --- Phase 8: Multi-File Queue Uploader ---
+        let fileUploadQueue = [];
+        let isQueueUploading = false;
+
         function handleFileSelected(files) {
             if (!files || files.length === 0) return;
-            const file = files[0];
+            uploadFilesQueue(files, currentDirPath);
+        }
+
+        function uploadFilesQueue(fileList, targetPath) {
+            if (!fileList || fileList.length === 0) return;
+            for (let i = 0; i < fileList.length; i++) {
+                fileUploadQueue.push({
+                    file: fileList[i],
+                    targetPath: targetPath || currentDirPath || '/storage/emulated/0/Download'
+                });
+            }
+            if (!isQueueUploading) {
+                processNextInUploadQueue();
+            }
+        }
+
+        function processNextInUploadQueue() {
+            if (fileUploadQueue.length === 0) {
+                isQueueUploading = false;
+                return;
+            }
+            isQueueUploading = true;
+            const item = fileUploadQueue.shift();
+            const file = item.file;
+            const targetPath = item.targetPath;
+
             const reader = new FileReader();
-
-
-
-
-            showTransferToast(`Reading ${file.name}...`, 0);
-
-
-
+            showTransferToast(`Reading ${file.name} (Queue: ${fileUploadQueue.length + 1})...`, 0);
 
             reader.onload = function(e) {
                 const arrayBuffer = e.target.result;
                 const chunkSize = 24 * 1024;
                 const totalChunks = Math.ceil(arrayBuffer.byteLength / chunkSize) || 1;
 
-
-
-
                 activeUpload = {
                     file: file,
                     buffer: arrayBuffer,
-                    targetPath: currentDirPath,
+                    targetPath: targetPath,
                     chunkSize: chunkSize,
                     totalChunks: totalChunks,
-                    currentChunk: 0
+                    currentChunk: 0,
+                    remainingInQueue: fileUploadQueue.length
                 };
-
-
-
 
                 sendNextUploadChunk();
             };
-
-
-
 
             reader.readAsArrayBuffer(file);
         }
@@ -5147,6 +5181,14 @@
         function handleUploadComplete(fileName) {
             showTransferToast(`Uploaded ${fileName}!`, 100);
             hideTransferToast();
+
+            // Phase 8: If uploaded file was an APK, auto-trigger install on phone!
+            if (fileName && fileName.toLowerCase().endsWith('.apk')) {
+                const targetPath = (activeUpload?.targetPath || currentDirPath || '/storage/emulated/0/Download').replace(/\/+$/, '') + '/' + fileName;
+                sendCommand({ action: 'INSTALL_APK', path: targetPath });
+                showToast(`APK ${fileName} uploaded! Installation prompt dispatched to phone. 📥`, 'success');
+            }
+
             activeUpload = null;
             document.getElementById('file-upload-input').value = '';
             const wUploadStatus = document.getElementById('widget-upload-status');
@@ -5160,6 +5202,14 @@
                 }, 2500);
             }
             sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
+            sendCommand({ action: 'FETCH_STORAGE' });
+
+            // Process next file in queue if any
+            if (fileUploadQueue.length > 0) {
+                setTimeout(processNextInUploadQueue, 200);
+            } else {
+                isQueueUploading = false;
+            }
         }
 
 
@@ -6645,6 +6695,26 @@
                 const wStorageFree = document.getElementById('widget-storage-free');
                 if (wStorageFree) wStorageFree.textContent = `Free: ${freeGB}`;
             }
+
+            // Phase 8: Update file-window storage quota bar
+            try {
+                const quotaBar = document.getElementById('file-storage-quota-bar');
+                const progressBar = document.getElementById('file-storage-progress');
+                const textEl = document.getElementById('file-storage-text');
+                if (quotaBar && progressBar && textEl && totalGB !== '--' && freeGB !== '--') {
+                    quotaBar.classList.remove('hidden');
+                    const pct = usedPercent !== null ? Math.round(usedPercent) : 50;
+                    progressBar.style.width = `${pct}%`;
+                    if (pct > 90) {
+                        progressBar.className = 'bg-rose-500 h-1.5 rounded-full transition-all';
+                    } else if (pct > 75) {
+                        progressBar.className = 'bg-amber-500 h-1.5 rounded-full transition-all';
+                    } else {
+                        progressBar.className = 'bg-cyan-500 h-1.5 rounded-full transition-all';
+                    }
+                    textEl.textContent = `${freeGB} Free / ${totalGB} (${pct}%)`;
+                }
+            } catch (_e) {}
         }
 
 
@@ -9339,6 +9409,75 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
         // Auto-check saved account session on boot
         window.addEventListener('DOMContentLoaded', () => { setTimeout(checkSavedAccountSession, 600); });
+
+        // --- Phase 8: Full-Window Drag-and-Drop Zone & Storage Quota Updates ---
+        function initFileWindowDropzone() {
+            const fileWin = document.getElementById('file-window');
+            const overlay = document.getElementById('file-drop-overlay');
+            const pathLabel = document.getElementById('file-drop-target-path');
+            const apkBadge = document.getElementById('file-drop-apk-badge');
+            const titleLabel = document.getElementById('file-drop-title');
+            const iconLabel = document.getElementById('file-drop-icon');
+            if (!fileWin || !overlay) return;
+
+            let dragCounter = 0;
+
+            fileWin.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter++;
+                if (pathLabel) pathLabel.textContent = currentDirPath || '/storage/emulated/0/Download';
+                overlay.classList.remove('hidden');
+            });
+
+            fileWin.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const items = e.dataTransfer?.items;
+                let hasApk = false;
+                if (items) {
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].kind === 'file' && (items[i].type?.includes('android.package-archive') || items[i].name?.toLowerCase().endsWith('.apk'))) {
+                            hasApk = true;
+                            break;
+                        }
+                    }
+                }
+                if (hasApk) {
+                    if (apkBadge) apkBadge.classList.remove('hidden');
+                    if (titleLabel) titleLabel.textContent = "Drop APK to Install on Phone";
+                    if (iconLabel) iconLabel.textContent = "🤖";
+                } else {
+                    if (apkBadge) apkBadge.classList.add('hidden');
+                    if (titleLabel) titleLabel.textContent = "Drop files here to upload";
+                    if (iconLabel) iconLabel.textContent = "📥";
+                }
+            });
+
+            fileWin.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter--;
+                if (dragCounter <= 0) {
+                    dragCounter = 0;
+                    overlay.classList.add('hidden');
+                }
+            });
+
+            fileWin.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dragCounter = 0;
+                overlay.classList.add('hidden');
+
+                const files = e.dataTransfer?.files;
+                if (files && files.length > 0) {
+                    uploadFilesQueue(files, currentDirPath || '/storage/emulated/0/Download');
+                }
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => { setTimeout(initFileWindowDropzone, 700); });
 </script>
     
     <!-- AirDroid-Style Bottom Taskbar Dock (Open & Minimized Tabs) -->
