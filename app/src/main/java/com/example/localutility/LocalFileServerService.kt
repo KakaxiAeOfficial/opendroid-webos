@@ -1,4 +1,4 @@
-﻿﻿package com.example.localutility
+package com.example.localutility
 
 
 
