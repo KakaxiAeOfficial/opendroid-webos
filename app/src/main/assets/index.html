@@ -4080,6 +4080,39 @@
             activeVideoBuffer = null;
         }
 
+
+        // --- Live File Transfer Floating Toast ---
+        let transferToastTimer = null;
+        function showTransferToast(title, percent) {
+            try {
+                const toast = document.getElementById('transfer-progress-toast');
+                const titleEl = document.getElementById('transfer-title');
+                const pctEl = document.getElementById('transfer-percentage');
+                const barEl = document.getElementById('transfer-bar');
+                if (toast) {
+                    toast.classList.remove('hidden');
+                    if (titleEl && title) titleEl.textContent = title;
+                    const pct = Math.max(0, Math.min(100, Math.round(percent || 0)));
+                    if (pctEl) pctEl.textContent = pct + '%';
+                    if (barEl) barEl.style.width = pct + '%';
+                }
+            } catch (err) {
+                console.warn('showTransferToast error:', err);
+            }
+        }
+
+        function hideTransferToast(delayMs = 1500) {
+            try {
+                if (transferToastTimer) clearTimeout(transferToastTimer);
+                transferToastTimer = setTimeout(() => {
+                    const toast = document.getElementById('transfer-progress-toast');
+                    if (toast) toast.classList.add('hidden');
+                }, delayMs);
+            } catch (err) {
+                console.warn('hideTransferToast error:', err);
+            }
+        }
+
         // --- File Download & Chunks Router ---
         function triggerFileDownload(filePath, fileName) {
             activeDownload = {
@@ -4141,8 +4174,9 @@
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                hideTransferToast();
+                setTimeout(() => URL.revokeObjectURL(url), 10000);
+                showToast("Downloaded " + activeDownload.name + " successfully! 🎉", "success");
+                hideTransferToast(1500);
                 activeDownload = null;
             } else {
                 sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: activeDownload.path, offset: currentLoaded });
@@ -4187,7 +4221,7 @@
 
             reader.onload = function(e) {
                 const arrayBuffer = e.target.result;
-                const chunkSize = 24 * 1024;
+                const chunkSize = 64 * 1024; // Ultra-fast 64KB chunks for instant single-packet small file upload
                 const totalChunks = Math.ceil(arrayBuffer.byteLength / chunkSize) || 1;
 
                 activeUpload = {
@@ -4214,8 +4248,10 @@
 
             let binary = '';
             const bytes = new Uint8Array(slice);
-            for (let i = 0; i < bytes.byteLength; i++) {
-                binary += String.fromCharCode(bytes[i]);
+            const len = bytes.byteLength;
+            const subChunk = 8192;
+            for (let i = 0; i < len; i += subChunk) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + subChunk, len)));
             }
             const base64Data = btoa(binary);
 
