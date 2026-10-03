@@ -6693,24 +6693,43 @@
             if (topLoader) topLoader.classList.add('hidden');
 
             if (!activeSmsThread) return;
-            if (data.threadId && activeSmsThread.threadId && data.threadId !== activeSmsThread.threadId) return;
+            // Verify conversation match by threadId or address
+            const isMatch = (data.threadId && activeSmsThread.threadId && data.threadId === activeSmsThread.threadId) ||
+                            (data.address && activeSmsThread.address && data.address === activeSmsThread.address);
+            if (!isMatch && (data.threadId > 0 || (data.address && data.address !== 'Unknown'))) return;
 
-            const newMsgs = data.messages || [];
+            const incomingMsgs = data.messages || [];
             conversationTotal = data.total || 0;
             conversationHasMore = data.hasMore || false;
-            conversationOffset = (data.offset || 0) + newMsgs.length;
+            conversationOffset = (data.offset || 0) + incomingMsgs.length;
 
             const container = document.getElementById('sms-messages-container');
             const prevScrollHeight = container ? container.scrollHeight : 0;
 
             if (data.offset === 0) {
-                activeConversationMessages = newMsgs;
+                // Strict deduplication by database ID or date+body+type
+                const seenKeys = new Set();
+                const cleanMsgs = [];
+                incomingMsgs.forEach(m => {
+                    const key = m.id > 0 ? `id_${m.id}` : `${m.type}_${m.date}_${m.body}`;
+                    if (!seenKeys.has(key)) {
+                        seenKeys.add(key);
+                        cleanMsgs.push(m);
+                    }
+                });
+                activeConversationMessages = cleanMsgs;
                 renderConversationMessages();
                 if (container) {
                     setTimeout(() => { container.scrollTop = container.scrollHeight; }, 60);
                 }
             } else {
-                activeConversationMessages = [...newMsgs, ...activeConversationMessages];
+                // Prepend older history with deduplication
+                const existingKeys = new Set(activeConversationMessages.map(m => m.id > 0 ? `id_${m.id}` : `${m.type}_${m.date}_${m.body}`));
+                const olderFiltered = incomingMsgs.filter(m => {
+                    const key = m.id > 0 ? `id_${m.id}` : `${m.type}_${m.date}_${m.body}`;
+                    return !existingKeys.has(key);
+                });
+                activeConversationMessages = [...olderFiltered, ...activeConversationMessages];
                 renderConversationMessages();
                 if (container) {
                     const newScrollHeight = container.scrollHeight;
@@ -6824,42 +6843,26 @@
         function handleSmsSentStatus(data) {
             if (data.success) {
                 showToast("SMS dispatched successfully! ✈️", "success");
-                // Update optimistic bubble to confirmed
-                if (activeConversationMessages.length > 0) {
-                    const lastMsg = activeConversationMessages[activeConversationMessages.length - 1];
-                    if (lastMsg && lastMsg.isOptimistic) {
-                        delete lastMsg.isOptimistic;
-                        renderConversationMessages();
-                    }
-                }
+                // Query phone database after short delay to seamlessly replace optimistic bubble with real DB row
+                setTimeout(() => {
+                    if (activeSmsThread) loadConversationMessages(true);
+                }, 300);
             } else {
                 showToast("Failed to send SMS. Check phone network & SIM.", "error");
             }
         }
 
+        let smsThreadsUpdateTimer = null;
         function handleSmsThreadsUpdated(newTopThreads) {
-            if (!newTopThreads || newTopThreads.length === 0) return;
-            const top = newTopThreads[0];
-
-            // If active thread matches incoming SMS, auto-append
-            if (activeSmsThread && (
-                (activeSmsThread.threadId && top.threadId && activeSmsThread.threadId === top.threadId) ||
-                (activeSmsThread.address && top.address && activeSmsThread.address === top.address)
-            )) {
-                activeConversationMessages.push({
-                    id: Date.now(),
-                    address: top.address,
-                    body: top.snippet,
-                    date: top.date,
-                    type: top.type
-                });
-                renderConversationMessages();
-                const container = document.getElementById('sms-messages-container');
-                if (container) setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
-            }
-
-            // Re-sync top threads in sidebar
-            loadSmsThreads(true);
+            // Debounce rapid Android Telephony notifications (outbox -> sent -> thread update)
+            if (smsThreadsUpdateTimer) clearTimeout(smsThreadsUpdateTimer);
+            smsThreadsUpdateTimer = setTimeout(() => {
+                loadSmsThreads(true);
+                if (activeSmsThread) {
+                    // Fetch authoritative single source of truth from phone DB (no synthetic duplicates)
+                    loadConversationMessages(true);
+                }
+            }, 350);
         }
 
         function handleSmsThreadDeleted(data) {
