@@ -125,7 +125,7 @@ class LocalFileServerService : Service() {
         // Phase 7: Deterministic permanent hardware-backed Device ID (never duplicates across reinstalls/rebinds)
         val androidId = try {
             Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""
-        } catch (_: Exception) { "" }
+        } catch (e: Exception) { "" }
 
 
 
@@ -351,7 +351,7 @@ class LocalFileServerService : Service() {
                 try {
                     mqttClient?.disconnectForcibly(1000, 1000)
                     mqttClient?.close()
-                } catch (_: Exception) {}
+                } catch (e: Exception) {}
 
 
 
@@ -385,7 +385,7 @@ class LocalFileServerService : Service() {
                             put("timestamp", System.currentTimeMillis())
                         }
                         options.setWill(willTopic, willJson.toString().toByteArray(), 1, true)
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {}
                 }
 
 
@@ -505,7 +505,7 @@ class LocalFileServerService : Service() {
                 mqttClient?.unsubscribe("opendroid/acc/$accountTag/$openDroidDeviceId/phone")
                 mqttClient?.unsubscribe("opendroid/acc/$accountTag/discover")
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {}
         boundAccountEmail = ""
         boundAccountPin = ""
         accountTag = ""
@@ -589,11 +589,11 @@ class LocalFileServerService : Service() {
                             try {
                                 val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
                                 val info = wm?.connectionInfo
-                                val ssid = info?.ssid?.replace(""", "") ?: ""
+                                val ssid = info?.ssid?.trim('"') ?: ""
                                 if (ssid.isNotEmpty() && ssid != "<unknown ssid>") {
                                     wifiSsid = ssid
                                 }
-                            } catch (_: Exception) {}
+                            } catch (e: Exception) {}
                         }
                         caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> {
                             netType = "Cellular (5G/LTE)"
@@ -622,10 +622,10 @@ class LocalFileServerService : Service() {
                     }
                     if (ipAddress.isNotEmpty()) break
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {}
 
             Triple(netType, wifiSsid, ipAddress)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             Triple("Unknown", "", "")
         }
     }
