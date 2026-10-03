@@ -113,7 +113,7 @@
     </div>
 
 
-    <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full text-center">
             <div class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 shadow-lg text-white">📱</div>
             <h2 class="text-xl font-bold text-gray-900">OpenDroid WebOS</h2>
@@ -2735,24 +2735,26 @@
         let cloudConnectWatchdog = null;
 
 
-        async function connectViaAccount() {
-            const email = document.getElementById('account-email-input').value.trim();
+        async function connectViaAccount(isSilent = false) {
+            const email = (document.getElementById('account-email-input')?.value || '').trim();
             const pin = (document.getElementById('account-pin-input')?.value || '').trim();
             if (!email || !email.includes('@')) {
-                showToast('Please enter a valid Account Email address', 'warning');
+                if (!isSilent) showToast('Please enter a valid Account Email address', 'warning');
+                document.getElementById('pair-modal')?.classList.remove('hidden');
                 return;
             }
             if (!pin || pin.length < 4) {
-                showToast('Please enter your 6-Digit Secret PIN set on your phone', 'warning');
+                if (!isSilent) showToast('Please enter your 6-Digit Secret PIN set on your phone', 'warning');
+                document.getElementById('pair-modal')?.classList.remove('hidden');
                 return;
             }
             accountEmail = email.toLowerCase();
             accountTag = await getAccountTag(accountEmail, pin);
             localStorage.setItem('opendroid_account_email', accountEmail);
-
+            localStorage.setItem('opendroid_session_active', 'true');
 
             const rememberCheckbox = document.getElementById('account-remember-me');
-            if (rememberCheckbox && rememberCheckbox.checked) {
+            if ((rememberCheckbox && rememberCheckbox.checked) || isSilent) {
                 localStorage.setItem('opendroid_remember_account', 'true');
                 localStorage.setItem('opendroid_saved_email', accountEmail);
                 localStorage.setItem('opendroid_saved_pin', pin);
@@ -2762,12 +2764,15 @@
                 localStorage.removeItem('opendroid_saved_pin');
             }
 
+            if (isSilent) {
+                document.getElementById('pair-modal')?.classList.add('hidden');
+            }
 
-            initAccountMqtt(0);
+            initAccountMqtt(0, isSilent);
         }
 
 
-        function initAccountMqtt(serverIdx = 0) {
+        function initAccountMqtt(serverIdx = 0, isSilent = false) {
             if (serverIdx >= EMQX_SERVERS.length) {
                 const loginBtn = document.getElementById('account-login-btn');
                 if (loginBtn) {
@@ -2825,34 +2830,39 @@
 
             mqttClient.on('connect', () => {
                 if (accountConnectWatchdog) clearTimeout(accountConnectWatchdog);
-                document.getElementById('account-devices-container').classList.remove('hidden');
+                
+                // In silent auto-session reload mode, guarantee pair-modal remains 100% hidden
+                if (isSilent) {
+                    document.getElementById('pair-modal')?.classList.add('hidden');
+                } else {
+                    document.getElementById('account-devices-container')?.classList.remove('hidden');
+                }
+
                 if (loginBtn) {
                     loginBtn.textContent = `✓ Connected to ${currentBroker.name}`;
                     loginBtn.className = "w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5";
                 }
                 const taskbarStatus = document.getElementById('ws-status-taskbar');
                 if (taskbarStatus) {
-                    taskbarStatus.textContent = `● ${currentBroker.name}`;
+                    taskbarStatus.textContent = `● Connected`;
                     taskbarStatus.className = "text-green-400 text-xs font-semibold";
                 }
-
 
                 // 1. Listen for presence heartbeats of all devices under this account
                 const presenceTopic = `opendroid/acc/${accountTag}/devices/+/presence`;
                 mqttClient.subscribe(presenceTopic, { qos: 1 });
 
-
-                // 2. CRITICAL FIX: Subscribe to telemetry/data wildcard for ALL devices under this account!
+                // 2. Telemetry/data wildcard
                 const pcWildcard = `opendroid/acc/${accountTag}/+/pc`;
                 mqttClient.subscribe(pcWildcard, { qos: 1 });
 
-
-                // 3. Immediate Active Discovery Ping: triggers all online phones to report presence in <100ms
+                // 3. Immediate Active Discovery Ping
                 const discoverTopic = `opendroid/acc/${accountTag}/discover`;
                 mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES' }), { qos: 1 });
 
-
-                showToast(`Signed in on ${currentBroker.name}. Discovering devices...`, 'success');
+                if (!isSilent) {
+                    showToast(`Signed in on ${currentBroker.name}. Discovering devices...`, 'success');
+                }
             });
 
 
@@ -2940,10 +2950,15 @@
 
                 allDiscoveredDevices[devId] = data;
                 
-                // Auto-select and auto-sync target device immediately
+                // AirDroid-Grade Auto-Bind to Last Active Device or Single Fleet Device
+                const savedLastDev = localStorage.getItem('opendroid_last_device_id');
                 const devKeys = Object.keys(allDiscoveredDevices);
-                if (!currentDeviceId || currentDeviceId === devId || devKeys.length === 1) {
+                if ((savedLastDev && devId === savedLastDev) || !currentDeviceId || currentDeviceId === devId || devKeys.length === 1) {
                     currentDeviceId = devId;
+                    localStorage.setItem('opendroid_last_device_id', currentDeviceId);
+                    localStorage.setItem('opendroid_session_active', 'true');
+                    document.getElementById('pair-modal')?.classList.add('hidden');
+                    document.getElementById('device-selector-wrapper')?.classList.remove('hidden');
                     const devName = data.deviceName || data.model || 'Android Phone';
                     
                     // Update Top Header
@@ -3065,8 +3080,10 @@
         }
 
 
-        function confirmAccountDeviceConnection() {
+        function confirmAccountDeviceConnection(silent = false) {
             if (!currentDeviceId) return;
+            localStorage.setItem('opendroid_last_device_id', currentDeviceId);
+            localStorage.setItem('opendroid_session_active', 'true');
             document.getElementById('pair-modal').classList.add('hidden');
             document.getElementById('device-selector-wrapper').classList.remove('hidden');
 
@@ -9445,32 +9462,64 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 const remember = localStorage.getItem('opendroid_remember_account');
                 const savedEmail = localStorage.getItem('opendroid_saved_email');
                 const savedPin = localStorage.getItem('opendroid_saved_pin');
-                if (remember === 'true' && savedEmail && savedPin) {
+                const isSessionActive = (remember === 'true' && savedEmail && savedPin) || localStorage.getItem('opendroid_session_active') === 'true';
+
+                if (isSessionActive && savedEmail && savedPin) {
+                    // Pre-suppress pair-modal before rendering to prevent ANY flicker
+                    const pairModal = document.getElementById('pair-modal');
+                    if (pairModal) pairModal.classList.add('hidden');
+
                     const emailInput = document.getElementById('account-email-input');
                     const pinInput = document.getElementById('account-pin-input');
                     const rememberCheckbox = document.getElementById('account-remember-me');
                     if (emailInput) emailInput.value = savedEmail;
                     if (pinInput) pinInput.value = savedPin;
                     if (rememberCheckbox) rememberCheckbox.checked = true;
-                    console.log('[AutoSession] Restoring saved central account session for:', savedEmail);
-                    connectViaAccount();
+
+                    const taskbarStatus = document.getElementById('ws-status-taskbar');
+                    if (taskbarStatus) {
+                        taskbarStatus.textContent = '● Connecting...';
+                        taskbarStatus.className = 'text-yellow-400 text-xs font-semibold';
+                    }
+
+                    console.log('[AirDroidSession] Silently restoring active central account session for:', savedEmail);
+                    connectViaAccount(true); // Silent mode: zero modal popup, seamless reload
+                } else {
+                    // First-time visitor or logged-out state: reveal login modal
+                    const pairModal = document.getElementById('pair-modal');
+                    if (pairModal) pairModal.classList.remove('hidden');
                 }
             } catch (e) {
-                console.error('[AutoSession] Error restoring account session:', e);
+                console.error('[AirDroidSession] Error restoring account session:', e);
+                const pairModal = document.getElementById('pair-modal');
+                if (pairModal) pairModal.classList.remove('hidden');
             }
         }
 
 
         function disconnectAccountSession() {
-            if (!confirm('Are you sure you want to disconnect from this Central Account?')) return;
+            if (!confirm('Are you sure you want to log out from this Central Account?')) return;
             try {
+                localStorage.removeItem('opendroid_session_active');
                 localStorage.removeItem('opendroid_remember_account');
                 localStorage.removeItem('opendroid_saved_email');
                 localStorage.removeItem('opendroid_saved_pin');
+                localStorage.removeItem('opendroid_last_device_id');
             } catch (_e) {}
             if (mqttClient) {
                 try { mqttClient.end(true); } catch (_e) {}
             }
+            // Explicit user logout reveals the login modal cleanly
+            const pairModal = document.getElementById('pair-modal');
+            if (pairModal) pairModal.classList.remove('hidden');
+            const devContainer = document.getElementById('account-devices-container');
+            if (devContainer) devContainer.classList.add('hidden');
+            const taskbarStatus = document.getElementById('ws-status-taskbar');
+            if (taskbarStatus) {
+                taskbarStatus.textContent = '● Logged Out';
+                taskbarStatus.className = 'text-gray-400 text-xs font-semibold';
+            }
+            showToast('Logged out successfully.', 'info');
             location.reload();
         }
 
@@ -9586,7 +9635,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 
         // Auto-check saved account session on boot
-        window.addEventListener('DOMContentLoaded', () => { setTimeout(checkSavedAccountSession, 600); });
+        window.addEventListener('DOMContentLoaded', () => { checkSavedAccountSession(); });
 
 
         // --- Phase 8: Full-Window Drag-and-Drop Zone & Storage Quota Updates ---
