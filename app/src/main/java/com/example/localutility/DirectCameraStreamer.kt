@@ -30,6 +30,7 @@ class DirectCameraStreamer private constructor(private val context: Context) {
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
     private var imageReader: ImageReader? = null
+    private var currentCharacteristics: CameraCharacteristics? = null
 
     private var backgroundThread: HandlerThread? = null
     private var backgroundHandler: Handler? = null
@@ -63,15 +64,17 @@ class DirectCameraStreamer private constructor(private val context: Context) {
         stopStreaming()
         isStreaming = true
         isFrontCamera = frontFacing
+        isTorchOn = false
         onFrameCaptured = onFrame
         startBackgroundThread()
 
         try {
             val cameraId = getCameraId(frontFacing) ?: return
             val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+            currentCharacteristics = characteristics
             val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
             
-            // Choose optimal streaming resolution (~640x480 or closest)
+            // Choose optimal streaming resolution (~640x480 or closest 4:3)
             val outputSize = chooseOptimalSize(map?.getOutputSizes(ImageFormat.JPEG) ?: emptyArray())
 
             imageReader = ImageReader.newInstance(outputSize.width, outputSize.height, ImageFormat.JPEG, 2).apply {
@@ -79,8 +82,8 @@ class DirectCameraStreamer private constructor(private val context: Context) {
                     val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
                     try {
                         val now = System.currentTimeMillis()
-                        // Throttle to ~12 FPS to maintain smooth stream without overloading network
-                        if (now - lastFrameTime >= 80) {
+                        // Throttle to ~15 FPS (66ms) to keep stream ultra-responsive without network choking
+                        if (now - lastFrameTime >= 66) {
                             lastFrameTime = now
                             val buffer = image.planes[0].buffer
                             val bytes = ByteArray(buffer.remaining())
@@ -131,11 +134,14 @@ class DirectCameraStreamer private constructor(private val context: Context) {
         val readerSurface = imageReader?.surface ?: return
 
         try {
+            val sensorOrientation = currentCharacteristics?.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 90
             val previewRequestBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                 addTarget(readerSurface)
                 set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
-                // Hardware JPEG compression quality at 50% (~12 KB per frame)
-                set(CaptureRequest.JPEG_QUALITY, 50.toByte())
+                // Sensor orientation compensation ensures preview is upright, not rotated sideways
+                set(CaptureRequest.JPEG_ORIENTATION, sensorOrientation)
+                // Hardware JPEG compression quality at 55% (~15 KB per frame)
+                set(CaptureRequest.JPEG_QUALITY, 55.toByte())
                 if (!isFrontCamera && isTorchOn) {
                     set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH)
                 }
@@ -169,9 +175,27 @@ class DirectCameraStreamer private constructor(private val context: Context) {
     }
 
     fun toggleTorch() {
-        if (isFrontCamera) return
+        if (isFrontCamera || cameraDevice == null || captureSession == null || imageReader == null) return
         isTorchOn = !isTorchOn
-        createCaptureSession()
+        try {
+            val sensorOrientation = currentCharacteristics?.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 90
+            val updateBuilder = cameraDevice?.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)?.apply {
+                addTarget(imageReader!!.surface)
+                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                set(CaptureRequest.JPEG_ORIENTATION, sensorOrientation)
+                set(CaptureRequest.JPEG_QUALITY, 55.toByte())
+                if (isTorchOn) {
+                    set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH)
+                } else {
+                    set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF)
+                }
+            }
+            if (updateBuilder != null) {
+                captureSession?.setRepeatingRequest(updateBuilder.build(), null, backgroundHandler)
+            }
+        } catch (e: Exception) {
+            Log.e("DirectCamera", "Error toggling torch smoothly", e)
+        }
     }
 
     fun stopStreaming() {
@@ -189,6 +213,7 @@ class DirectCameraStreamer private constructor(private val context: Context) {
             cameraOpenCloseLock.release()
             stopBackgroundThread()
             isStreaming = false
+            isTorchOn = false
         }
     }
 
@@ -210,3 +235,4 @@ class DirectCameraStreamer private constructor(private val context: Context) {
             ?: Size(640, 480)
     }
 }
+
