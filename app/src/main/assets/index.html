@@ -1,4 +1,4 @@
-﻿﻿<html lang="en">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1199,31 +1199,159 @@
     <div id="toast-container" class="fixed top-14 right-6 w-80 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
 
     <!-- Window: Messages -->
-    <div id="sms-window" class="window hidden" style="display: none; width: 440px; height: 520px; top: 80px; left: 320px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+        <!-- Window: Advanced Dual-Pane Messages & Conversations Explorer -->
+    <div id="sms-window" class="window hidden" style="display: none; width: 980px; height: 620px; top: 60px; left: 180px; min-width: 760px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+        <!-- Title Bar -->
+        <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none">
             <div class="flex items-center gap-2">
-                <span class="text-xs">💬</span>
-                <span class="font-semibold text-xs">Messages</span>
+                <span class="text-sm">💬</span>
+                <span class="font-bold text-xs tracking-wide">Messages</span>
+                <span id="sms-window-sync-status" class="text-[10px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded-full font-mono">AirDroid Killer v2.0</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
-                <button onclick="wm.minimizeWindow('sms-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
-                <button onclick="wm.maximizeWindow('sms-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
-                <button onclick="wm.closeWindow('sms-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-1.5 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+                <button onclick="wm.minimizeWindow('sms-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('sms-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('sms-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
-        <div class="flex-1 flex flex-col bg-gray-50 overflow-hidden">
-            <div id="sms-list" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2"></div>
-            <div class="bg-white p-3 border-t flex flex-col gap-2">
-                <input type="text" id="sms-to" placeholder="Phone Number" class="border rounded-lg px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-blue-500">
-                <div class="flex gap-2">
-                    <input type="text" id="sms-body" placeholder="Type SMS message..." class="border rounded-lg px-2.5 py-1.5 text-xs flex-1 focus:ring-1 focus:ring-blue-500">
-                    <button onclick="sendSms()" class="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-700">Send</button>
+
+        <!-- Main Body: Two-Column Split Layout -->
+        <div class="flex-1 flex overflow-hidden bg-white text-gray-800">
+            <!-- Left Sidebar: Conversations & Threads List (340px) -->
+            <div class="w-[340px] border-r border-gray-200/80 bg-gray-50/80 flex flex-col flex-shrink-0 select-none">
+                <!-- Top Toolbar: Search & Action Buttons -->
+                <div class="p-2.5 bg-white border-b border-gray-200 flex items-center gap-1.5">
+                    <div class="relative flex-1">
+                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                        <input id="sms-thread-search" type="text" placeholder="Search chats or numbers..." oninput="filterSmsThreads(this.value)" class="w-full bg-gray-100 border border-gray-200 rounded-lg pl-7 pr-6 py-1.5 text-xs text-gray-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all font-sans">
+                        <button id="sms-search-clear" onclick="clearSmsSearch()" class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                    </div>
+                    <button onclick="refreshSmsThreads()" class="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors" title="Refresh Threads">🔄</button>
+                    <button onclick="openNewSmsComposer()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all" title="Compose New Message">
+                        <span>✏️</span><span class="hidden sm:inline">New</span>
+                    </button>
+                </div>
+
+                <!-- Scrollable Threads List Container -->
+                <div id="sms-threads-list" class="flex-1 overflow-y-auto divide-y divide-gray-100">
+                    <div class="p-6 text-center text-gray-400 text-xs flex flex-col items-center gap-2">
+                        <span class="text-2xl animate-spin">🌀</span>
+                        <span>Loading conversations from phone...</span>
+                    </div>
+                </div>
+
+                <!-- Bottom Infinite Scroll Loading Indicator -->
+                <div id="sms-threads-loader" class="hidden p-2 text-center text-[11px] text-gray-500 bg-white border-t border-gray-100 flex items-center justify-center gap-1.5">
+                    <span class="animate-spin">🌀</span>
+                    <span>Loading more chats...</span>
+                </div>
+            </div>
+
+            <!-- Right Stage: Active Conversation View or Empty State (flex-1) -->
+            <div class="flex-1 flex flex-col bg-white overflow-hidden relative">
+                <!-- Empty Placeholder (When no chat is open) -->
+                <div id="sms-empty-state" class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/40 select-none">
+                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-100 to-indigo-100 text-blue-600 flex items-center justify-center text-3xl shadow-sm mb-3">💬</div>
+                    <h3 class="font-bold text-sm text-gray-700 mb-1">OpenDroid Messages</h3>
+                    <p class="text-xs text-gray-500 max-w-xs mb-4">Select a conversation from the left to read and reply, or tap "New" to compose a message.</p>
+                    <button onclick="openNewSmsComposer()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow transition-all">
+                        <span>✏️ Compose New Message</span>
+                    </button>
+                </div>
+
+                <!-- New Message Composer Pane -->
+                <div id="sms-new-pane" class="hidden flex-1 flex flex-col p-4 bg-gray-50/60 overflow-y-auto">
+                    <div class="flex items-center justify-between pb-3 border-b border-gray-200 mb-4">
+                        <div class="font-bold text-sm text-gray-800 flex items-center gap-2">
+                            <span>✏️</span><span>New Message</span>
+                        </div>
+                        <button onclick="closeNewSmsComposer()" class="text-gray-400 hover:text-gray-700 text-xs px-2 py-1 rounded hover:bg-gray-200">Cancel</button>
+                    </div>
+                    <div class="space-y-3 max-w-lg w-full mx-auto bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Recipient (Phone Number or Contact Name):</label>
+                            <input type="text" id="sms-new-recipient" placeholder="Type number or search contact..." class="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                            <div id="sms-recipient-suggestions" class="hidden mt-1 max-h-36 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow divide-y text-xs"></div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Message Content:</label>
+                            <textarea id="sms-new-body" rows="4" placeholder="Type your SMS message..." class="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"></textarea>
+                            <div class="flex justify-between items-center text-[10px] text-gray-400 mt-1">
+                                <span id="sms-new-counter">0 / 160 (1 SMS)</span>
+                                <span>Standard Carrier SMS</span>
+                            </div>
+                        </div>
+                        <button onclick="dispatchNewSms()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-2 shadow transition-all">
+                            <span>Send Message</span><span>✈️</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Chat Pane -->
+                <div id="sms-chat-pane" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+                    <!-- Chat Header -->
+                    <div class="p-3 bg-white border-b border-gray-200/90 flex items-center justify-between select-none shadow-xs">
+                        <div class="flex items-center gap-2.5 truncate">
+                            <div id="sms-active-avatar" class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0">
+                                👤
+                            </div>
+                            <div class="truncate">
+                                <div id="sms-active-contact-name" class="font-bold text-xs text-gray-900 truncate">Recipient</div>
+                                <div class="flex items-center gap-1.5 text-[11px] text-gray-500 font-mono truncate">
+                                    <span id="sms-active-contact-number">Number</span>
+                                    <button onclick="copyActiveContactNumber()" class="hover:text-blue-600" title="Copy Number">📋</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="callActiveContact()" class="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all" title="Direct Phone Call">
+                                <span>📞</span><span class="hidden md:inline">Call</span>
+                            </button>
+                            <button onclick="deleteActiveThread()" class="p-1.5 hover:bg-rose-50 text-gray-400 hover:text-rose-600 rounded-lg text-xs transition-all" title="Delete Conversation">
+                                <span>🗑️</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Top Loader (when scrolling up to fetch older history) -->
+                    <div id="sms-chat-loader-top" class="hidden py-1.5 bg-blue-50 text-blue-700 text-[10px] text-center font-medium border-b border-blue-100 flex items-center justify-center gap-1">
+                        <span class="animate-spin text-xs">🌀</span>
+                        <span>Loading older conversation history...</span>
+                    </div>
+
+                    <!-- Scrollable Chat Bubbles Container -->
+                    <div id="sms-messages-container" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-slate-50/60 font-sans">
+                        <!-- Messages dynamically inserted here -->
+                    </div>
+
+                    <!-- Chat Composer Bar -->
+                    <div class="bg-white border-t border-gray-200/90 p-2.5 flex flex-col gap-1.5">
+                        <div class="flex justify-between items-center text-[10px] text-gray-400 px-1 select-none">
+                            <div class="flex items-center gap-2">
+                                <span id="sms-char-counter" class="font-mono text-gray-500">0 / 160 (1 SMS)</span>
+                                <span class="hidden sm:inline text-gray-300">|</span>
+                                <span class="hidden sm:inline text-gray-400">[Enter] to Send, [Shift+Enter] for new line</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="insertSmsEmoji('👍')" class="hover:scale-125 transition-transform">👍</button>
+                                <button onclick="insertSmsEmoji('🙏')" class="hover:scale-125 transition-transform">🙏</button>
+                                <button onclick="insertSmsEmoji('😊')" class="hover:scale-125 transition-transform">😊</button>
+                                <button onclick="insertSmsEmoji('📍')" class="hover:scale-125 transition-transform">📍</button>
+                            </div>
+                        </div>
+                        <div class="flex items-end gap-2">
+                            <textarea id="sms-compose-text" rows="2" placeholder="Type SMS message..." oninput="updateSmsCharCount(this.value)" class="flex-1 resize-none border border-gray-200 rounded-xl p-2.5 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-sans"></textarea>
+                            <button id="sms-send-btn" onclick="sendActiveThreadSms()" class="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition-all flex-shrink-0" title="Send SMS">
+                                <span>Send</span>
+                                <span>✈️</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Window: Dialer & Contacts (AirDroid Revamp) -->
     <div id="contacts-window" class="window hidden" style="display: none; width: 980px; height: 620px; top: 60px; left: 190px; min-width: 780px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <!-- Title Bar -->
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
@@ -3239,7 +3367,17 @@
             }
             // --- General Features ---
             else if (data.type === 'SMS_LIST') {
-                renderSms(data.data);
+                // Legacy fallback support
+            } else if (data.type === 'SMS_THREADS_RESULT') {
+                handleSmsThreadsResult(data);
+            } else if (data.type === 'SMS_CONVERSATION_RESULT') {
+                handleSmsConversationResult(data);
+            } else if (data.type === 'SMS_SENT_STATUS') {
+                handleSmsSentStatus(data);
+            } else if (data.type === 'SMS_THREADS_UPDATED') {
+                handleSmsThreadsUpdated(data.data);
+            } else if (data.type === 'SMS_THREAD_DELETED') {
+                handleSmsThreadDeleted(data);
             } else if (data.type === 'CONTACTS_LIST') {
                 renderContacts(data.data, data.offset, data.total, data.hasMore);
             } else if (data.type === 'STORAGE_STATS') {
@@ -5350,7 +5488,7 @@
                 this.activeWindowId = id;
                 this.renderTaskbar();
                 
-                if(id === 'sms-window') sendCommand({action: 'FETCH_SMS'});
+                if(id === 'sms-window') { initSmsWindow(); sendCommand({action: 'FETCH_SMS'}); }
                 if(id === 'contacts-window') sendCommand({action: 'FETCH_CONTACTS'});
                 if(id === 'info-window') sendCommand({action: 'FETCH_STORAGE'});
                 if(id === 'call-logs-window') { setCallLogsFilter('All'); rawCallLogs = []; isLoadingCallLogs = true; sendCommand({action: 'FETCH_CALL_LOGS', offset: 0, limit: 100}); sendCommand({action: 'FETCH_CALL_RECORDINGS'}); }
@@ -6229,30 +6367,597 @@
             }
         }
 
-        function renderSms(sms) {
-            const list = document.getElementById('sms-list');
-            list.innerHTML = '';
-            if (!sms || sms.length === 0) {
-                list.innerHTML = '<div class="p-4 text-center text-gray-400 text-xs">No messages found</div>';
-                return;
+        
+        // =========================================================================
+        // --- Phase 9: Advance AirDroid-Surpassing Messages & Infinite Sync Engine ---
+        // =========================================================================
+        let smsThreads = [];
+        let allSmsThreads = [];
+        let activeSmsThread = null;
+        let activeConversationMessages = [];
+        let smsThreadsOffset = 0;
+        const SMS_THREADS_LIMIT = 25;
+        let smsThreadsTotal = 0;
+        let smsThreadsHasMore = true;
+        let isSmsThreadsLoading = false;
+
+        let conversationOffset = 0;
+        const CONVERSATION_LIMIT = 50;
+        let conversationTotal = 0;
+        let conversationHasMore = true;
+        let isConversationLoading = false;
+
+        function initSmsWindow() {
+            if (smsThreads.length === 0) {
+                loadSmsThreads(true);
             }
-            sms.forEach(msg => {
-                const isInbox = msg.type === 'inbox';
-                list.innerHTML += `<div class="p-2.5 rounded-xl max-w-[85%] text-xs ${isInbox ? 'bg-white self-start shadow-sm border border-gray-100' : 'bg-blue-100 text-blue-900 self-end'}">
-                    <div class="font-bold text-[10px] text-gray-500 mb-0.5">${msg.address}</div>
-                    <div class="text-gray-800">${msg.body}</div>
-                </div>`;
+            setupSmsScrollListeners();
+        }
+
+        function setupSmsScrollListeners() {
+            // 1. Left sidebar thread list: scroll to bottom -> load next thread chunk
+            const threadsList = document.getElementById('sms-threads-list');
+            if (threadsList && !threadsList.dataset.scrollBound) {
+                threadsList.dataset.scrollBound = 'true';
+                threadsList.addEventListener('scroll', () => {
+                    if (threadsList.scrollTop + threadsList.clientHeight >= threadsList.scrollHeight - 60) {
+                        if (smsThreadsHasMore && !isSmsThreadsLoading) {
+                            loadSmsThreads(false);
+                        }
+                    }
+                });
+            }
+
+            // 2. Right chat messages container: scroll to top -> load older messages chunk
+            const msgsContainer = document.getElementById('sms-messages-container');
+            if (msgsContainer && !msgsContainer.dataset.scrollBound) {
+                msgsContainer.dataset.scrollBound = 'true';
+                msgsContainer.addEventListener('scroll', () => {
+                    if (msgsContainer.scrollTop <= 40) {
+                        if (conversationHasMore && !isConversationLoading) {
+                            loadConversationMessages(false);
+                        }
+                    }
+                });
+            }
+
+            // 3. Bind [Enter] to send in composer textarea
+            const composeText = document.getElementById('sms-compose-text');
+            if (composeText && !composeText.dataset.keyBound) {
+                composeText.dataset.keyBound = 'true';
+                composeText.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendActiveThreadSms();
+                    }
+                });
+            }
+        }
+
+        function loadSmsThreads(reset = false) {
+            if (isSmsThreadsLoading) return;
+            if (!reset && !smsThreadsHasMore) return;
+
+            if (reset) {
+                smsThreadsOffset = 0;
+                smsThreadsHasMore = true;
+            }
+
+            isSmsThreadsLoading = true;
+            const loader = document.getElementById('sms-threads-loader');
+            if (loader) loader.classList.remove('hidden');
+
+            sendCommand({
+                action: 'FETCH_SMS_THREADS',
+                offset: smsThreadsOffset,
+                limit: SMS_THREADS_LIMIT
             });
         }
 
-        function sendSms() {
-            const to = document.getElementById('sms-to').value;
-            const body = document.getElementById('sms-body').value;
-            if(!to || !body) return;
-            sendCommand({ action: 'SEND_SMS', to: to, message: body });
-            document.getElementById('sms-body').value = '';
-            setTimeout(() => sendCommand({action: 'FETCH_SMS'}), 1000);
+        function refreshSmsThreads() {
+            showToast("Refreshing conversations from phone... 🔄", "info");
+            loadSmsThreads(true);
         }
+
+        function handleSmsThreadsResult(data) {
+            isSmsThreadsLoading = false;
+            const loader = document.getElementById('sms-threads-loader');
+            if (loader) loader.classList.add('hidden');
+
+            const newThreads = data.data || [];
+            smsThreadsTotal = data.total || 0;
+            smsThreadsHasMore = data.hasMore || false;
+            smsThreadsOffset = (data.offset || 0) + newThreads.length;
+
+            if (data.offset === 0) {
+                smsThreads = newThreads;
+            } else {
+                const existingKeys = new Set(smsThreads.map(t => t.threadId > 0 ? 'tid_' + t.threadId : 'addr_' + t.address));
+                newThreads.forEach(t => {
+                    const key = t.threadId > 0 ? 'tid_' + t.threadId : 'addr_' + t.address;
+                    if (!existingKeys.has(key)) {
+                        smsThreads.push(t);
+                        existingKeys.add(key);
+                    }
+                });
+            }
+
+            allSmsThreads = [...smsThreads];
+            renderSmsThreadsList();
+
+            // Auto-select first thread if nothing is open
+            if (!activeSmsThread && smsThreads.length > 0) {
+                selectSmsThread(smsThreads[0]);
+            }
+        }
+
+        function getAvatarColor(str) {
+            const colors = [
+                '#3b82f6', '#8b5cf6', '#ec4899', '#10b981',
+                '#f59e0b', '#06b6d4', '#6366f1', '#14b8a6'
+            ];
+            let hash = 0;
+            for (let i = 0; i < (str || '').length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            const parts = name.trim().split(/\s+/);
+            if (parts.length >= 2) {
+                return (parts[0][0] + parts[1][0]).toUpperCase();
+            }
+            return name.substring(0, Math.min(2, name.length)).toUpperCase();
+        }
+
+        function formatSmsDate(timestamp) {
+            if (!timestamp) return '';
+            const d = new Date(timestamp);
+            const now = new Date();
+            const isToday = d.toDateString() === now.toDateString();
+            if (isToday) {
+                return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            const isSameYear = d.getFullYear() === now.getFullYear();
+            if (isSameYear) {
+                return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            }
+            return d.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: '2-digit' });
+        }
+
+        function formatSmsTime(timestamp) {
+            if (!timestamp) return '';
+            const d = new Date(timestamp);
+            const now = new Date();
+            const isToday = d.toDateString() === now.toDateString();
+            const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (isToday) {
+                return `Today at ${timeStr}`;
+            }
+            return `${d.toLocaleDateString([], { month: 'short', day: 'numeric' })} at ${timeStr}`;
+        }
+
+        function linkifyText(text) {
+            if (!text) return '';
+            const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const urlRegex = /(https?:\/\/[^\s<]+)/g;
+            return escaped.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline break-all font-medium">$1</a>');
+        }
+
+        function renderSmsThreadsList() {
+            const list = document.getElementById('sms-threads-list');
+            if (!list) return;
+
+            if (smsThreads.length === 0) {
+                list.innerHTML = `
+                    <div class="p-8 text-center text-gray-400 text-xs">
+                        <span class="text-3xl block mb-2">📭</span>
+                        <span>No message conversations found.</span>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            smsThreads.forEach((t) => {
+                const displayName = t.contactName && t.contactName !== t.address ? t.contactName : t.address;
+                const initials = getInitials(displayName);
+                const color = getAvatarColor(displayName);
+                const dateStr = formatSmsDate(t.date);
+                const isSelected = activeSmsThread && (
+                    (activeSmsThread.threadId && t.threadId && activeSmsThread.threadId === t.threadId) ||
+                    (activeSmsThread.address && t.address && activeSmsThread.address === t.address)
+                );
+
+                const countBadge = t.messageCount > 1 ? `<span class="text-[10px] text-gray-400 font-normal">(${t.messageCount})</span>` : '';
+                const unreadBadge = t.unreadCount > 0 ? `<span class="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded-full shadow-xs">${t.unreadCount}</span>` : '';
+
+                html += `
+                <div onclick='selectSmsThread(${JSON.stringify(t)})' class="p-3 hover:bg-gray-100/80 cursor-pointer transition-all flex items-start gap-2.5 group relative ${isSelected ? 'bg-blue-50/90 border-l-4 border-blue-600 font-semibold text-blue-950' : 'text-gray-800'}">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xs flex-shrink-0" style="background-color: ${color}">
+                        ${initials}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-1 mb-0.5">
+                            <div class="truncate text-xs flex items-center gap-1">
+                                <span class="truncate">${displayName}</span>
+                                ${countBadge}
+                            </div>
+                            <span class="text-[10px] text-gray-400 font-mono flex-shrink-0">${dateStr}</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-1">
+                            <p class="text-[11px] text-gray-500 truncate leading-snug font-normal">
+                                ${t.type === 2 ? '<span class="text-blue-500 font-mono">You: </span>' : ''}${t.snippet || '<span class="italic text-gray-300">Empty</span>'}
+                            </p>
+                            ${unreadBadge}
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+            list.innerHTML = html;
+        }
+
+        function filterSmsThreads(query) {
+            const clearBtn = document.getElementById('sms-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !query);
+
+            if (!query || !query.trim()) {
+                smsThreads = [...allSmsThreads];
+                renderSmsThreadsList();
+                return;
+            }
+
+            const q = query.trim().toLowerCase();
+            smsThreads = allSmsThreads.filter(t => {
+                const name = (t.contactName || '').toLowerCase();
+                const addr = (t.address || '').toLowerCase();
+                const snip = (t.snippet || '').toLowerCase();
+                return name.includes(q) || addr.includes(q) || snip.includes(q);
+            });
+
+            renderSmsThreadsList();
+        }
+
+        function clearSmsSearch() {
+            const searchInput = document.getElementById('sms-thread-search');
+            if (searchInput) searchInput.value = '';
+            filterSmsThreads('');
+        }
+
+        function selectSmsThread(thread) {
+            activeSmsThread = thread;
+            conversationOffset = 0;
+            conversationHasMore = true;
+            activeConversationMessages = [];
+
+            // Toggle panes
+            const emptyState = document.getElementById('sms-empty-state');
+            const newPane = document.getElementById('sms-new-pane');
+            const chatPane = document.getElementById('sms-chat-pane');
+            if (emptyState) emptyState.classList.add('hidden');
+            if (newPane) newPane.classList.add('hidden');
+            if (chatPane) chatPane.classList.remove('hidden');
+
+            // Header Update
+            const displayName = thread.contactName && thread.contactName !== thread.address ? thread.contactName : thread.address;
+            const nameEl = document.getElementById('sms-active-contact-name');
+            const numEl = document.getElementById('sms-active-contact-number');
+            const avatarEl = document.getElementById('sms-active-avatar');
+            if (nameEl) nameEl.textContent = displayName;
+            if (numEl) numEl.textContent = thread.address;
+            if (avatarEl) {
+                avatarEl.textContent = getInitials(displayName);
+                avatarEl.style.backgroundColor = getAvatarColor(displayName);
+            }
+
+            // Clear composer and update char count
+            const composeText = document.getElementById('sms-compose-text');
+            if (composeText) {
+                composeText.value = '';
+                updateSmsCharCount('');
+                setTimeout(() => composeText.focus(), 100);
+            }
+
+            renderSmsThreadsList();
+            loadConversationMessages(true);
+        }
+
+        function loadConversationMessages(reset = false) {
+            if (!activeSmsThread) return;
+            if (isConversationLoading) return;
+            if (!reset && !conversationHasMore) return;
+
+            if (reset) {
+                conversationOffset = 0;
+                conversationHasMore = true;
+            }
+
+            isConversationLoading = true;
+            const topLoader = document.getElementById('sms-chat-loader-top');
+            if (topLoader) topLoader.classList.remove('hidden');
+
+            sendCommand({
+                action: 'FETCH_SMS_CONVERSATION',
+                threadId: activeSmsThread.threadId || 0,
+                address: activeSmsThread.address || '',
+                offset: conversationOffset,
+                limit: CONVERSATION_LIMIT
+            });
+        }
+
+        function handleSmsConversationResult(data) {
+            isConversationLoading = false;
+            const topLoader = document.getElementById('sms-chat-loader-top');
+            if (topLoader) topLoader.classList.add('hidden');
+
+            if (!activeSmsThread) return;
+            if (data.threadId && activeSmsThread.threadId && data.threadId !== activeSmsThread.threadId) return;
+
+            const newMsgs = data.messages || [];
+            conversationTotal = data.total || 0;
+            conversationHasMore = data.hasMore || false;
+            conversationOffset = (data.offset || 0) + newMsgs.length;
+
+            const container = document.getElementById('sms-messages-container');
+            const prevScrollHeight = container ? container.scrollHeight : 0;
+
+            if (data.offset === 0) {
+                activeConversationMessages = newMsgs;
+                renderConversationMessages();
+                if (container) {
+                    setTimeout(() => { container.scrollTop = container.scrollHeight; }, 60);
+                }
+            } else {
+                activeConversationMessages = [...newMsgs, ...activeConversationMessages];
+                renderConversationMessages();
+                if (container) {
+                    const newScrollHeight = container.scrollHeight;
+                    container.scrollTop = newScrollHeight - prevScrollHeight;
+                }
+            }
+        }
+
+        function renderConversationMessages() {
+            const container = document.getElementById('sms-messages-container');
+            if (!container) return;
+
+            if (activeConversationMessages.length === 0) {
+                container.innerHTML = `
+                    <div class="flex-1 flex flex-col items-center justify-center p-6 text-center text-gray-400 text-xs">
+                        <span class="text-2xl mb-1">💬</span>
+                        <span>No messages yet in this conversation.</span>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+            activeConversationMessages.forEach(msg => {
+                const isIncoming = msg.type === 1; // 1 = Inbox / Received, 2 = Sent / Outbox
+                const formattedTime = formatSmsTime(msg.date);
+                const bodyHtml = linkifyText(msg.body);
+
+                if (isIncoming) {
+                    html += `
+                    <div class="flex flex-col items-start max-w-[85%] sm:max-w-[75%] select-text">
+                        <div class="bg-white text-gray-800 border border-gray-200/80 rounded-2xl rounded-bl-sm p-3 text-xs shadow-xs leading-relaxed">
+                            ${bodyHtml}
+                        </div>
+                        <span class="text-[9px] text-gray-400 mt-1 ml-1 font-mono">${formattedTime}</span>
+                    </div>`;
+                } else {
+                    html += `
+                    <div class="flex flex-col items-end self-end max-w-[85%] sm:max-w-[75%] select-text">
+                        <div class="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-2xl rounded-br-sm p-3 text-xs shadow-md leading-relaxed">
+                            ${bodyHtml}
+                        </div>
+                        <div class="flex items-center gap-1 text-[9px] text-gray-400 mt-1 mr-1 font-mono">
+                            <span>${formattedTime}</span>
+                            <span class="text-blue-500 font-bold">${msg.isOptimistic ? '⏳' : '✓'}</span>
+                        </div>
+                    </div>`;
+                }
+            });
+
+            container.innerHTML = html;
+        }
+
+        function updateSmsCharCount(text) {
+            const counter = document.getElementById('sms-char-counter');
+            if (!counter) return;
+            const len = (text || '').length;
+            const limit = 160;
+            const segments = Math.ceil(len / limit) || 1;
+            counter.textContent = `${len} / ${limit} (${segments} SMS)`;
+        }
+
+        function insertSmsEmoji(emoji) {
+            const textarea = document.getElementById('sms-compose-text');
+            if (!textarea) return;
+            textarea.value += emoji;
+            updateSmsCharCount(textarea.value);
+            textarea.focus();
+        }
+
+        function sendActiveThreadSms() {
+            if (!activeSmsThread) return;
+            const textarea = document.getElementById('sms-compose-text');
+            if (!textarea) return;
+            const text = textarea.value.trim();
+            if (!text) return;
+
+            const to = activeSmsThread.address;
+            const threadId = activeSmsThread.threadId || 0;
+
+            // Optimistic instant bubble update
+            const optimisticMsg = {
+                id: Date.now(),
+                address: to,
+                body: text,
+                date: Date.now(),
+                type: 2,
+                isOptimistic: true
+            };
+            activeConversationMessages.push(optimisticMsg);
+            renderConversationMessages();
+            const container = document.getElementById('sms-messages-container');
+            if (container) setTimeout(() => { container.scrollTop = container.scrollHeight; }, 30);
+
+            // Update snippet in left sidebar
+            activeSmsThread.snippet = text;
+            activeSmsThread.date = Date.now();
+            activeSmsThread.messageCount = (activeSmsThread.messageCount || 0) + 1;
+            renderSmsThreadsList();
+
+            textarea.value = '';
+            updateSmsCharCount('');
+
+            sendCommand({
+                action: 'SEND_SMS',
+                to: to,
+                message: text,
+                threadId: threadId
+            });
+        }
+
+        function handleSmsSentStatus(data) {
+            if (data.success) {
+                showToast("SMS dispatched successfully! ✈️", "success");
+                // Update optimistic bubble to confirmed
+                if (activeConversationMessages.length > 0) {
+                    const lastMsg = activeConversationMessages[activeConversationMessages.length - 1];
+                    if (lastMsg && lastMsg.isOptimistic) {
+                        delete lastMsg.isOptimistic;
+                        renderConversationMessages();
+                    }
+                }
+            } else {
+                showToast("Failed to send SMS. Check phone network & SIM.", "error");
+            }
+        }
+
+        function handleSmsThreadsUpdated(newTopThreads) {
+            if (!newTopThreads || newTopThreads.length === 0) return;
+            const top = newTopThreads[0];
+
+            // If active thread matches incoming SMS, auto-append
+            if (activeSmsThread && (
+                (activeSmsThread.threadId && top.threadId && activeSmsThread.threadId === top.threadId) ||
+                (activeSmsThread.address && top.address && activeSmsThread.address === top.address)
+            )) {
+                activeConversationMessages.push({
+                    id: Date.now(),
+                    address: top.address,
+                    body: top.snippet,
+                    date: top.date,
+                    type: top.type
+                });
+                renderConversationMessages();
+                const container = document.getElementById('sms-messages-container');
+                if (container) setTimeout(() => { container.scrollTop = container.scrollHeight; }, 50);
+            }
+
+            // Re-sync top threads in sidebar
+            loadSmsThreads(true);
+        }
+
+        function handleSmsThreadDeleted(data) {
+            if (data.success) {
+                showToast("Conversation deleted from phone.", "info");
+                smsThreads = smsThreads.filter(t => {
+                    if (data.threadId && t.threadId) return t.threadId !== data.threadId;
+                    return t.address !== data.address;
+                });
+                allSmsThreads = [...smsThreads];
+                if (activeSmsThread && (activeSmsThread.threadId === data.threadId || activeSmsThread.address === data.address)) {
+                    activeSmsThread = null;
+                    document.getElementById('sms-chat-pane').classList.add('hidden');
+                    document.getElementById('sms-empty-state').classList.remove('hidden');
+                }
+                renderSmsThreadsList();
+            } else {
+                showToast("Could not delete conversation.", "warning");
+            }
+        }
+
+        function deleteActiveThread() {
+            if (!activeSmsThread) return;
+            const displayName = activeSmsThread.contactName || activeSmsThread.address;
+            if (!confirm(`Are you sure you want to delete conversation with ${displayName}?`)) return;
+
+            sendCommand({
+                action: 'DELETE_SMS_THREAD',
+                threadId: activeSmsThread.threadId || 0,
+                address: activeSmsThread.address || ''
+            });
+        }
+
+        function copyActiveContactNumber() {
+            if (!activeSmsThread) return;
+            navigator.clipboard.writeText(activeSmsThread.address).then(() => {
+                showToast("Number copied to clipboard! 📋", "info");
+            });
+        }
+
+        function callActiveContact() {
+            if (!activeSmsThread) return;
+            const number = activeSmsThread.address;
+            sendCommand({ action: 'MAKE_CALL', number: number });
+            showToast(`Calling ${number} on phone... 📞`, "success");
+        }
+
+        // --- New SMS Composer ---
+        function openNewSmsComposer() {
+            const emptyState = document.getElementById('sms-empty-state');
+            const chatPane = document.getElementById('sms-chat-pane');
+            const newPane = document.getElementById('sms-new-pane');
+            if (emptyState) emptyState.classList.add('hidden');
+            if (chatPane) chatPane.classList.add('hidden');
+            if (newPane) newPane.classList.remove('hidden');
+
+            const recipientInput = document.getElementById('sms-new-recipient');
+            const bodyInput = document.getElementById('sms-new-body');
+            if (recipientInput) { recipientInput.value = ''; recipientInput.focus(); }
+            if (bodyInput) { bodyInput.value = ''; }
+            const counter = document.getElementById('sms-new-counter');
+            if (counter) counter.textContent = '0 / 160 (1 SMS)';
+        }
+
+        function closeNewSmsComposer() {
+            const newPane = document.getElementById('sms-new-pane');
+            if (newPane) newPane.classList.add('hidden');
+            if (activeSmsThread) {
+                document.getElementById('sms-chat-pane').classList.remove('hidden');
+            } else {
+                document.getElementById('sms-empty-state').classList.remove('hidden');
+            }
+        }
+
+        function dispatchNewSms() {
+            const recipient = document.getElementById('sms-new-recipient')?.value.trim();
+            const body = document.getElementById('sms-new-body')?.value.trim();
+            if (!recipient) {
+                showToast("Please enter a recipient number or contact.", "warning");
+                return;
+            }
+            if (!body) {
+                showToast("Please type a message body.", "warning");
+                return;
+            }
+
+            sendCommand({ action: 'SEND_SMS', to: recipient, message: body });
+            showToast(`Sending SMS to ${recipient}... ✈️`, "info");
+            closeNewSmsComposer();
+
+            // After 1s refresh threads to pick up newly started conversation
+            setTimeout(() => {
+                loadSmsThreads(true);
+            }, 1200);
+        }
+
+
+        
 
         // --- AirDroid Contacts Management System (Strict Bottom-Scroll On-Demand) ---
         let rawContacts = [];

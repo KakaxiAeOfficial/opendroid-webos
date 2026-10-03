@@ -113,6 +113,29 @@ class LocalFileServerService : Service() {
 
 
 
+
+    private var smsObserver: android.database.ContentObserver? = null
+
+    private fun registerSmsObserver() {
+        try {
+            smsObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean, uri: Uri?) {
+                    super.onChange(selfChange, uri)
+                    serviceScope.launch(Dispatchers.IO) {
+                        try {
+                            val latestThreads = teleManager.getSmsThreadsPaged(0, 10)
+                            broadcastMessage(JSONObject().apply {
+                                put("type", "SMS_THREADS_UPDATED")
+                                put("data", latestThreads.getJSONArray("threads"))
+                            }.toString())
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+            contentResolver.registerContentObserver(Uri.parse("content://sms"), true, smsObserver!!)
+        } catch (_: Exception) {}
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -153,6 +176,7 @@ class LocalFileServerService : Service() {
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        registerSmsObserver()
 
 
 
@@ -681,6 +705,17 @@ class LocalFileServerService : Service() {
         } catch (e: Exception) { e.printStackTrace() }
         try {
             broadcastMessage(JSONObject().put("type", "SMS_LIST").put("data", teleManager.getRecentSms()).toString())
+        } catch (e: Exception) { e.printStackTrace() }
+        try {
+            val initialThreads = teleManager.getSmsThreadsPaged(0, 25)
+            broadcastMessage(JSONObject().apply {
+                put("type", "SMS_THREADS_RESULT")
+                put("data", initialThreads.getJSONArray("threads"))
+                put("offset", initialThreads.getInt("offset"))
+                put("limit", initialThreads.getInt("limit"))
+                put("total", initialThreads.getInt("total"))
+                put("hasMore", initialThreads.getBoolean("hasMore"))
+            }.toString())
         } catch (e: Exception) { e.printStackTrace() }
         try {
             val contactsPaged = teleManager.getContactsPaged(0, 150)
@@ -1808,6 +1843,57 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+            "FETCH_SMS_THREADS" -> {
+                val offset = json.optInt("offset", 0)
+                val limit = json.optInt("limit", 25)
+                serviceScope.launch(Dispatchers.IO) {
+                    val pagedThreads = teleManager.getSmsThreadsPaged(offset, limit)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "SMS_THREADS_RESULT")
+                        put("data", pagedThreads.getJSONArray("threads"))
+                        put("offset", pagedThreads.getInt("offset"))
+                        put("limit", pagedThreads.getInt("limit"))
+                        put("total", pagedThreads.getInt("total"))
+                        put("hasMore", pagedThreads.getBoolean("hasMore"))
+                    }.toString())
+                }
+            }
+
+            "FETCH_SMS_CONVERSATION" -> {
+                val threadId = json.optLong("threadId", 0L)
+                val address = json.optString("address", "")
+                val offset = json.optInt("offset", 0)
+                val limit = json.optInt("limit", 50)
+                serviceScope.launch(Dispatchers.IO) {
+                    val pagedMessages = teleManager.getThreadMessagesPaged(threadId, address, offset, limit)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "SMS_CONVERSATION_RESULT")
+                        put("threadId", pagedMessages.getLong("threadId"))
+                        put("address", pagedMessages.getString("address"))
+                        put("contactName", pagedMessages.optString("contactName", ""))
+                        put("messages", pagedMessages.getJSONArray("messages"))
+                        put("offset", pagedMessages.getInt("offset"))
+                        put("limit", pagedMessages.getInt("limit"))
+                        put("total", pagedMessages.getInt("total"))
+                        put("hasMore", pagedMessages.getBoolean("hasMore"))
+                    }.toString())
+                }
+            }
+
+            "DELETE_SMS_THREAD" -> {
+                val threadId = json.optLong("threadId", 0L)
+                val address = json.optString("address", "")
+                serviceScope.launch(Dispatchers.IO) {
+                    val success = teleManager.deleteSmsThread(threadId, address)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "SMS_THREAD_DELETED")
+                        put("threadId", threadId)
+                        put("address", address)
+                        put("success", success)
+                    }.toString())
+                }
+            }
+
 
 
 
@@ -2193,6 +2279,7 @@ class LocalFileServerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(batteryReceiver)
+        try { smsObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}
 
 
 

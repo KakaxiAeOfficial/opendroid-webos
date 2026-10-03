@@ -1331,6 +1331,253 @@ fun sendSms(to: String, message: String): Boolean {
 
 }
 
+    // --- Phase 9: High-Speed Paginated SMS Conversations & Threads Engine ---
+    private val contactNameCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    fun resolveContactName(phoneNumber: String): String {
+        if (phoneNumber.isBlank() || phoneNumber == "Unknown") return phoneNumber
+        contactNameCache[phoneNumber]?.let { return it }
+
+        var resolvedName = phoneNumber
+        try {
+            val uri = Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                Uri.encode(phoneNumber)
+            )
+            val cursor = context.contentResolver.query(
+                uri,
+                arrayOf(ContactsContract.PhoneLookup.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val nameIdx = it.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
+                    if (nameIdx != -1) {
+                        val name = it.getString(nameIdx)
+                        if (!name.isNullOrBlank()) {
+                            resolvedName = name
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        contactNameCache[phoneNumber] = resolvedName
+        return resolvedName
+    }
+
+    fun getSmsThreadsPaged(offset: Int = 0, limit: Int = 25): JSONObject {
+        val result = JSONObject()
+        val array = JSONArray()
+        try {
+            val uri = Uri.parse("content://sms")
+            val projection = arrayOf(
+                "_id",
+                "thread_id",
+                "address",
+                "body",
+                "date",
+                "type",
+                "read"
+            )
+            val cursor = context.contentResolver.query(
+                uri,
+                projection,
+                null,
+                null,
+                "date DESC"
+            )
+
+            cursor?.use {
+                val threadIdIdx = it.getColumnIndex("thread_id")
+                val addrIdx = it.getColumnIndex("address")
+                val bodyIdx = it.getColumnIndex("body")
+                val dateIdx = it.getColumnIndex("date")
+                val typeIdx = it.getColumnIndex("type")
+                val readIdx = it.getColumnIndex("read")
+
+                class ThreadSummary(
+                    val threadId: Long,
+                    val address: String,
+                    val snippet: String,
+                    val date: Long,
+                    val type: Int,
+                    var unreadCount: Int = 0,
+                    var messageCount: Int = 0
+                )
+
+                val threadMap = LinkedHashMap<String, ThreadSummary>()
+
+                while (it.moveToNext()) {
+                    val tId = if (threadIdIdx != -1) it.getLong(threadIdIdx) else 0L
+                    val rawAddr = if (addrIdx != -1) it.getString(addrIdx) ?: "Unknown" else "Unknown"
+                    val body = if (bodyIdx != -1) it.getString(bodyIdx) ?: "" else ""
+                    val date = if (dateIdx != -1) it.getLong(dateIdx) else 0L
+                    val type = if (typeIdx != -1) it.getInt(typeIdx) else 1
+                    val read = if (readIdx != -1) it.getInt(readIdx) else 1
+
+                    val key = if (tId > 0) "tid_$tId" else "addr_$rawAddr"
+                    val existing = threadMap[key]
+                    if (existing == null) {
+                        val summary = ThreadSummary(
+                            threadId = tId,
+                            address = rawAddr,
+                            snippet = body,
+                            date = date,
+                            type = type,
+                            unreadCount = if (read == 0 && type == 1) 1 else 0,
+                            messageCount = 1
+                        )
+                        threadMap[key] = summary
+                    } else {
+                        existing.messageCount++
+                        if (read == 0 && type == 1) {
+                            existing.unreadCount++
+                        }
+                    }
+                }
+
+                val allThreads = threadMap.values.toList()
+                val totalCount = allThreads.size
+                val startIndex = Math.min(offset, totalCount)
+                val endIndex = Math.min(startIndex + limit, totalCount)
+
+                for (i in startIndex until endIndex) {
+                    val t = allThreads[i]
+                    val obj = JSONObject().apply {
+                        put("threadId", t.threadId)
+                        put("address", t.address)
+                        put("contactName", resolveContactName(t.address))
+                        put("snippet", t.snippet)
+                        put("date", t.date)
+                        put("type", t.type)
+                        put("unreadCount", t.unreadCount)
+                        put("messageCount", t.messageCount)
+                    }
+                    array.put(obj)
+                }
+
+                result.put("threads", array)
+                result.put("offset", offset)
+                result.put("limit", limit)
+                result.put("total", totalCount)
+                result.put("hasMore", endIndex < totalCount)
+                return result
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        result.put("threads", array)
+        result.put("offset", offset)
+        result.put("limit", limit)
+        result.put("total", 0)
+        result.put("hasMore", false)
+        return result
+    }
+
+    fun getThreadMessagesPaged(threadId: Long, address: String, offset: Int = 0, limit: Int = 50): JSONObject {
+        val result = JSONObject()
+        val array = JSONArray()
+        var totalMessages = 0
+        try {
+            val uri = Uri.parse("content://sms")
+            val projection = arrayOf(
+                "_id",
+                "thread_id",
+                "address",
+                "body",
+                "date",
+                "type",
+                "read"
+            )
+
+            val selection: String?
+            val selectionArgs: Array<String>?
+            if (threadId > 0) {
+                selection = "thread_id = ?"
+                selectionArgs = arrayOf(threadId.toString())
+            } else if (address.isNotBlank()) {
+                selection = "address = ?"
+                selectionArgs = arrayOf(address)
+            } else {
+                selection = null
+                selectionArgs = null
+            }
+
+            val cursor = context.contentResolver.query(
+                uri,
+                projection,
+                selection,
+                selectionArgs,
+                "date DESC"
+            )
+
+            cursor?.use {
+                totalMessages = it.count
+                if (offset < totalMessages) {
+                    it.moveToPosition(offset - 1)
+                    val idCol = it.getColumnIndex("_id")
+                    val addrCol = it.getColumnIndex("address")
+                    val bodyCol = it.getColumnIndex("body")
+                    val dateCol = it.getColumnIndex("date")
+                    val typeCol = it.getColumnIndex("type")
+                    val readCol = it.getColumnIndex("read")
+
+                    var count = 0
+                    val pageList = mutableListOf<JSONObject>()
+                    while (it.moveToNext() && (limit <= 0 || count < limit)) {
+                        count++
+                        val msgObj = JSONObject().apply {
+                            put("id", if (idCol != -1) it.getLong(idCol) else 0L)
+                            put("address", if (addrCol != -1) it.getString(addrCol) ?: address else address)
+                            put("body", if (bodyCol != -1) it.getString(bodyCol) ?: "" else "")
+                            put("date", if (dateCol != -1) it.getLong(dateCol) else 0L)
+                            put("type", if (typeCol != -1) it.getInt(typeCol) else 1)
+                            put("read", if (readCol != -1) it.getInt(readCol) else 1)
+                        }
+                        pageList.add(msgObj)
+                    }
+
+                    // Reverse so chronological ascending in chat
+                    pageList.reverse()
+                    pageList.forEach { obj -> array.put(obj) }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        result.put("threadId", threadId)
+        val resolvedAddress = if (address.isNotBlank()) address else "Unknown"
+        result.put("address", resolvedAddress)
+        result.put("contactName", resolveContactName(resolvedAddress))
+        result.put("messages", array)
+        result.put("offset", offset)
+        result.put("limit", limit)
+        result.put("total", totalMessages)
+        result.put("hasMore", (offset + array.length()) < totalMessages)
+        return result
+    }
+
+    fun deleteSmsThread(threadId: Long, address: String): Boolean {
+        return try {
+            if (threadId > 0) {
+                val uri = Uri.parse("content://sms/conversations/$threadId")
+                context.contentResolver.delete(uri, null, null) > 0
+            } else if (address.isNotBlank()) {
+                val uri = Uri.parse("content://sms")
+                context.contentResolver.delete(uri, "address = ?", arrayOf(address)) > 0
+            } else false
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+
 fun getContactsPaged(offset: Int = 0, limit: Int = 150): JSONObject {
     val result = JSONObject()
     val array = JSONArray()
@@ -1703,5 +1950,6 @@ fun getStorageStats(): JSONObject {
 }
 
 }
+
 
 
