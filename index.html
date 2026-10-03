@@ -53,6 +53,8 @@
 <body class="h-screen w-screen text-gray-800 font-sans relative">
 
 
+
+
     <!-- Connect / Pairing Modal (Dual-Mode: 6-Digit Guest or Central Account) -->
         <!-- Admin Custom Wallpaper Modal -->
     <div id="wallpaper-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md z-[120] flex items-center justify-center p-4">
@@ -64,6 +66,8 @@
                 </div>
                 <button onclick="closeWallpaperModal()" class="text-gray-400 hover:text-white text-lg">✕</button>
             </div>
+
+
 
 
             <div class="mt-4 space-y-4 text-xs">
@@ -102,6 +106,12 @@
 
 
 
+
+
+
+
+
+
                 <div class="pt-2 border-t border-gray-800 flex items-center justify-between">
                     <div>
                         <span class="text-gray-300 block font-semibold text-xs">Upload Local Wallpaper:</span>
@@ -117,11 +127,15 @@
     </div>
 
 
+
+
     <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full text-center">
             <div class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 shadow-lg text-white">📱</div>
             <h2 class="text-xl font-bold text-gray-900">OpenDroid WebOS</h2>
             <p class="text-xs text-gray-500 mt-0.5 mb-3">AirDroid-Style Wireless Remote Management</p>
+
+
 
 
             <!-- Mode Tabs -->
@@ -135,12 +149,16 @@
             </div>
 
 
+
+
             <!-- Mode 1: Central Account & Multi-Device Hub -->
             <div id="mode-account-section" class="space-y-3">
                 <div class="text-left">
                     <label class="text-[11px] font-semibold text-gray-700">Account Email</label>
                     <input type="email" id="account-email-input" placeholder="e.g. user@gmail.com" class="w-full text-xs border border-gray-300 rounded-xl p-2.5 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
+
+
 
 
                 <div class="text-left">
@@ -152,9 +170,19 @@
                 </div>
 
 
+
+
+                <div class="flex items-center justify-between px-1 py-1">
+                    <label class="flex items-center gap-2 cursor-pointer text-[11px] text-gray-600 select-none">
+                        <input type="checkbox" id="account-remember-me" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
+                        <span>Remember Account on this Browser</span>
+                    </label>
+                </div>
                 <button id="account-login-btn" onclick="connectViaAccount()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs flex items-center justify-center gap-1.5">
                     <span>🌐</span><span>Sign In & Load Devices</span>
                 </button>
+
+
 
 
                 <!-- Discovered Devices Selector (Revealed after sign in) -->
@@ -173,6 +201,8 @@
             </div>
 
 
+
+
             <!-- Mode 2: Quick 6-Digit Guest Code -->
             <div id="mode-code-section" class="hidden space-y-3">
                 <p class="text-xs text-gray-500">Enter the 6-digit code shown on your phone:</p>
@@ -181,11 +211,15 @@
             </div>
 
 
+
+
             <div class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-center gap-4 text-xs">
                 <button onclick="connectLocal()" class="text-gray-400 hover:text-gray-600 underline text-[11px]">Connect via Local Wi-Fi</button>
             </div>
         </div>
     </div>
+
+
 
 
     <!-- On-Demand Image Preview Modal -->
@@ -206,6 +240,8 @@
     </div>
 
 
+
+
     <!-- On-Demand Video Player Modal -->
     <div id="video-player-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
         <div class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden">
@@ -224,6 +260,8 @@
     </div>
 
 
+
+
     <!-- Top Dock Bar -->
     <!-- Top Navigation Header (AirDroid-Inspired Cybernetic Glassmorphic Bar) -->
     <header class="fixed top-0 left-0 right-0 h-12 bg-gray-950/85 backdrop-blur-xl border-b border-gray-800/80 z-50 flex items-center justify-between px-4 text-xs select-none">
@@ -239,7 +277,9 @@
                 </div>
             </div>
 
+
             <div class="h-4 w-[1px] bg-gray-800 mx-1"></div>
+
 
             <div id="connection-status-pill" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-800/50 text-[11px] text-emerald-400 font-medium">
                 <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -247,12 +287,14 @@
             </div>
         </div>
 
+
         <!-- Center: Global Quick Search Input -->
         <div class="relative flex items-center flex-1 max-w-md mx-6">
             <input type="text" id="top-search" oninput="handleGlobalSearch(this.value)" placeholder="Search apps, files, contacts..." class="w-full bg-gray-900/90 border border-gray-700/80 rounded-full pl-9 pr-8 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all shadow-inner">
             <span class="absolute left-3 text-gray-400 text-xs">🔍</span>
             <button onclick="document.getElementById('top-search').value=''; handleGlobalSearch('')" class="absolute right-2.5 text-gray-500 hover:text-gray-300 text-xs">✕</button>
         </div>
+
 
         <!-- Right: Action Icons (Switch Device, Themes, Alerts, Settings, Terminal, Power) -->
         <div class="flex items-center gap-2.5">
@@ -271,12 +313,14 @@
                 <span class="text-[10px] text-gray-400 group-hover:text-cyan-400 transition-colors">▼</span>
             </button>
 
+
             <!-- 2. Themes & Custom Wallpaper (T-Shirt / Palette Icon) -->
             <button onclick="openWallpaperModal()" class="w-8 h-8 rounded-full bg-gray-900/90 hover:bg-gray-800 text-gray-300 hover:text-purple-300 border border-gray-700/80 hover:border-purple-500/70 transition-all flex items-center justify-center cursor-pointer group" title="Theme & Wallpaper Customizer">
                 <svg class="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path>
                 </svg>
             </button>
+
 
             <!-- 3. Notification Center & Alerts (Bell Icon) -->
             <button onclick="wm.openWindow('notif-window')" class="relative w-8 h-8 rounded-full bg-gray-900/90 hover:bg-gray-800 text-gray-300 hover:text-amber-300 border border-gray-700/80 hover:border-amber-500/70 transition-all flex items-center justify-center cursor-pointer group" title="Notification History & Alerts">
@@ -287,6 +331,7 @@
                 <span id="notif-badge-header" class="hidden absolute -top-1 -right-1 bg-amber-500 text-black text-[9px] font-bold px-1 rounded-full font-mono">0</span>
             </button>
 
+
             <!-- 4. Settings / Device Info (Gear Icon matching user image) -->
             <button onclick="wm.openWindow('info-window')" class="w-8 h-8 rounded-full bg-gray-900/90 hover:bg-gray-800 text-gray-300 hover:text-blue-300 border border-gray-700/80 hover:border-blue-500/70 transition-all flex items-center justify-center cursor-pointer group" title="Device Information & Settings">
                 <svg class="w-4 h-4 text-blue-400 group-hover:rotate-45 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -294,6 +339,7 @@
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                 </svg>
             </button>
+
 
             <!-- 5. Virtual Terminal Quick Launch (Pencil/Terminal Icon) -->
             <button onclick="wm.openWindow('terminal-window')" class="w-8 h-8 rounded-full bg-gray-900/90 hover:bg-gray-800 text-gray-300 hover:text-emerald-300 border border-gray-700/80 hover:border-emerald-500/70 transition-all flex items-center justify-center cursor-pointer group" title="Remote Shell Terminal">
@@ -303,7 +349,9 @@
                 </svg>
             </button>
 
+
             <span id="clock" class="font-mono text-gray-300 text-xs px-2 py-0.5 bg-gray-900/70 rounded border border-gray-800">00:00</span>
+
 
             <!-- 6. Disconnect / Power Button -->
             <button onclick="location.reload()" title="Sign Out / Disconnect" class="w-8 h-8 rounded-full bg-gray-900/90 hover:bg-rose-950/80 text-gray-400 hover:text-rose-400 border border-gray-700/80 hover:border-rose-500/70 transition-all flex items-center justify-center cursor-pointer group">
@@ -313,6 +361,7 @@
                 </svg>
             </button>
         </div>
+
 
         <!-- AirDroid-Style Device Switcher Dropdown Modal -->
         <div id="device-switch-dropdown" class="hidden absolute top-14 right-24 w-84 bg-gray-950/95 backdrop-blur-2xl border border-gray-700/80 rounded-2xl shadow-2xl z-50 p-4 text-gray-100 flex flex-col gap-3">
@@ -338,6 +387,8 @@
     </header>
 
 
+
+
     <!-- Floating Live Call Alert Banner (Ambient Intelligence) -->
     <div id="live-call-banner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 bg-gray-900/95 text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-rose-500/40 z-50 flex items-center gap-3 backdrop-blur-xl animate-bounce text-xs select-none">
         <div class="w-8 h-8 rounded-full bg-rose-600/30 text-rose-400 flex items-center justify-center font-bold text-base animate-pulse">📞</div>
@@ -358,8 +409,12 @@
     </div>
 
 
+
+
     <!-- Desktop Icons Grid (Vertical Column-Wrapping AirDroid Style) -->
     <div class="p-6 mt-12 flex flex-col flex-wrap gap-x-8 gap-y-6 max-h-[85vh] w-max">
+
+
 
 
         <!-- Communication & Telephony -->
@@ -376,6 +431,14 @@
             <span class="text-xs font-medium text-center mt-1">Contacts</span>
         </div>
 
+
+
+
+        <!-- Phase 7: Multi-Device Fleet Hub -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('fleet-window')">
+            <div class="app-tile bg-gradient-to-tr from-indigo-500 to-purple-600">🌐</div>
+            <span class="text-xs font-medium text-center mt-1">Device Hub</span>
+        </div>
 
         <!-- Media & Files -->
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('file-window')">
@@ -394,6 +457,8 @@
             <div class="app-tile bg-gradient-to-tr from-blue-400 to-indigo-500">🎬</div>
             <span class="text-xs font-medium text-center mt-1">Videos</span>
         </div>
+
+
 
 
         <!-- Management & Utilities -->
@@ -417,6 +482,8 @@
             <div class="app-tile bg-gradient-to-tr from-orange-500 to-amber-600">🔔</div>
             <span class="text-xs font-medium text-center mt-1">Ringtone</span>
         </div>
+
+
 
 
         <!-- Remote Controls, Web & Security -->
@@ -449,8 +516,12 @@
     </div>
 
 
+
+
     <!-- AirDroid-Style Right-Side Device & Quick Toolbox Widget -->
     <div id="airdroid-widget" class="fixed top-14 right-6 w-80 bg-gray-900/85 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-4 text-white z-20 transition-all duration-300 select-none">
+
+
 
 
         <!-- Header: Phone Model & Status -->
@@ -471,7 +542,11 @@
         </div>
 
 
+
+
         <div id="widget-body" class="transition-all duration-300 space-y-3 pt-3">
+
+
 
 
             <!-- Live Audio & Walkie-Talkie Bar (Moved from Header) -->
@@ -495,6 +570,8 @@
             </div>
 
 
+
+
             <!-- Battery & Storage Gauges Grid -->
             <div class="grid grid-cols-2 gap-2.5 bg-black/30 p-2.5 rounded-xl border border-white/5">
                 <!-- Battery Circular Gauge -->
@@ -516,6 +593,8 @@
                 </div>
 
 
+
+
                 <!-- Storage Gauge -->
                 <div class="flex flex-col justify-center text-left">
                     <div class="flex items-center justify-between text-[11px] font-semibold mb-1">
@@ -529,6 +608,8 @@
                     <div id="widget-storage-free" class="text-[9px] text-emerald-400 font-mono truncate">Free: --</div>
                 </div>
             </div>
+
+
 
 
             <!-- Quick Toolbox Tabs -->
@@ -547,6 +628,8 @@
                 </div>
 
 
+
+
                 <!-- Tab 1: Quick File Drop Content -->
                 <div id="widget-tab-file" class="space-y-1.5">
                     <div id="widget-dropzone" onclick="document.getElementById('widget-file-input').click()"
@@ -563,6 +646,8 @@
                 </div>
 
 
+
+
                 <!-- Tab 2: Quick Clipboard Content -->
                 <div id="widget-tab-text" class="hidden space-y-1.5">
                     <textarea id="widget-clipboard-input" rows="2" placeholder="Type or paste text to send to phone clipboard..."
@@ -572,6 +657,8 @@
                     </button>
                     <div id="widget-clip-status" class="text-[10px] text-center font-mono text-gray-400 h-3"></div>
                 </div>
+
+
 
 
                 <!-- Tab 3: Quick URL Content -->
@@ -584,6 +671,8 @@
                     <div id="widget-url-status" class="text-[10px] text-center font-mono text-gray-400 h-3"></div>
                 </div>
             </div>
+
+
 
 
             <!-- Quick Action Shortcuts (With Violet Glowing Hover Effects) -->
@@ -627,8 +716,12 @@
             </div>
 
 
+
+
         </div>
     </div>
+
+
 
 
     <!-- Window: Open URL on Phone -->
@@ -657,6 +750,62 @@
     </div>
 
 
+
+
+    
+    <!-- Phase 7: Multi-Device Fleet Manager Window -->
+    <div id="fleet-window" class="window hidden" style="display: none; width: 540px; height: 500px; top: 80px; left: 240px;">
+        <div class="title-bar bg-gray-900 text-white px-3 py-2 flex justify-between items-center border-b border-gray-800">
+            <div class="flex items-center gap-2">
+                <span class="text-sm">🌐</span>
+                <span class="font-bold text-xs tracking-wide">Multi-Device Fleet Hub</span>
+            </div>
+            <div class="flex items-center gap-1.5 no-drag">
+                <button onclick="wm.minimizeWindow('fleet-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('fleet-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize">□</button>
+                <button onclick="wm.closeWindow('fleet-window')" class="text-gray-400 hover:text-red-400 text-xs px-1.5 py-0.5 rounded hover:bg-red-500/20 font-bold transition-all" title="Close">✕</button>
+            </div>
+        </div>
+        <div class="p-4 bg-gray-950 text-white flex-1 overflow-y-auto space-y-4">
+            <!-- Account & Fleet Summary Banner -->
+            <div class="bg-gray-900/90 border border-gray-800 rounded-xl p-3.5 flex items-center justify-between shadow-sm">
+                <div>
+                    <div class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Active Fleet Account</div>
+                    <div id="fleet-account-email" class="text-xs font-bold text-cyan-400 font-mono mt-0.5">Not Signed In</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="fleet-summary-badge" class="text-[11px] bg-cyan-950 text-cyan-300 border border-cyan-800/60 px-2.5 py-1 rounded-full font-semibold">0 Phones</span>
+                    <button onclick="disconnectAccountSession()" class="text-[10px] bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800/60 px-2.5 py-1 rounded-lg transition-all font-semibold" title="Disconnect Account">Log Out</button>
+                </div>
+            </div>
+
+            <!-- Discovered Devices List -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-gray-200">Registered Devices</span>
+                    <button onclick="triggerDiscoveryPing()" class="text-[10px] text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 cursor-pointer">
+                        <span>🔄</span><span>Scan Fleet</span>
+                    </button>
+                </div>
+                <div id="fleet-device-cards-container" class="space-y-2.5">
+                    <div class="text-center py-6 text-gray-500 text-xs bg-gray-900/50 rounded-xl border border-gray-800/80">
+                        No devices discovered yet. Bind your phones with the same Account Email & 6-Digit PIN in the Android app.
+                    </div>
+                </div>
+            </div>
+
+            <!-- How to Add More Phones Tip -->
+            <div class="p-3 bg-blue-950/30 border border-blue-900/40 rounded-xl text-[11px] text-gray-300 space-y-1">
+                <div class="font-bold text-blue-400 flex items-center gap-1.5">
+                    <span>💡</span><span>How to add multiple devices to this WebOS:</span>
+                </div>
+                <p class="text-gray-400 leading-relaxed">
+                    Open OpenDroid app on any secondary Android phone, enter the exact same <b>Account Email</b> and <b>6-Digit Secret PIN</b>, and tap <i>Secure & Bind This Device</i>. It will automatically pop up here within seconds without resetting WebOS!
+                </p>
+            </div>
+        </div>
+    </div>
+
     <!-- Window: Remote Camera -->
     <div id="camera-window" class="window hidden" style="display: none; width: 440px; height: 580px; top: 70px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -676,12 +825,16 @@
             </div>
 
 
+
+
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden">
                 <img id="camera-frame-view" class="w-full h-full object-contain hidden" alt="Camera Feed" />
                 <div id="camera-placeholder" class="text-gray-500 text-xs text-center p-4">
                     Camera is currently stopped. Click "Start Camera" to stream.
                 </div>
             </div>
+
+
 
 
             <div class="bg-gray-900 p-3 flex flex-col gap-2.5 border-t border-gray-700 z-10 text-xs">
@@ -703,6 +856,8 @@
     </div>
 
 
+
+
     <!-- Window: Secret Stealth Capture Panel -->
     <div id="secret-window" class="window hidden" style="display: none; width: 520px; height: 580px; top: 80px; left: 350px;">
         <!-- Title Bar -->
@@ -720,6 +875,8 @@
         </div>
 
 
+
+
         <!-- Panel Content -->
         <div class="flex-1 bg-gray-900 text-gray-200 overflow-hidden flex flex-col">
             <!-- Capture Controls Bar -->
@@ -728,6 +885,8 @@
                     <span class="font-medium">Select Source:</span>
                     <span id="secret-status-text" class="text-emerald-400 font-mono text-[11px]">● Idle / Ready</span>
                 </div>
+
+
 
 
                 <!-- 3 Options Selection -->
@@ -747,6 +906,8 @@
                 </div>
 
 
+
+
                 <!-- Primary Action Button with Cooldown -->
                 <div class="flex items-center gap-2">
                     <button id="secret-capture-btn" onclick="triggerSecretCapture()" class="flex-1 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-700 hover:to-rose-800 text-white font-bold py-2 px-4 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 text-xs">
@@ -760,11 +921,15 @@
             </div>
 
 
+
+
             <!-- Gallery Header -->
             <div class="px-3 py-1.5 bg-gray-950/60 border-b border-gray-800 flex justify-between items-center text-[11px] text-gray-400">
                 <span>Session Captures (<span id="secret-count" class="font-mono text-cyan-400 font-bold">0</span>)</span>
                 <span class="text-gray-500">Stored in browser RAM only • Not saved on phone</span>
             </div>
+
+
 
 
             <!-- Gallery Grid (Retains all captured photos in chronological order) -->
@@ -777,6 +942,8 @@
             </div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Screen Mirroring -->
@@ -798,6 +965,8 @@
             </div>
 
 
+
+
             <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden select-none">
                 <img id="screen-frame-view" class="w-full h-full object-contain cursor-crosshair hidden" alt="Screen Mirror" />
                 <div id="screen-placeholder" class="text-gray-500 text-xs text-center p-4">
@@ -806,11 +975,15 @@
             </div>
 
 
+
+
             <div class="bg-gray-900 h-11 flex justify-around items-center border-t border-gray-700 z-10">
                 <button onclick="sendGlobalAction('BACK')" class="text-white text-lg hover:text-gray-300 px-4">◀</button>
                 <button onclick="sendGlobalAction('HOME')" class="text-white text-lg hover:text-gray-300 px-4">⚪</button>
                 <button onclick="sendGlobalAction('RECENTS')" class="text-white text-lg hover:text-gray-300 px-4">⏹</button>
             </div>
+
+
 
 
             <div class="bg-gray-900 p-2.5 border-t border-gray-800 z-10 flex flex-col gap-2 text-xs">
@@ -829,6 +1002,8 @@
             </div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Notification History Center -->
@@ -851,6 +1026,8 @@
     </div>
 
 
+
+
     <!-- Window: Files Explorer -->
     <div id="file-window" class="window hidden" style="display: none; width: 1040px; height: 640px; top: 60px; left: 160px; min-width: 760px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <!-- Title Bar -->
@@ -866,6 +1043,7 @@
             </div>
         </div>
 
+
         <!-- AirDroid Action Toolbar -->
         <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
             <!-- Left Controls: Search, View Switcher, Action Icons -->
@@ -877,7 +1055,9 @@
                     <button id="file-search-clear" onclick="clearFileSearch()" class="hidden absolute right-1.5 text-gray-400 hover:text-gray-600 text-[10px] font-bold">✕</button>
                 </div>
 
+
                 <div class="h-4 w-[1px] bg-gray-300 mx-0.5"></div>
+
 
                 <!-- View Mode Buttons -->
                 <div class="flex items-center bg-gray-200/60 p-0.5 rounded border border-gray-300/70">
@@ -889,12 +1069,15 @@
                     </button>
                 </div>
 
+
                 <!-- Refresh Button -->
                 <button onclick="refreshCurrentDir()" class="p-1.5 rounded hover:bg-gray-200 text-gray-600 transition-all" title="Refresh">
                     <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
                 </button>
 
+
                 <div class="h-4 w-[1px] bg-gray-300 mx-0.5"></div>
+
 
                 <!-- File Operations Toolbar Icons -->
                 <div class="flex items-center gap-1">
@@ -910,6 +1093,7 @@
                     <button id="tb-delete-btn" onclick="deleteSelectedFiles()" disabled class="p-1.5 rounded hover:bg-rose-100 text-rose-600 disabled:opacity-35 disabled:cursor-not-allowed text-xs transition-all" title="Delete (Del)">🗑️</button>
                 </div>
             </div>
+
 
             <!-- Right Controls: Download, Upload File, Upload Folder -->
             <div class="flex items-center gap-2">
@@ -927,6 +1111,7 @@
             </div>
         </div>
 
+
         <!-- Path Navigation & Breadcrumbs Bar -->
         <div class="bg-[#fcfdfe] border-b border-gray-200 px-3 py-1.5 flex items-center gap-2 text-xs select-none">
             <div class="flex items-center gap-1 text-gray-500">
@@ -941,6 +1126,7 @@
                 <span class="text-gray-400">/</span>
             </div>
         </div>
+
 
         <!-- Main Two-Pane Body -->
         <div class="flex-1 flex overflow-hidden relative bg-white" oncontextmenu="handleFileManagerContextMenu(event)">
@@ -960,7 +1146,9 @@
                     </div>
                 </div>
 
+
                 <div class="h-[1px] bg-gray-200 mx-2.5"></div>
+
 
                 <!-- Storage Folder Tree Section -->
                 <div class="p-2.5 flex-1 overflow-y-auto">
@@ -969,6 +1157,7 @@
                         <!-- Populated dynamically -->
                     </div>
                 </div>
+
 
                 <!-- System & External Storage Footer -->
                 <div class="p-2 border-t border-gray-200 bg-gray-100/70 text-[11px] space-y-1">
@@ -981,6 +1170,7 @@
                 </div>
             </div>
 
+
             <!-- Right Content Pane -->
             <div id="file-content-pane" class="flex-1 bg-white flex flex-col overflow-hidden relative" onclick="deselectAllFiles(event)">
                 <!-- Grid View (Default) -->
@@ -990,6 +1180,7 @@
                         <span>Loading directory...</span>
                     </div>
                 </div>
+
 
                 <!-- List View (Alternative) -->
                 <div id="files-list-container" class="hidden flex-1 overflow-y-auto">
@@ -1013,6 +1204,7 @@
             </div>
         </div>
 
+
         <!-- Bottom Status Bar -->
         <div class="bg-[#f0f2f5] border-t border-gray-200 px-3 py-1 flex items-center justify-between text-[11px] text-gray-500 select-none">
             <div class="flex items-center gap-2 truncate">
@@ -1028,6 +1220,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- AirDroid Right-Click Context Menu -->
     <div id="file-context-menu" class="hidden fixed bg-white border border-gray-200 rounded-lg shadow-2xl py-1 w-44 z-[100] text-xs text-gray-700 select-none divide-y divide-gray-100" style="backdrop-filter: blur(8px);">
@@ -1068,6 +1261,7 @@
         </div>
     </div>
 
+
     <!-- File Properties / Details Modal -->
     <div id="file-info-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-[110] flex items-center justify-center p-4">
         <div class="bg-white border border-gray-300 rounded-xl shadow-2xl p-5 max-w-sm w-full text-xs text-gray-800 animate-in fade-in zoom-in-95 duration-150">
@@ -1105,6 +1299,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Hotkeys Modal -->
     <div id="file-hotkeys-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs z-[110] flex items-center justify-center p-4">
@@ -1151,6 +1346,7 @@
         </div>
     </div>
 
+
     <!-- Live File Transfer Progress Toast -->
     <div id="transfer-progress-toast" class="hidden fixed bottom-6 right-6 bg-gray-900/95 backdrop-blur text-white p-3.5 rounded-xl shadow-2xl z-50 text-xs border border-white/10 w-80 flex flex-col gap-2">
         <div class="flex justify-between items-center">
@@ -1163,8 +1359,12 @@
     </div>
 
 
+
+
     <!-- Real-Time Notification Mirror Toast Container -->
     <div id="toast-container" class="fixed top-14 right-6 w-80 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
+
 
 
     <!-- Window: Messages -->
@@ -1193,6 +1393,8 @@
     </div>
 
 
+
+
     <!-- Window: Dialer & Contacts (AirDroid Revamp) -->
     <div id="contacts-window" class="window hidden" style="display: none; width: 980px; height: 620px; top: 60px; left: 190px; min-width: 780px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <!-- Title Bar -->
@@ -1208,6 +1410,7 @@
             </div>
         </div>
 
+
         <!-- AirDroid Contacts Toolbar -->
         <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
             <!-- Left: Search Box -->
@@ -1216,6 +1419,7 @@
                 <span class="absolute left-2 text-gray-400 text-[11px] pointer-events-none">🔍</span>
                 <button id="contacts-search-clear" onclick="clearContactsSearch()" class="hidden absolute right-1.5 text-gray-400 hover:text-gray-600 text-[10px] font-bold">✕</button>
             </div>
+
 
             <!-- Right: Delete(N), Refresh, + New contact, Dialer, Export -->
             <div class="flex items-center gap-2">
@@ -1237,6 +1441,7 @@
             </div>
         </div>
 
+
         <!-- Main 2-Column Body -->
         <div class="flex-1 flex overflow-hidden bg-white relative">
             <!-- Left Column: Groups Selector, Alphabet Index, Contacts List -->
@@ -1247,6 +1452,7 @@
                         <span id="contact-group-label" class="truncate">Contacts with number (0)</span>
                         <span class="text-gray-400 text-[10px]">▼</span>
                     </button>
+
 
                     <!-- AirDroid Groups Popup Menu (image_2c041e.png) -->
                     <div id="contact-groups-menu" class="hidden absolute top-full left-2 right-2 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1.5 z-40 text-xs">
@@ -1261,6 +1467,7 @@
                     </div>
                 </div>
 
+
                 <!-- Contacts List + Alphabet Index Strip -->
                 <div class="flex-1 flex overflow-hidden relative">
                     <!-- Alphabet Vertical Index Strip (AirDroid left margin) -->
@@ -1268,12 +1475,14 @@
                         <!-- # A B C D ... Z -->
                     </div>
 
+
                     <!-- Scrollable Contacts List -->
                     <div id="contacts-list-scroll" class="flex-1 overflow-y-auto divide-y divide-gray-100">
                         <div class="p-8 text-center text-gray-400 text-xs">Loading contacts...</div>
                     </div>
                 </div>
             </div>
+
 
             <!-- Right Column: Contact Details Panel -->
             <div id="contact-detail-panel" class="flex-1 flex flex-col bg-white overflow-y-auto p-6 relative">
@@ -1283,6 +1492,7 @@
                     <div class="font-semibold text-sm text-gray-600 mb-1">No Contact Selected</div>
                     <div class="text-xs text-gray-400 max-w-xs text-center">Select a contact from the list to view phone numbers, send messages, or place calls.</div>
                 </div>
+
 
                 <!-- Contact Full Details (Hidden when none selected) -->
                 <div id="contact-card-content" class="hidden flex-1 flex flex-col justify-between">
@@ -1299,6 +1509,7 @@
                                 </div>
                             </div>
                         </div>
+
 
                         <!-- Contact Details Table -->
                         <div class="py-6 space-y-4">
@@ -1318,11 +1529,13 @@
                                 </div>
                             </div>
 
+
                             <!-- Email Row -->
                             <div id="cd-email-row" class="flex items-center text-xs">
                                 <span class="w-24 text-gray-400 font-medium">Email</span>
                                 <span id="cd-email" class="text-gray-800 select-text flex-1">--</span>
                             </div>
+
 
                             <!-- Notes Row -->
                             <div id="cd-notes-row" class="flex items-start text-xs">
@@ -1331,6 +1544,7 @@
                             </div>
                         </div>
                     </div>
+
 
                     <!-- Bottom Action Bar -->
                     <div class="pt-4 border-t border-gray-200 flex justify-between items-center">
@@ -1344,6 +1558,7 @@
                 </div>
             </div>
 
+
             <!-- Built-in Phone Dialer Drawer -->
             <div id="contacts-dialer-drawer" class="hidden absolute top-0 right-0 bottom-0 w-72 bg-gray-900/95 backdrop-blur text-white shadow-2xl border-l border-gray-700 p-4 flex flex-col justify-between z-30 transition-all">
                 <div>
@@ -1355,11 +1570,13 @@
                         <button onclick="toggleDialerDrawer()" class="text-gray-400 hover:text-white text-xs">✕</button>
                     </div>
 
+
                     <!-- Screen Input -->
                     <div class="bg-gray-800 border border-gray-700 rounded-lg p-2.5 mb-4 flex items-center justify-between">
                         <input type="text" id="dialer-screen" placeholder="Enter number..." class="bg-transparent text-lg font-mono text-white focus:outline-none w-full select-text">
                         <button onclick="dialerBackspace()" class="text-gray-400 hover:text-white px-1.5 text-sm font-bold" title="Backspace">⌫</button>
                     </div>
+
 
                     <!-- Keypad Grid -->
                     <div class="grid grid-cols-3 gap-2.5 text-center">
@@ -1414,6 +1631,7 @@
                     </div>
                 </div>
 
+
                 <!-- Call & SMS Buttons -->
                 <div class="space-y-2 mt-4">
                     <button onclick="dialerTriggerCall()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-98 rounded-xl font-bold text-sm shadow-lg flex items-center justify-center gap-2 transition-all">
@@ -1429,6 +1647,7 @@
         </div>
     </div>
 
+
     <!-- Window: Call Logs & Audio Recordings (AirDroid Revamp) -->
     <div id="call-logs-window" class="window hidden" style="display: none; width: 880px; height: 580px; top: 65px; left: 240px; min-width: 680px; min-height: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <!-- Title Bar -->
@@ -1443,6 +1662,7 @@
                 <button onclick="wm.closeWindow('call-logs-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
+
 
         <!-- AirDroid Call Logs Subheader Filter & Action Toolbar -->
         <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
@@ -1461,6 +1681,7 @@
                 </button>
             </div>
 
+
             <!-- Right Controls: Search, Quick Call, Clear History -->
             <div class="flex items-center gap-2">
                 <div class="relative flex items-center">
@@ -1476,6 +1697,7 @@
                 </button>
             </div>
         </div>
+
 
         <!-- Section 1: Call Logs Table -->
         <div id="call-logs-section" class="flex-1 flex flex-col overflow-hidden bg-white">
@@ -1499,6 +1721,7 @@
             </div>
         </div>
 
+
         <!-- Section 2: Call Recordings & Audio Player -->
         <div id="call-records-section" class="hidden flex-1 flex flex-col overflow-hidden bg-white">
             <div class="p-2 bg-gray-50 border-b flex justify-between items-center text-[11px] text-gray-500 font-medium">
@@ -1519,6 +1742,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Modals for Contacts -->
     <!-- Modal: New/Edit Contact -->
@@ -1574,6 +1798,7 @@
         </div>
     </div>
 
+
     <!-- Window: Apps -->
     <div id="apps-window" class="window hidden" style="display: none; width: 420px; height: 500px; top: 130px; left: 390px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -1597,6 +1822,8 @@
             </div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Photos Gallery -->
@@ -1624,6 +1851,8 @@
     </div>
 
 
+
+
     <!-- Window: Music Player -->
     <div id="music-window" class="window hidden" style="display: none; width: 560px; height: 520px; top: 90px; left: 360px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -1646,9 +1875,13 @@
             </div>
 
 
+
+
             <div id="music-list" class="flex-1 overflow-y-auto divide-y text-xs">
                 <div class="p-6 text-center text-gray-400 text-xs">Loading songs from phone...</div>
             </div>
+
+
 
 
             <div class="p-3 bg-gray-900 text-white border-t border-gray-800 flex flex-col gap-1.5 z-10 text-xs">
@@ -1668,6 +1901,8 @@
             </div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Videos Manager -->
@@ -1697,6 +1932,8 @@
     </div>
 
 
+
+
     <!-- Window: Clipboard Sync -->
     <div id="clipboard-window" class="window hidden" style="display: none; width: 380px; height: 300px; top: 150px; left: 410px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -1720,6 +1957,8 @@
             <div id="clipboard-status" class="text-[10px] text-gray-400 text-center"></div>
         </div>
     </div>
+
+
 
 
     <!-- Window: Device Info -->
@@ -1765,6 +2004,8 @@
     </div>
 
 
+
+
     <!-- Window: Find Phone (Target 6 & Phase 2: Remote Screen Lock) -->
     <div id="map-window" class="window hidden" style="display: none; width: 580px; height: 500px; top: 90px; left: 380px;">
         <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
@@ -1800,8 +2041,12 @@
             </div>
 
 
+
+
             <div id="map-container" class="flex-1 bg-gray-200 relative overflow-hidden">
                 <div id="map" class="absolute inset-0"></div>
+
+
 
 
                 <!-- Phase 1: Smart Geofence Safe-Zones Floating Management Panel -->
@@ -1812,6 +2057,8 @@
                         </div>
                         <button onclick="toggleSafeZonesPanel()" class="text-gray-400 hover:text-white text-xs">✕</button>
                     </div>
+
+
 
 
                     <!-- Create New Zone Form -->
@@ -1833,6 +2080,8 @@
                     </div>
 
 
+
+
                     <!-- Active Zones List -->
                     <div class="mt-2 flex-1 flex flex-col min-h-0">
                         <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Active Safe-Zones:</div>
@@ -1847,6 +2096,8 @@
             </div>
         </div>
     </div>
+
+
 
 
     <!-- Remote Web Terminal & Shell Console Window -->
@@ -1866,6 +2117,8 @@
         </div>
 
 
+
+
         <!-- Quick Diagnostic Chips Bar -->
         <div class="bg-gray-900/70 border-b border-gray-800/80 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto text-[11px] font-mono select-none">
             <span class="text-gray-400 text-[10px] font-sans mr-1">Quick:</span>
@@ -1876,6 +2129,8 @@
             <button onclick="runQuickTerminalCommand('top -n 1')" class="bg-gray-800 hover:bg-gray-700 text-emerald-300 px-2 py-0.5 rounded border border-gray-700 hover:border-emerald-500 transition-all whitespace-nowrap">⚡ top -n 1</button>
             <button onclick="runQuickTerminalCommand('ping -c 3 8.8.8.8')" class="bg-gray-800 hover:bg-gray-700 text-emerald-300 px-2 py-0.5 rounded border border-gray-700 hover:border-emerald-500 transition-all whitespace-nowrap">🌐 ping 8.8.8.8</button>
         </div>
+
+
 
 
         <!-- Terminal Output Screen -->
@@ -1891,6 +2146,8 @@
         </div>
 
 
+
+
         <!-- Terminal Command Input Bar -->
         <div class="bg-gray-900 border-t border-gray-800 p-2.5 flex items-center gap-2 font-mono text-xs select-none">
             <span class="text-emerald-400 font-bold whitespace-nowrap">opendroid@android:~$</span>
@@ -1898,6 +2155,7 @@
             <button onclick="submitTerminalCommand()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded text-xs transition-all shadow hover:shadow-emerald-900/50">Run ↵</button>
         </div>
     </div>
+
 
     <script>
         // --- Admin Custom Wallpaper Engine ---
@@ -1911,6 +2169,8 @@
         ];
 
 
+
+
         function initCustomWallpaper() {
             let saved = localStorage.getItem('opendroid_admin_wallpaper');
             
@@ -1922,11 +2182,15 @@
             );
 
 
+
+
             // Auto-cleanup: If localStorage holds an old invalid custom link from testing, reset to default wallpaper
             if (!isValid) {
                 saved = 'wallpaper.png';
                 localStorage.setItem('opendroid_admin_wallpaper', 'wallpaper.png');
             }
+
+
 
 
             // Apply wallpaper with error fallback so it NEVER fails to white
@@ -1944,14 +2208,20 @@
         window.addEventListener('DOMContentLoaded', initCustomWallpaper);
 
 
+
+
         function openWallpaperModal() {
             document.getElementById('wallpaper-modal').classList.remove('hidden');
         }
 
 
+
+
         function closeWallpaperModal() {
             document.getElementById('wallpaper-modal').classList.add('hidden');
         }
+
+
 
 
         function setWallpaperPreset(url) {
@@ -1966,9 +2236,17 @@
 
 
 
+
+
+
+
+
+
         function onWallpaperFileUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
+
+
 
 
             // Strict 2MB Size Limit (Prevents memory exhaustion & performance lag)
@@ -1980,6 +2258,8 @@
             }
 
 
+
+
             // Strict Extension & MIME Validation (Exploit & Script Attack Security Guard)
             const allowedExtensions = ['.jpg', '.jpeg', '.png'];
             const fileName = file.name.toLowerCase();
@@ -1987,11 +2267,15 @@
             const hasValidMime = file.type === 'image/jpeg' || file.type === 'image/png';
 
 
+
+
             if (!hasValidExt || !hasValidMime) {
                 showToast("⚠️ Invalid format! Only genuine JPG, JPEG, and PNG images are allowed.", "error");
                 e.target.value = "";
                 return;
             }
+
+
 
 
             const reader = new FileReader();
@@ -2002,6 +2286,8 @@
             };
             reader.readAsDataURL(file);
         }
+
+
 
 
         let currentPairingCode = '';
@@ -2017,10 +2303,14 @@
         let parentDirPath = '';
 
 
+
+
         // Chunked File Transfer State
         let activeDownload = null;
         let activeUpload = null;
         let activePreview = null;
+
+
 
 
         // Music & Video Player State
@@ -2031,6 +2321,8 @@
         let activeVideoBuffer = null;
 
 
+
+
         // Web Audio API
         let audioCtx = null;
         let gainNode = null;
@@ -2039,10 +2331,14 @@
         let isTorchOn = false;
 
 
+
+
         // Leaflet Map Instances
         let mapInstance = null;
         let mapMarker = null;
         let mapCircle = null;
+
+
 
 
         // Phase 1: Smart Geofencing & Route Trail State
@@ -2053,7 +2349,11 @@
         let locationHistoryPoints = [];
 
 
+
+
         let isLiveCallListening = false;
+
+
 
 
         function initWebAudio() {
@@ -2066,12 +2366,16 @@
         }
 
 
+
+
         function playPcmChunk(base64Pcm) {
             if (!isGlobalMicActive && !isLiveCallListening) return;
             initWebAudio();
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
+
+
 
 
             try {
@@ -2084,6 +2388,8 @@
                 }
 
 
+
+
                 const int16 = new Int16Array(buffer);
                 const float32 = new Float32Array(int16.length);
                 for (let i = 0; i < int16.length; i++) {
@@ -2091,13 +2397,19 @@
                 }
 
 
+
+
                 const audioBuffer = audioCtx.createBuffer(1, float32.length, 16000);
                 audioBuffer.getChannelData(0).set(float32);
+
+
 
 
                 const source = audioCtx.createBufferSource();
                 source.buffer = audioBuffer;
                 source.connect(gainNode);
+
+
 
 
                 const currentTime = audioCtx.currentTime;
@@ -2112,14 +2424,20 @@
         }
 
 
+
+
         function toggleGlobalMic() {
             setMicState(!isGlobalMicActive);
         }
 
 
+
+
         function toggleScreenMic() {
             setMicState(!isGlobalMicActive);
         }
+
+
 
 
         function adjustAudioVolume(val) {
@@ -2132,10 +2450,14 @@
         }
 
 
+
+
         function setMicState(enable, volume = 0.8) {
             isGlobalMicActive = enable;
             initWebAudio();
             gainNode.gain.value = enable ? volume : 0;
+
+
 
 
             const dockIcon = document.getElementById('dock-mic-icon');
@@ -2149,6 +2471,8 @@
             const camLabel = document.getElementById('cam-mic-volume-label');
 
 
+
+
             if (enable) {
                 if (dockIcon) dockIcon.textContent = "🎙️";
                 if (dockLabel) dockLabel.textContent = "Mic Live";
@@ -2158,12 +2482,16 @@
                 if (widgetMicBtn) widgetMicBtn.className = "bg-emerald-600 p-2 rounded-lg text-white transition-all flex items-center justify-center gap-2 border border-emerald-400 font-semibold text-xs shadow-[0_0_12px_rgba(16,185,129,0.7)] animate-pulse cursor-pointer";
 
 
+
+
                 if (screenBtn) {
                     screenBtn.className = "px-3 py-1.5 bg-green-600 hover:bg-green-700 border border-green-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm";
                     screenBtn.innerHTML = "<span>🎙️</span><span>Mic Live</span>";
                 }
                 if (camSlider) camSlider.value = volume;
                 if (camLabel) camLabel.textContent = `${Math.round(volume * 100)}%`;
+
+
 
 
                 sendCommand({ action: 'START_AUDIO_STREAM' });
@@ -2176,6 +2504,8 @@
                 if (widgetMicBtn) widgetMicBtn.className = "bg-gray-800/90 hover:bg-gray-700/90 p-2 rounded-lg text-gray-200 transition-all duration-200 flex items-center justify-center gap-2 border border-gray-700/70 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(168,85,247,0.6)] text-xs font-medium cursor-pointer";
 
 
+
+
                 if (screenBtn) {
                     screenBtn.className = "px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-sm";
                     screenBtn.innerHTML = "<span>🎙️</span><span>Mic Off</span>";
@@ -2184,9 +2514,13 @@
                 if (camLabel) camLabel.textContent = "Off";
 
 
+
+
                 sendCommand({ action: 'STOP_AUDIO_STREAM' });
             }
         }
+
+
 
 
         // Dedicated EMQX Serverless Secure Connection
@@ -2204,10 +2538,14 @@
             }
 
 
+
+
             activeServerIndex = serverIdx;
             const currentBroker = EMQX_SERVERS[activeServerIndex];
             document.getElementById('pair-modal').classList.add('hidden');
             document.getElementById('ws-status-taskbar').textContent = `● [${activeServerIndex + 1}/${EMQX_SERVERS.length}] ${currentBroker.name}...`;
+
+
 
 
             if (cloudConnectWatchdog) clearTimeout(cloudConnectWatchdog);
@@ -2217,12 +2555,16 @@
             }, 5000);
 
 
+
+
             const clientOptions = {
                 keepalive: 60,
                 clientId: 'OpenDroidWeb_' + Math.random().toString(16).substring(2, 8)
             };
             if (currentBroker.user) clientOptions.username = currentBroker.user;
             if (currentBroker.pass) clientOptions.password = currentBroker.pass;
+
+
 
 
             try {
@@ -2234,13 +2576,19 @@
             }
 
 
+
+
             mqttClient.on('connect', () => {
                 if (cloudConnectWatchdog) clearTimeout(cloudConnectWatchdog);
                 document.getElementById('ws-status-taskbar').textContent = `● Pinging Phone (${currentBroker.name})...`;
                 document.getElementById('ws-status-taskbar').className = 'text-yellow-400 text-xs font-semibold';
 
 
+
+
                 mqttClient.subscribe(`opendroid/${currentPairingCode}/pc`, { qos: 1 });
+
+
 
 
                 if (handshakeInterval) clearInterval(handshakeInterval);
@@ -2251,12 +2599,16 @@
             });
 
 
+
+
             mqttClient.on('error', (err) => {
                 if (cloudConnectWatchdog) {
                     clearTimeout(cloudConnectWatchdog);
                     connectViaCloud(activeServerIndex + 1);
                 }
             });
+
+
 
 
             mqttClient.on('message', (topic, payload) => {
@@ -2266,6 +2618,8 @@
                 } catch (e) { console.error(e); }
             });
         }
+
+
 
 
         function connectLocal() {
@@ -2281,6 +2635,8 @@
         }
 
 
+
+
         // --- Phase 6: Central Account & Multi-Device Hub Engine ---
         let currentPairingMode = 'account';
         let accountEmail = '';
@@ -2289,12 +2645,16 @@
         let allDiscoveredDevices = {};
 
 
+
+
         function switchPairingMode(mode) {
             currentPairingMode = mode;
             const tabAccount = document.getElementById('tab-btn-account');
             const tabCode = document.getElementById('tab-btn-code');
             const secAccount = document.getElementById('mode-account-section');
             const secCode = document.getElementById('mode-code-section');
+
+
 
 
             if (mode === 'account') {
@@ -2311,6 +2671,8 @@
         }
 
 
+
+
         async function getAccountTag(email, pin) {
             const raw = `${email.trim().toLowerCase()}:${pin.trim()}`;
             const msgBuffer = new TextEncoder().encode(raw);
@@ -2319,6 +2681,10 @@
             const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             return 'acc_' + hashHex.substring(0, 16);
         }
+
+
+
+
 
 
 
@@ -2337,6 +2703,7 @@
             }
         }
 
+
         // Close dropdown when clicked outside
         document.addEventListener('click', (e) => {
             const dropdown = document.getElementById('device-switch-dropdown');
@@ -2348,6 +2715,7 @@
                 }
             }
         });
+
 
         function renderDeviceListDropdown() {
             const listEl = document.getElementById('device-list-container');
@@ -2424,6 +2792,7 @@
             });
         }
 
+
         // Global Search Bar Handler (Filters apps & contacts in real time)
         function handleGlobalSearch(query) {
             query = (query || '').toLowerCase().trim();
@@ -2443,6 +2812,7 @@
             });
         }
 
+
         // --- 7-Server Multi-Broker Cascade Pool ---
         const EMQX_SERVERS = [
             { name: "Server 1", host: "ceee508c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
@@ -2457,6 +2827,8 @@
         let activeServerIndex = 0;
         let accountConnectWatchdog = null;
         let cloudConnectWatchdog = null;
+
+
 
 
         async function connectViaAccount() {
@@ -2474,9 +2846,24 @@
             accountTag = await getAccountTag(accountEmail, pin);
             localStorage.setItem('opendroid_account_email', accountEmail);
 
+            const rememberCheckbox = document.getElementById('account-remember-me');
+            if (rememberCheckbox && rememberCheckbox.checked) {
+                localStorage.setItem('opendroid_remember_account', 'true');
+                localStorage.setItem('opendroid_saved_email', accountEmail);
+                localStorage.setItem('opendroid_saved_pin', pin);
+            } else {
+                localStorage.removeItem('opendroid_remember_account');
+                localStorage.removeItem('opendroid_saved_email');
+                localStorage.removeItem('opendroid_saved_pin');
+            }
+
+
+
 
             initAccountMqtt(0);
         }
+
+
 
 
         function initAccountMqtt(serverIdx = 0) {
@@ -2492,6 +2879,8 @@
             }
 
 
+
+
             activeServerIndex = serverIdx;
             const currentBroker = EMQX_SERVERS[activeServerIndex];
             const loginBtn = document.getElementById('account-login-btn');
@@ -2502,10 +2891,14 @@
             }
 
 
+
+
             if (mqttClient) {
                 try { mqttClient.end(true); } catch (_e) {}
             }
             isCloudMode = true;
+
+
 
 
             if (accountConnectWatchdog) clearTimeout(accountConnectWatchdog);
@@ -2517,12 +2910,16 @@
             }, 5000);
 
 
+
+
             const clientOptions = {
                 keepalive: 60,
                 clientId: 'OpenDroidWeb_' + Math.random().toString(16).substring(2, 8)
             };
             if (currentBroker.user) clientOptions.username = currentBroker.user;
             if (currentBroker.pass) clientOptions.password = currentBroker.pass;
+
+
 
 
             try {
@@ -2533,6 +2930,8 @@
                 initAccountMqtt(activeServerIndex + 1);
                 return;
             }
+
+
 
 
             mqttClient.on('connect', () => {
@@ -2549,21 +2948,29 @@
                 }
 
 
+
+
                 // 1. Listen for presence heartbeats of all devices under this account
                 const presenceTopic = `opendroid/acc/${accountTag}/devices/+/presence`;
                 mqttClient.subscribe(presenceTopic, { qos: 1 });
 
+
                 // 2. CRITICAL FIX: Subscribe to telemetry/data wildcard for ALL devices under this account!
                 const pcWildcard = `opendroid/acc/${accountTag}/+/pc`;
                 mqttClient.subscribe(pcWildcard, { qos: 1 });
+
 
                 // 3. Immediate Active Discovery Ping: triggers all online phones to report presence in <100ms
                 const discoverTopic = `opendroid/acc/${accountTag}/discover`;
                 mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES' }), { qos: 1 });
 
 
+
+
                 showToast(`Signed in on ${currentBroker.name}. Discovering devices...`, 'success');
             });
+
+
 
 
             mqttClient.on('error', (err) => {
@@ -2575,9 +2982,13 @@
             });
 
 
+
+
             mqttClient.on('close', () => {
                 console.log(`Connection closed on ${currentBroker.name}`);
             });
+
+
 
 
             mqttClient.on('message', (topic, payload) => {
@@ -2591,6 +3002,8 @@
                 } catch (e) { console.error(e); }
             });
         }
+
+
 
 
         function handlePresenceMessage(topic, payload) {
@@ -2608,9 +3021,13 @@
                 }
 
 
+
+
                 const data = JSON.parse(payload.toString());
                 const devId = data.deviceId;
                 if (!devId) return;
+
+
 
 
                 // Smart Deduplication & Auto-Merge:
@@ -2626,6 +3043,8 @@
                 });
 
 
+
+
                 if (existingKey) {
                     const existingItem = allDiscoveredDevices[existingKey];
                     const isIncomingNewer = (data.timestamp || 0) >= (existingItem.timestamp || 0);
@@ -2633,6 +3052,8 @@
                         // Purge old duplicate entry from local device list
                         delete allDiscoveredDevices[existingKey];
                         if (currentDeviceId === existingKey) currentDeviceId = devId;
+
+
 
 
                         // Clean up stale retained MQTT topic from the cloud broker
@@ -2646,6 +3067,8 @@
                         return;
                     }
                 }
+
+
 
 
                 allDiscoveredDevices[devId] = data;
@@ -2698,6 +3121,8 @@
         }
 
 
+
+
         function forgetDevice(devId, event) {
             if (event) {
                 event.stopPropagation();
@@ -2718,14 +3143,20 @@
         }
 
 
+
+
         function renderDiscoveredDevices() {
             const list = document.getElementById('account-devices-list');
             const countEl = document.getElementById('account-devices-count');
             if (!list) return;
 
 
+
+
             const devIds = Object.keys(allDiscoveredDevices);
             if (countEl) countEl.textContent = `${devIds.length} Discovered`;
+
+
 
 
             if (devIds.length === 0) {
@@ -2734,11 +3165,15 @@
             }
 
 
+
+
             list.innerHTML = '';
             devIds.forEach(id => {
                 const dev = allDiscoveredDevices[id];
                 const isSelected = (currentDeviceId === id) || (devIds.length === 1 && !currentDeviceId);
                 if (devIds.length === 1 && !currentDeviceId) currentDeviceId = id;
+
+
 
 
                 list.innerHTML += `
@@ -2763,9 +3198,13 @@
             });
 
 
+
+
             const connectBtn = document.getElementById('account-connect-device-btn');
             if (connectBtn) connectBtn.disabled = !currentDeviceId;
         }
+
+
 
 
         function onDeviceRadioSelected(id) {
@@ -2775,19 +3214,27 @@
         }
 
 
+
+
         function confirmAccountDeviceConnection() {
             if (!currentDeviceId) return;
             document.getElementById('pair-modal').classList.add('hidden');
             document.getElementById('device-selector-wrapper').classList.remove('hidden');
 
 
+
+
             const dev = allDiscoveredDevices[currentDeviceId];
             const isDevOnline = dev?.isOnline ?? true;
+
+
 
 
             // Subscribe to this device's PC telemetry channel
             const pcChannel = `opendroid/acc/${accountTag}/${currentDeviceId}/pc`;
             mqttClient.subscribe(pcChannel, { qos: 1 });
+
+
 
 
             if (isDevOnline) {
@@ -2805,9 +3252,13 @@
         }
 
 
+
+
         function updateTopDockDeviceDropdown() {
             const dropdown = document.getElementById('device-selector-dropdown');
             if (!dropdown) return;
+
+
 
 
             dropdown.innerHTML = '';
@@ -2821,6 +3272,8 @@
                 dropdown.appendChild(opt);
             });
         }
+
+
 
 
         function setDeviceOfflineUI(name, model) {
@@ -2844,8 +3297,12 @@
             if (dockStorage) dockStorage.textContent = '-- / --';
 
 
+
+
             // Disable quick action buttons visually
             setQuickActionButtonsEnabled(false);
+
+
 
 
             // Show clean offline placeholder in all open data windows (No old data leakage)
@@ -2864,6 +3321,8 @@
         }
 
 
+
+
         function setQuickActionButtonsEnabled(enabled) {
             const btns = ['dock-torch-btn', 'dock-ring-btn', 'dock-lock-btn', 'dock-wipe-btn'];
             btns.forEach(id => {
@@ -2879,9 +3338,13 @@
         }
 
 
+
+
         function restoreAndRefreshOpenWindows(dev) {
             // Enable quick action buttons
             setQuickActionButtonsEnabled(true);
+
+
 
 
             // Cleanly reset open windows with loading state (Prevents old device data leak)
@@ -2893,12 +3356,16 @@
             }
 
 
+
+
             const contactsWin = document.getElementById('contacts-window');
             if (contactsWin && !contactsWin.classList.contains('hidden')) {
                 const list = document.getElementById('contacts-list-container') || contactsWin.querySelector('.window-body');
                 if (list) list.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs animate-pulse">Loading contacts from ' + (dev?.deviceName || 'device') + '...</div>';
                 sendCommand({ action: 'FETCH_CONTACTS' });
             }
+
+
 
 
             const callLogsWin = document.getElementById('call-logs-window');
@@ -2909,6 +3376,8 @@
             }
 
 
+
+
             const filesWin = document.getElementById('files-window');
             if (filesWin && !filesWin.classList.contains('hidden')) {
                 const list = document.getElementById('files-container') || filesWin.querySelector('.window-body');
@@ -2917,12 +3386,16 @@
             }
 
 
+
+
             const photosWin = document.getElementById('photos-window');
             if (photosWin && !photosWin.classList.contains('hidden')) {
                 const grid = document.getElementById('photos-grid') || photosWin.querySelector('.window-body');
                 if (grid) grid.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs animate-pulse">Loading photos from ' + (dev?.deviceName || 'device') + '...</div>';
                 sendCommand({ action: 'FETCH_PHOTOS' });
             }
+
+
 
 
             const findPhoneWin = document.getElementById('find-phone-window');
@@ -2939,13 +3412,18 @@
             }
 
 
+
+
             // Always request fresh storage and battery stats
             sendCommand({ action: 'FETCH_STORAGE' });
         }
 
 
+
+
         function onDeviceDropdownSelected(newDevId) {
             if (!newDevId) return;
+
 
             // Tear-down active streaming sessions if switching device
             if (currentDeviceId && currentDeviceId !== newDevId) {
@@ -2954,21 +3432,25 @@
                 if (window.isPushToTalkActive) { try { stopPushToTalk(); } catch(e) {} }
             }
 
+
             currentDeviceId = newDevId;
             const dev = allDiscoveredDevices[newDevId];
             const devName = dev?.deviceName || dev?.model || 'Device';
             const isDevOnline = dev?.isOnline ?? true;
+
 
             // Subscribe to target device channel
             if (mqttClient && mqttClient.connected) {
                 mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
             }
 
+
             // Update Top Header
             const hdrDev = document.getElementById('header-active-device-name');
             if (hdrDev) hdrDev.textContent = devName;
             const hdrBatt = document.getElementById('header-active-device-battery');
             if (hdrBatt && dev?.battery !== undefined) hdrBatt.textContent = `${dev.battery}%`;
+
 
             // Update Right Widget
             const wModel = document.getElementById('widget-device-model');
@@ -2982,21 +3464,27 @@
                 updateWidgetBattery(dev.battery, dev.isCharging);
             }
 
+
             // Update Bottom Taskbar
             const tskDev = document.getElementById('taskbar-device-name');
             if (tskDev) tskDev.textContent = devName;
             const tskBatt = document.getElementById('taskbar-battery-percent');
             if (tskBatt && dev?.battery !== undefined) tskBatt.textContent = `${dev.battery}%`;
 
+
             // Fetch live telemetry from selected device
             sendCommand({ action: 'HANDSHAKE' });
             sendCommand({ action: 'GET_DEVICE_INFO' });
+
+
 
 
             // 4. Update UI according to Online vs Offline state
             if (isDevOnline) {
                 document.getElementById('ws-status-taskbar').textContent = `● Connecting to ${devName}...`;
                 document.getElementById('ws-status-taskbar').className = 'text-[11px] text-green-400 font-medium px-2 py-0.5 bg-green-950/40 rounded border border-green-800/50';
+
+
 
 
                 // Update Dock Card with new device's metadata
@@ -3008,10 +3496,14 @@
                 if (dockBattery && dev.battery) dockBattery.textContent = `${dev.battery}%`;
 
 
+
+
                 // Initiate Handshake & Auto-fetch data for currently open windows
                 sendCommand({ action: 'HANDSHAKE' });
                 sendCommand({ action: 'GET_DEVICE_INFO' });
                 restoreAndRefreshOpenWindows(dev);
+
+
 
 
                 showToast(`Switched active control to ${devName}! 🚀`, 'success');
@@ -3020,6 +3512,8 @@
                 showToast(`${devName} is currently Offline.`, 'warning');
             }
         }
+
+
 
 
         function sendCommand(obj) {
@@ -3039,6 +3533,8 @@
         }
 
 
+
+
         // --- Sleek Non-Blocking Floating Toast System ---
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
@@ -3056,6 +3552,8 @@
         }
 
 
+
+
                 function handleIncomingData(data) {
             // --- Phase 1: Remote Shell Output Dispatcher ---
             if (data.type === 'SHELL_OUTPUT') {
@@ -3063,10 +3561,14 @@
                 if (indicator) indicator.classList.add('hidden');
 
 
+
+
                 const isFail = data.exitCode !== 0;
                 appendTerminalOutputLine('output', data.output || ('[Command completed with exit code ' + data.exitCode + ']'), isFail);
                 return;
             }
+
+
 
 
             if (data.type === 'HANDSHAKE_ACK' || data.type === 'BATTERY') {
@@ -3078,11 +3580,15 @@
                 document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs font-semibold';
 
 
+
+
                 if (data.device) {
                     document.getElementById('device-model-text').textContent = data.device;
                     const wModel = document.getElementById('widget-device-model');
                     if (wModel) wModel.textContent = data.device;
                 }
+
+
 
 
                 if (data.percent !== undefined) {
@@ -3103,6 +3609,8 @@
                         updateWidgetBattery(data.percent, data.charging);
                     }
                 }
+
+
 
 
                 const wConn = document.getElementById('widget-connection-status');
@@ -3422,11 +3930,15 @@
         }
 
 
+
+
         // --- Remote URL Launcher ---
         // --- Standalone Torch Functions ---
         function toggleStandaloneTorch() {
             sendCommand({ action: 'TOGGLE_STANDALONE_TORCH' });
         }
+
+
 
 
         function updateTorchUI(isOn) {
@@ -3444,6 +3956,8 @@
         }
 
 
+
+
         function launchRemoteUrl() {
             const input = document.getElementById('remote-url-input');
             const url = input.value.trim();
@@ -3457,6 +3971,8 @@
         }
 
 
+
+
         // --- Remote Screen Lock (Instant 1-Click) ---
         function lockDeviceScreen() {
             showToast("Locking phone screen... 🔒", "info");
@@ -3464,8 +3980,12 @@
         }
 
 
+
+
         // --- Phase 2: Step 2.3 Stealth Mode (Hide App Icon) ---
         let isStealthModeOn = false;
+
+
 
 
         function toggleStealthMode() {
@@ -3476,10 +3996,14 @@
         }
 
 
+
+
         function launchOpenDroidOnPhone() {
             showToast("Launching OpenDroid on phone screen... 📱", "info");
             sendCommand({ action: 'LAUNCH_OPEN_DROID' });
         }
+
+
 
 
         function updateStealthUI(hidden) {
@@ -3504,6 +4028,8 @@
         }
 
 
+
+
         // --- Camera Controls with Auto-Switch ---
         function updateCameraStatus(statusText) {
             const bar = document.getElementById('camera-status-bar');
@@ -3516,6 +4042,8 @@
                 }
             }
         }
+
+
 
 
         function startCameraStream(facing) {
@@ -3532,14 +4060,20 @@
             }
 
 
+
+
             updateCameraStatus("🟡 Starting Camera Hardware on Phone...");
             sendCommand({ action: 'START_CAMERA_STREAM', facing: facing });
         }
 
 
+
+
         function stopCameraStream() {
             sendCommand({ action: 'STOP_CAMERA_STREAM' });
         }
+
+
 
 
         function closeCameraRoom() {
@@ -3548,11 +4082,15 @@
         }
 
 
+
+
         // --- Phase 3: Two-Way Audio (Walkie-Talkie Engine) ---
         let walkieAudioContext = null;
         let walkieMediaStream = null;
         let walkieProcessor = null;
         let isWalkieActive = false;
+
+
 
 
         async function startWalkieTalkie() {
@@ -3571,9 +4109,13 @@
                 updateWalkieUI(true);
 
 
+
+
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 walkieAudioContext = new AudioCtx({ sampleRate: 8000 });
                 const source = walkieAudioContext.createMediaStreamSource(stream);
+
+
 
 
                 // 8kHz Telephony Downsampling: 1024 samples = 128ms per chunk (50% traffic reduction)
@@ -3604,6 +4146,8 @@
                 };
 
 
+
+
                 source.connect(walkieProcessor);
                 walkieProcessor.connect(walkieAudioContext.destination);
                 showToast("Speaking to phone speaker... 📢", "info");
@@ -3613,6 +4157,8 @@
                 stopWalkieTalkie();
             }
         }
+
+
 
 
                 // 1-Click Press Toggle Walkie-Talkie (Smooth on Android Mobile Chrome & Desktop)
@@ -3627,6 +4173,8 @@
             if (!isWalkieActive) return;
             isWalkieActive = false;
             updateWalkieUI(false);
+
+
 
 
             try {
@@ -3650,7 +4198,11 @@
         }
 
 
+
+
 // 1-Click Toggle Mode Enabled (Touch/Mobile Compatible)
+
+
 
 
         function updateWalkieUI(active) {
@@ -3668,8 +4220,12 @@
         }
 
 
+
+
         // --- Phase 3: Step 3.2 High-Resolution Camera Snapshot Saver ---
         let isCameraSnapPendingDownload = false;
+
+
 
 
         function saveCameraSnapshot() {
@@ -3683,10 +4239,14 @@
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
 
+
+
                     const now = new Date();
                     const pad = (n) => String(n).padStart(2, '0');
                     const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
                     const filename = `OpenDroid_Camera_Photo_${ts}.png`;
+
+
 
 
                     const a = document.createElement('a');
@@ -3708,6 +4268,8 @@
         }
 
 
+
+
         // --- Screen Mirror Controls with Touch Injection ---
         function updateScreenStatus(statusText) {
             const bar = document.getElementById('screen-status-bar');
@@ -3720,6 +4282,8 @@
                 }
             }
         }
+
+
 
 
         function startScreenStream() {
@@ -3736,14 +4300,20 @@
             }
 
 
+
+
             updateScreenStatus("🟡 Connecting Screen Stream...");
             sendCommand({ action: 'START_SCREEN_STREAM' });
         }
 
 
+
+
         function stopScreenStream() {
             sendCommand({ action: 'STOP_SCREEN_STREAM' });
         }
+
+
 
 
         function closeScreenRoom() {
@@ -3753,6 +4323,8 @@
             }
             stopScreenStream();
         }
+
+
 
 
         // --- Phase 3: Step 3.1 1-Click Screen Screenshot Saver ---
@@ -3770,10 +4342,14 @@
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
 
+
+
                 const now = new Date();
                 const pad = (n) => String(n).padStart(2, '0');
                 const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
                 const filename = `OpenDroid_Screenshot_${ts}.png`;
+
+
 
 
                 const a = document.createElement('a');
@@ -3790,6 +4366,8 @@
         }
 
 
+
+
         // --- Phase 3: Step 3.1 Live Screen Video Recorder to WebM ---
         let screenMediaRecorder = null;
         let screenRecordedChunks = [];
@@ -3798,6 +4376,8 @@
         let screenRecordCanvas = null;
         let screenRecordCtx = null;
         let screenRecordAnimId = null;
+
+
 
 
         function toggleScreenRecording() {
@@ -3809,6 +4389,8 @@
         }
 
 
+
+
         function startScreenRecording() {
             const img = document.getElementById('screen-frame-view');
             if (!img || img.classList.contains('hidden') || !img.src) {
@@ -3817,11 +4399,15 @@
             }
 
 
+
+
             try {
                 screenRecordCanvas = document.createElement('canvas');
                 screenRecordCanvas.width = img.naturalWidth || 720;
                 screenRecordCanvas.height = img.naturalHeight || 1600;
                 screenRecordCtx = screenRecordCanvas.getContext('2d');
+
+
 
 
                 function drawRecordFrame() {
@@ -3833,8 +4419,12 @@
                 drawRecordFrame();
 
 
+
+
                 const stream = screenRecordCanvas.captureStream(25);
                 screenRecordedChunks = [];
+
+
 
 
                 let mimeType = 'video/webm;codecs=vp9';
@@ -3846,12 +4436,16 @@
                 }
 
 
+
+
                 screenMediaRecorder = new MediaRecorder(stream, { mimeType });
                 screenMediaRecorder.ondataavailable = (e) => {
                     if (e.data && e.data.size > 0) {
                         screenRecordedChunks.push(e.data);
                     }
                 };
+
+
 
 
                 screenMediaRecorder.onstop = () => {
@@ -3862,6 +4456,8 @@
                         const pad = (n) => String(n).padStart(2, '0');
                         const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
                         const filename = `OpenDroid_Record_${ts}.webm`;
+
+
 
 
                         const url = URL.createObjectURL(blob);
@@ -3877,9 +4473,13 @@
                 };
 
 
+
+
                 screenMediaRecorder.start(200);
                 screenRecordSeconds = 0;
                 updateRecordBtnUI(true);
+
+
 
 
                 screenRecordTimer = setInterval(() => {
@@ -3891,12 +4491,16 @@
                 }, 1000);
 
 
+
+
                 showToast("Screen video recording started! ⏺", "info");
             } catch (e) {
                 console.error("Recording error:", e);
                 showToast("Recording failed: " + e.message, "error");
             }
         }
+
+
 
 
         function stopScreenRecording() {
@@ -3906,6 +4510,8 @@
             clearInterval(screenRecordTimer);
             updateRecordBtnUI(false);
         }
+
+
 
 
         function updateRecordBtnUI(isRecording) {
@@ -3926,13 +4532,19 @@
         }
 
 
+
+
         // Mouse Touch Control on Screen Mirror Image
         let isDraggingScreen = false;
         let startNormX = 0, startNormY = 0;
         const screenImg = document.getElementById('screen-frame-view');
 
 
+
+
         screenImg.addEventListener('dragstart', (e) => e.preventDefault());
+
+
 
 
         screenImg.addEventListener('mousedown', (e) => {
@@ -3943,9 +4555,13 @@
         });
 
 
+
+
         document.addEventListener('mouseup', (e) => {
             if (!isDraggingScreen) return;
             isDraggingScreen = false;
+
+
 
 
             const rect = screenImg.getBoundingClientRect();
@@ -3953,13 +4569,19 @@
             const rawEndY = (e.clientY - rect.top) / rect.height;
 
 
+
+
             const distance = Math.hypot(rawEndX - startNormX, rawEndY - startNormY);
+
+
 
 
             const clampedX = Math.max(0, Math.min(1, rawEndX));
             const clampedY = Math.max(0, Math.min(1, rawEndY));
             const clampedStartX = Math.max(0, Math.min(1, startNormX));
             const clampedStartY = Math.max(0, Math.min(1, startNormY));
+
+
 
 
             if (distance < 0.02) {
@@ -3970,9 +4592,13 @@
         });
 
 
+
+
         function sendGlobalAction(actionType) {
             sendCommand({ action: 'GLOBAL_ACTION', actionType: actionType });
         }
+
+
 
 
         // --- Target 7A: Music Player Engine ---
@@ -3983,6 +4609,8 @@
                 list.innerHTML = '<div class="p-6 text-center text-gray-400 text-xs">No songs found in phone storage</div>';
                 return;
             }
+
+
 
 
             tracks.forEach(track => {
@@ -4008,6 +4636,8 @@
         }
 
 
+
+
         function filterMusic(query) {
             const q = query.toLowerCase();
             const filtered = allAudioTracks.filter(t =>
@@ -4017,6 +4647,8 @@
         }
 
 
+
+
         function startAudioPlayback(path, title, artist, totalSize) {
             if (currentAudioBlobUrl) {
                 URL.revokeObjectURL(currentAudioBlobUrl);
@@ -4024,14 +4656,20 @@
             }
 
 
+
+
             const player = document.getElementById('music-html-audio');
             player.pause();
+
+
 
 
             document.getElementById('player-song-title').textContent = title;
             document.getElementById('player-song-artist').textContent = artist;
             document.getElementById('player-song-time').textContent = "Buffering...";
             document.getElementById('player-play-btn').textContent = "⏳";
+
+
 
 
             activeAudioBuffer = {
@@ -4042,8 +4680,12 @@
             };
 
 
+
+
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: path, offset: 0 });
         }
+
+
 
 
         function handleAudioBufferChunk(chunk) {
@@ -4058,9 +4700,13 @@
             }
 
 
+
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
             const percent = activeAudioBuffer.totalSize > 0 ? (currentLoaded / activeAudioBuffer.totalSize) * 100 : 100;
             document.getElementById('player-song-time').textContent = `Loading ${Math.round(percent)}%`;
+
+
 
 
             if (chunk.isLast) {
@@ -4083,6 +4729,8 @@
         }
 
 
+
+
         function toggleAudioPlayback() {
             const player = document.getElementById('music-html-audio');
             if (!player.src) return;
@@ -4098,11 +4746,15 @@
         }
 
 
+
+
         function updateAudioProgress() {
             const player = document.getElementById('music-html-audio');
             if (!player.duration) return;
             const progress = (player.currentTime / player.duration) * 100;
             document.getElementById('player-seek-bar').value = progress;
+
+
 
 
             const curM = Math.floor(player.currentTime / 60);
@@ -4111,9 +4763,13 @@
             const durS = Math.floor(player.duration % 60);
 
 
+
+
             const format = (m, s) => `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
             document.getElementById('player-song-time').textContent = `${format(curM, curS)} / ${format(durM, durS)}`;
         }
+
+
 
 
         function seekAudio(val) {
@@ -4124,10 +4780,14 @@
         }
 
 
+
+
         function setPlayerVolume(val) {
             const player = document.getElementById('music-html-audio');
             player.volume = parseFloat(val);
         }
+
+
 
 
         function onAudioEnded() {
@@ -4135,6 +4795,8 @@
             document.getElementById('player-play-btn').textContent = "▶";
             document.getElementById('player-seek-bar').value = 0;
         }
+
+
 
 
         // --- Target 7B: Videos Manager with 25MB Guard ---
@@ -4147,9 +4809,13 @@
             }
 
 
+
+
             videos.forEach(video => {
                 const sizeMb = (video.size / (1024 * 1024)).toFixed(1);
                 const isStreamable = (video.size <= 25 * 1024 * 1024);
+
+
 
 
                 list.innerHTML += `
@@ -4182,6 +4848,8 @@
         }
 
 
+
+
         function openVideoPlayer(path, fileName, totalSize) {
             if (currentVideoBlobUrl) {
                 URL.revokeObjectURL(currentVideoBlobUrl);
@@ -4189,10 +4857,14 @@
             }
 
 
+
+
             const modal = document.getElementById('video-player-modal');
             const player = document.getElementById('video-modal-player');
             const loader = document.getElementById('video-modal-loader');
             const title = document.getElementById('video-modal-title');
+
+
 
 
             player.pause();
@@ -4204,6 +4876,8 @@
             modal.classList.remove('hidden');
 
 
+
+
             activeVideoBuffer = {
                 path: path,
                 fileName: fileName,
@@ -4212,8 +4886,12 @@
             };
 
 
+
+
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: path, offset: 0 });
         }
+
+
 
 
         function handleVideoBufferChunk(chunk) {
@@ -4228,9 +4906,13 @@
             }
 
 
+
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
             const percent = activeVideoBuffer.totalSize > 0 ? (currentLoaded / activeVideoBuffer.totalSize) * 100 : 100;
             document.getElementById('video-modal-loader').textContent = `Buffering video (${Math.round(percent)}%)...`;
+
+
 
 
             if (chunk.isLast) {
@@ -4248,6 +4930,8 @@
         }
 
 
+
+
         function closeVideoPlayerModal() {
             const player = document.getElementById('video-modal-player');
             player.pause();
@@ -4259,6 +4943,8 @@
             }
             activeVideoBuffer = null;
         }
+
+
 
 
         // --- File Download & Chunks Router ---
@@ -4274,11 +4960,15 @@
         }
 
 
+
+
         function handleDownloadChunk(chunk) {
             if (activeAudioBuffer && chunk.filePath === activeAudioBuffer.path) {
                 handleAudioBufferChunk(chunk);
                 return;
             }
+
+
 
 
             if (activeVideoBuffer && chunk.filePath === activeVideoBuffer.path) {
@@ -4287,10 +4977,14 @@
             }
 
 
+
+
             if (activePreview && chunk.filePath === activePreview.path) {
                 handlePreviewChunk(chunk);
                 return;
             }
+
+
 
 
             if (!activeDownload) return;
@@ -4302,7 +4996,11 @@
             }
 
 
+
+
             activeDownload.totalSize = chunk.totalSize;
+
+
 
 
             if (chunk.data) {
@@ -4315,9 +5013,13 @@
             }
 
 
+
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
             const percent = activeDownload.totalSize > 0 ? (currentLoaded / activeDownload.totalSize) * 100 : 100;
             showTransferToast(`Downloading ${activeDownload.name}`, Math.min(percent, 99));
+
+
 
 
             if (chunk.isLast) {
@@ -4339,6 +5041,8 @@
         }
 
 
+
+
         // --- File Upload ---
         function handleFileSelected(files) {
             if (!files || files.length === 0) return;
@@ -4346,13 +5050,19 @@
             const reader = new FileReader();
 
 
+
+
             showTransferToast(`Reading ${file.name}...`, 0);
+
+
 
 
             reader.onload = function(e) {
                 const arrayBuffer = e.target.result;
                 const chunkSize = 24 * 1024;
                 const totalChunks = Math.ceil(arrayBuffer.byteLength / chunkSize) || 1;
+
+
 
 
                 activeUpload = {
@@ -4365,12 +5075,18 @@
                 };
 
 
+
+
                 sendNextUploadChunk();
             };
 
 
+
+
             reader.readAsArrayBuffer(file);
         }
+
+
 
 
         function sendNextUploadChunk() {
@@ -4378,6 +5094,8 @@
             const start = activeUpload.currentChunk * activeUpload.chunkSize;
             const end = Math.min(start + activeUpload.chunkSize, activeUpload.buffer.byteLength);
             const slice = activeUpload.buffer.slice(start, end);
+
+
 
 
             let binary = '';
@@ -4388,14 +5106,20 @@
             const base64Data = btoa(binary);
 
 
+
+
             const isFirst = (activeUpload.currentChunk === 0);
             const isLast = (activeUpload.currentChunk + 1 >= activeUpload.totalChunks);
+
+
 
 
             const percent = ((activeUpload.currentChunk + 1) / activeUpload.totalChunks) * 100;
             showTransferToast(`Uploading ${activeUpload.file.name}`, percent);
             const wUploadPct = document.getElementById('widget-upload-pct');
             if (wUploadPct) wUploadPct.textContent = `${Math.round(percent)}%`;
+
+
 
 
             sendCommand({
@@ -4409,11 +5133,15 @@
         }
 
 
+
+
         function handleUploadAck() {
             if (!activeUpload) return;
             activeUpload.currentChunk++;
             sendNextUploadChunk();
         }
+
+
 
 
         function handleUploadComplete(fileName) {
@@ -4435,6 +5163,8 @@
         }
 
 
+
+
         // --- Image Preview ---
         function openImagePreview(filePath, fileName) {
             activePreview = {
@@ -4442,6 +5172,8 @@
                 name: fileName,
                 chunks: []
             };
+
+
 
 
             document.getElementById('preview-filename').textContent = fileName;
@@ -4452,8 +5184,12 @@
             document.getElementById('image-preview-modal').classList.remove('hidden');
 
 
+
+
             sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: filePath, offset: 0 });
         }
+
+
 
 
         function handlePreviewChunk(chunk) {
@@ -4462,6 +5198,8 @@
                 document.getElementById('preview-loader').textContent = "Failed to load preview: " + chunk.error;
                 return;
             }
+
+
 
 
             if (chunk.data) {
@@ -4474,7 +5212,11 @@
             }
 
 
+
+
             const currentLoaded = chunk.offset + (chunk.data ? atob(chunk.data).length : 0);
+
+
 
 
             if (chunk.isLast) {
@@ -4488,6 +5230,8 @@
         }
 
 
+
+
         function closeImagePreview() {
             document.getElementById('image-preview-modal').classList.add('hidden');
             document.getElementById('preview-img').src = '';
@@ -4495,10 +5239,14 @@
         }
 
 
+
+
         function isImageFile(name) {
             const ext = name.split('.').pop().toLowerCase();
             return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(ext);
         }
+
+
 
 
         // --- Directory Explorer ---
@@ -4519,6 +5267,7 @@
             { name: 'Documents', path: '/storage/emulated/0/Documents', icon: '📄' }
         ];
 
+
         function setFileViewMode(mode) {
             fileViewMode = mode;
             const gridBtn = document.getElementById('file-view-grid-btn');
@@ -4526,6 +5275,7 @@
             const gridCont = document.getElementById('files-grid-container');
             const listCont = document.getElementById('files-list-container');
             if (!gridCont || !listCont) return;
+
 
             if (mode === 'grid') {
                 gridBtn.className = "p-1 rounded bg-white shadow-xs text-blue-600 transition-all";
@@ -4541,12 +5291,14 @@
             renderCurrentFilesView();
         }
 
+
         function renderDirectory(data) {
             if (!data) return;
             currentDirPath = data.currentPath || '/storage/emulated/0';
             parentDirPath = data.parentPath || '';
             currentRawFilesList = data.files || [];
             filteredFilesList = [...currentRawFilesList];
+
 
             if (navHistoryIndex === -1 || navHistoryStack[navHistoryIndex] !== currentDirPath) {
                 navHistoryStack = navHistoryStack.slice(0, navHistoryIndex + 1);
@@ -4555,9 +5307,11 @@
             }
             updateNavHistoryButtons();
 
+
             selectedFilesMap.clear();
             lastSelectedFile = null;
             updateFileToolbarState();
+
 
             renderBreadcrumbs(currentDirPath);
             updateSidebarFolderTree(currentRawFilesList);
@@ -4566,10 +5320,12 @@
             updateFileStatusBar();
         }
 
+
         function renderBreadcrumbs(path) {
             const container = document.getElementById('file-breadcrumbs-container');
             if (!container) return;
             container.innerHTML = '';
+
 
             let parts = [];
             if (path.startsWith('/storage/emulated/0')) {
@@ -4595,6 +5351,7 @@
                 if (parts.length === 0) parts.push({ name: 'Root', path: '/' });
             }
 
+
             parts.forEach((p, idx) => {
                 const isLast = idx === parts.length - 1;
                 const span = document.createElement('span');
@@ -4607,6 +5364,7 @@
                 }
                 container.appendChild(span);
 
+
                 if (!isLast) {
                     const sep = document.createElement('span');
                     sep.className = "text-gray-300 mx-0.5";
@@ -4616,9 +5374,11 @@
             });
         }
 
+
         function updateSidebarFolderTree(files) {
             const tree = document.getElementById('sidebar-folder-tree');
             if (!tree) return;
+
 
             const subdirs = (files || []).filter(f => f.isDirectory);
             let htmlTree = `
@@ -4629,6 +5389,7 @@
                 </div>
                 <div class="pl-4 space-y-0.5 border-l border-gray-200 ml-3.5 my-1">
             `;
+
 
             subdirs.slice(0, 30).forEach(sub => {
                 const isCur = sub.path === currentDirPath;
@@ -4641,15 +5402,18 @@
                 `;
             });
 
+
             htmlTree += `</div>`;
             tree.innerHTML = htmlTree;
         }
+
 
         function renderFavoritesList() {
             const list = document.getElementById('favorites-tree-list');
             const countEl = document.getElementById('fav-count');
             if (countEl) countEl.textContent = userFavoritesList.length;
             if (!list) return;
+
 
             list.innerHTML = '';
             userFavoritesList.forEach(fav => {
@@ -4664,6 +5428,7 @@
             });
         }
 
+
         function renderCurrentFilesView() {
             if (fileViewMode === 'grid') {
                 renderFilesGrid(filteredFilesList);
@@ -4671,6 +5436,7 @@
                 renderFilesList(filteredFilesList);
             }
         }
+
 
         function getAirDroidFolderIconSvg() {
             return `
@@ -4682,6 +5448,7 @@
                 </svg>
             `;
         }
+
 
         function getFileIcon(name, isDir) {
             if (isDir) return getAirDroidFolderIconSvg();
@@ -4696,19 +5463,23 @@
             return '<div class="w-12 h-12 bg-gray-100 text-gray-600 rounded-xl flex items-center justify-center text-2xl shadow-xs">📃</div>';
         }
 
+
         function renderFilesGrid(files) {
             const grid = document.getElementById('files-grid-container');
             if (!grid) return;
             grid.innerHTML = '';
+
 
             if (files.length === 0) {
                 grid.innerHTML = '<div class="col-span-full p-12 text-center text-gray-400 text-xs">Folder is empty</div>';
                 return;
             }
 
+
             files.forEach(file => {
                 const isSelected = selectedFilesMap.has(file.path);
                 const iconHtml = getFileIcon(file.name, file.isDirectory);
+
 
                 const card = document.createElement('div');
                 card.className = `group flex flex-col items-center justify-start p-2 rounded-xl cursor-pointer transition-all duration-100 border text-center select-none relative ${
@@ -4717,20 +5488,24 @@
                         : 'hover:bg-gray-100/70 border-transparent hover:border-gray-200'
                 }`;
 
+
                 card.onclick = (e) => {
                     e.stopPropagation();
                     handleFileItemClick(file, e);
                 };
+
 
                 card.ondblclick = (e) => {
                     e.stopPropagation();
                     handleFileItemDblClick(file);
                 };
 
+
                 card.oncontextmenu = (e) => {
                     e.stopPropagation();
                     handleFileItemContextMenu(file, e);
                 };
+
 
                 card.innerHTML = `
                     <div class="h-14 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105">
@@ -4741,19 +5516,23 @@
                     </span>
                 `;
 
+
                 grid.appendChild(card);
             });
         }
+
 
         function renderFilesList(files) {
             const tbody = document.getElementById('files-list-tbody');
             if (!tbody) return;
             tbody.innerHTML = '';
 
+
             if (files.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-400 text-xs">Folder is empty</td></tr>';
                 return;
             }
+
 
             files.forEach(file => {
                 const isSelected = selectedFilesMap.has(file.path);
@@ -4762,25 +5541,30 @@
                 const dateStr = file.lastModified ? new Date(file.lastModified).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '--';
                 const typeStr = isDir ? 'Folder' : (file.name.includes('.') ? file.name.split('.').pop().toUpperCase() + ' File' : 'File');
 
+
                 const tr = document.createElement('tr');
                 tr.className = `cursor-pointer transition-colors border-b border-gray-100 ${
                     isSelected ? 'bg-[#e6f4ff] text-blue-900 font-medium' : 'hover:bg-gray-50/80 text-gray-700'
                 }`;
+
 
                 tr.onclick = (e) => {
                     e.stopPropagation();
                     handleFileItemClick(file, e);
                 };
 
+
                 tr.ondblclick = (e) => {
                     e.stopPropagation();
                     handleFileItemDblClick(file);
                 };
 
+
                 tr.oncontextmenu = (e) => {
                     e.stopPropagation();
                     handleFileItemContextMenu(file, e);
                 };
+
 
                 tr.innerHTML = `
                     <td class="p-2 text-center" onclick="event.stopPropagation()">
@@ -4795,9 +5579,11 @@
                     <td class="p-2 text-gray-400 text-[11px]">${typeStr}</td>
                 `;
 
+
                 tbody.appendChild(tr);
             });
         }
+
 
         function handleFileItemClick(file, e) {
             if (e && (e.ctrlKey || e.metaKey)) {
@@ -4821,11 +5607,13 @@
                 selectedFilesMap.set(file.path, file);
             }
 
+
             lastSelectedFile = file;
             updateFileToolbarState();
             renderCurrentFilesView();
             updateFileStatusBar();
         }
+
 
         function handleFileItemDblClick(file) {
             if (file.isDirectory) {
@@ -4839,6 +5627,7 @@
             }
         }
 
+
         function deselectAllFiles(e) {
             if (e && e.target && e.target.closest('#file-context-menu')) return;
             selectedFilesMap.clear();
@@ -4848,6 +5637,7 @@
             updateFileStatusBar();
             hideContextMenu();
         }
+
 
         function toggleSingleFileCb(path, checked) {
             const file = filteredFilesList.find(f => f.path === path);
@@ -4862,6 +5652,7 @@
             updateFileStatusBar();
         }
 
+
         function toggleSelectAllFiles(masterCb) {
             if (masterCb.checked) {
                 filteredFilesList.forEach(f => selectedFilesMap.set(f.path, f));
@@ -4873,11 +5664,13 @@
             updateFileStatusBar();
         }
 
+
         function updateFileToolbarState() {
             const count = selectedFilesMap.size;
             const single = count === 1;
             const hasSelection = count > 0;
             const hasClipboard = fileClipboard !== null && fileClipboard.files.length > 0;
+
 
             const renameBtn = document.getElementById('tb-rename-btn');
             const cutBtn = document.getElementById('tb-cut-btn');
@@ -4887,6 +5680,7 @@
             const starBtn = document.getElementById('tb-star-btn');
             const delBtn = document.getElementById('tb-delete-btn');
 
+
             if (renameBtn) renameBtn.disabled = !single;
             if (cutBtn) cutBtn.disabled = !hasSelection;
             if (copyBtn) copyBtn.disabled = !hasSelection;
@@ -4895,9 +5689,11 @@
             if (starBtn) starBtn.disabled = !single;
             if (delBtn) delBtn.disabled = !hasSelection;
 
+
             const cmPaste = document.getElementById('cm-paste-btn');
             if (cmPaste) cmPaste.disabled = !hasClipboard;
         }
+
 
         function updateFileStatusBar() {
             const countEl = document.getElementById('file-status-count');
@@ -4906,7 +5702,9 @@
             const sizeEl = document.getElementById('file-status-size');
             const iconEl = document.getElementById('file-status-icon');
 
+
             if (countEl) countEl.textContent = `${filteredFilesList.length} items`;
+
 
             if (selectedFilesMap.size === 1) {
                 const file = Array.from(selectedFilesMap.values())[0];
@@ -4928,10 +5726,12 @@
             }
         }
 
+
         // --- Navigation & History Engine ---
         function navigateToDir(path) {
             sendCommand({ action: 'FETCH_DIR', path: path });
         }
+
 
         function navigateUp() {
             if (parentDirPath && parentDirPath !== currentDirPath) {
@@ -4939,10 +5739,12 @@
             }
         }
 
+
         function refreshCurrentDir() {
             sendCommand({ action: 'FETCH_DIR', path: currentDirPath });
             showToast("Refreshing directory... 🔄", "info");
         }
+
 
         function navigateHistoryBack() {
             if (navHistoryIndex > 0) {
@@ -4951,12 +5753,14 @@
             }
         }
 
+
         function navigateHistoryForward() {
             if (navHistoryIndex < navHistoryStack.length - 1) {
                 navHistoryIndex++;
                 navigateToDir(navHistoryStack[navHistoryIndex]);
             }
         }
+
 
         function updateNavHistoryButtons() {
             const backBtn = document.getElementById('file-nav-back');
@@ -4965,10 +5769,12 @@
             if (fwdBtn) fwdBtn.disabled = navHistoryIndex >= navHistoryStack.length - 1;
         }
 
+
         // --- Search & Filter ---
         function onFileSearchInput(query) {
             const clearBtn = document.getElementById('file-search-clear');
             if (clearBtn) clearBtn.classList.toggle('hidden', !query);
+
 
             const q = (query || '').toLowerCase().trim();
             if (!q) {
@@ -4980,11 +5786,13 @@
             updateFileStatusBar();
         }
 
+
         function clearFileSearch() {
             const input = document.getElementById('file-search-input');
             if (input) input.value = '';
             onFileSearchInput('');
         }
+
 
         // --- Context Menu Engine ---
         function handleFileManagerContextMenu(e) {
@@ -4993,11 +5801,13 @@
             const itemActions = document.getElementById('cm-item-actions');
             if (!cm) return;
 
+
             if (selectedFilesMap.size === 0) {
                 if (itemActions) itemActions.classList.add('hidden');
             } else {
                 if (itemActions) itemActions.classList.remove('hidden');
             }
+
 
             cm.classList.remove('hidden');
             const x = Math.min(e.clientX, window.innerWidth - 190);
@@ -5005,6 +5815,7 @@
             cm.style.left = `${x}px`;
             cm.style.top = `${y}px`;
         }
+
 
         function handleFileItemContextMenu(file, e) {
             e.preventDefault();
@@ -5019,16 +5830,19 @@
             handleFileManagerContextMenu(e);
         }
 
+
         function hideContextMenu() {
             const cm = document.getElementById('file-context-menu');
             if (cm) cm.classList.add('hidden');
         }
+
 
         document.addEventListener('click', (e) => {
             if (!e.target.closest('#file-context-menu')) {
                 hideContextMenu();
             }
         });
+
 
         // --- Cut / Copy / Paste Clipboard ---
         function copySelectedFile() {
@@ -5041,6 +5855,7 @@
             showToast(`Copied ${fileClipboard.files.length} item(s) to clipboard 📑`, "info");
         }
 
+
         function cutSelectedFile() {
             if (selectedFilesMap.size === 0) return;
             fileClipboard = {
@@ -5051,10 +5866,12 @@
             showToast(`Cut ${fileClipboard.files.length} item(s) ✂️`, "info");
         }
 
+
         function pasteFile() {
             if (!fileClipboard || fileClipboard.files.length === 0) return;
             const op = fileClipboard.op;
             const targetDir = currentDirPath;
+
 
             fileClipboard.files.forEach(file => {
                 if (op === 'copy') {
@@ -5072,12 +5889,14 @@
                 }
             });
 
+
             showToast(`${op === 'cut' ? 'Moving' : 'Copying'} ${fileClipboard.files.length} item(s)...`, "info");
             if (op === 'cut') {
                 fileClipboard = null;
                 updateFileToolbarState();
             }
         }
+
 
         // --- File Operations: Rename, Delete, Info, Favorites ---
         function promptCreateFolder() {
@@ -5090,6 +5909,7 @@
             });
             showToast("Creating folder...", "info");
         }
+
 
         function renameSelectedFile() {
             if (selectedFilesMap.size !== 1) return;
@@ -5104,6 +5924,7 @@
             showToast("Renaming...", "info");
         }
 
+
         function deleteSelectedFiles() {
             if (selectedFilesMap.size === 0) return;
             const files = Array.from(selectedFilesMap.values());
@@ -5111,7 +5932,9 @@
                 ? `Are you sure you want to permanently delete:\n\n"${files[0].name}"?`
                 : `Are you sure you want to permanently delete these ${files.length} selected items?`;
 
+
             if (!confirm(msg)) return;
+
 
             if (files.length === 1) {
                 sendCommand({ action: 'DELETE_FILE', path: files[0].path });
@@ -5124,11 +5947,13 @@
             showToast(`Deleting ${files.length} item(s)...`, "info");
         }
 
+
         function showSelectedFileInfo() {
             if (selectedFilesMap.size !== 1) return;
             const file = Array.from(selectedFilesMap.values())[0];
             const modal = document.getElementById('file-info-modal');
             if (!modal) return;
+
 
             document.getElementById('modal-info-title').textContent = file.name;
             document.getElementById('modal-info-icon').textContent = file.isDirectory ? '📁' : '📄';
@@ -5138,22 +5963,27 @@
             document.getElementById('info-date').textContent = file.lastModified ? new Date(file.lastModified).toLocaleString() : '--';
             document.getElementById('info-contents-row').classList.toggle('hidden', !file.isDirectory);
 
+
             modal.classList.remove('hidden');
+
 
             if (file.isDirectory) {
                 sendCommand({ action: 'GET_FILE_INFO', path: file.path });
             }
         }
 
+
         function closeFileInfoModal() {
             const modal = document.getElementById('file-info-modal');
             if (modal) modal.classList.add('hidden');
         }
 
+
         function toggleFileHotkeysModal() {
             const modal = document.getElementById('file-hotkeys-modal');
             if (modal) modal.classList.toggle('hidden');
         }
+
 
         function toggleFavoriteSelected() {
             if (selectedFilesMap.size !== 1) return;
@@ -5173,12 +6003,14 @@
             renderFavoritesList();
         }
 
+
         function promptAddExternalStorage() {
             const path = prompt("Enter External Storage / SD Card mount path:\n(e.g. /storage/XXXX-XXXX)");
             if (path && path.trim()) {
                 navigateToDir(path.trim());
             }
         }
+
 
         function downloadSelectedOrCurrent() {
             const files = Array.from(selectedFilesMap.values());
@@ -5201,6 +6033,7 @@
             }
         }
 
+
         function formatBytes(bytes) {
             if (!bytes || bytes === 0) return '0 B';
             const k = 1024;
@@ -5209,12 +6042,14 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
 
+
         // --- Keyboard Shortcuts for File Window ---
         document.addEventListener('keydown', (e) => {
             const fileWin = document.getElementById('file-window');
             if (!fileWin || fileWin.classList.contains('hidden')) return;
             if (wm.activeWindowId !== 'file-window') return;
             if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
 
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
                 e.preventDefault();
@@ -5242,14 +6077,20 @@
         });
 
 
+
+
         // --- Phase 5: Notification History, APK Install & Emergency Wipe ---
         let allNotificationHistory = [];
+
+
 
 
         function openNotificationCenter() {
             wm.openWindow('notif-window');
             sendCommand({ action: 'FETCH_NOTIF_HISTORY' });
         }
+
+
 
 
         function renderNotificationHistory(items) {
@@ -5259,14 +6100,20 @@
             if (countEl) countEl.textContent = allNotificationHistory.length;
 
 
+
+
             if (!list) return;
             list.innerHTML = '';
+
+
 
 
             if (allNotificationHistory.length === 0) {
                 list.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs">No notifications in history yet</div>';
                 return;
             }
+
+
 
 
             allNotificationHistory.forEach(item => {
@@ -5276,6 +6123,8 @@
                 const text = item.text || '';
                 const canReply = item.canReply === true;
                 const safeKey = (item.id || '').replace(/'/g, "\\'");
+
+
 
 
                 list.innerHTML += `
@@ -5301,6 +6150,8 @@
         }
 
 
+
+
         function filterNotificationHistory(query) {
             const q = query.toLowerCase();
             const filtered = allNotificationHistory.filter(n =>
@@ -5310,6 +6161,8 @@
             );
             renderFilteredNotificationHistory(filtered);
         }
+
+
 
 
         function renderFilteredNotificationHistory(items) {
@@ -5339,12 +6192,16 @@
         }
 
 
+
+
         function clearNotificationHistory() {
             if (!confirm("Are you sure you want to clear all notification history?")) return;
             sendCommand({ action: 'CLEAR_NOTIF_HISTORY' });
             allNotificationHistory = [];
             renderNotificationHistory([]);
         }
+
+
 
 
         function sendHistoryQuickReply(key) {
@@ -5360,11 +6217,15 @@
         }
 
 
+
+
         function triggerApkInstall(path, name) {
             if (!confirm(`Do you want to launch package installation on your phone for:\n\n"${name}"?`)) return;
             sendCommand({ action: 'INSTALL_APK', path: path });
             showToast(`Launching installer for ${name}... 📥`, "info");
         }
+
+
 
 
         function confirmEmergencyWipe() {
@@ -5380,6 +6241,8 @@
         }
 
 
+
+
         // --- Photos Gallery ---
         function renderPhotos(photos) {
             const grid = document.getElementById('photos-grid');
@@ -5390,9 +6253,13 @@
             }
 
 
+
+
             photos.forEach(photo => {
                 const dateStr = new Date(photo.date).toLocaleDateString([], {month: 'short', day: 'numeric'});
                 const sizeStr = formatBytes(photo.size);
+
+
 
 
                 grid.innerHTML += `
@@ -5407,6 +6274,8 @@
                 `;
             });
         }
+
+
 
 
         // --- Window Manager Engine ---
@@ -5690,10 +6559,14 @@
         const wm = new WindowManager();
 
 
+
+
         setInterval(() => {
             const now = new Date();
             document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }, 1000);
+
+
 
 
         let isSirenRinging = false;
@@ -5712,6 +6585,8 @@
         }
 
 
+
+
         // --- Renderers ---
         function renderStorage(storage) {
             if (!storage) return;
@@ -5722,6 +6597,8 @@
             let freeGB = (storage.freeGB && storage.freeGB !== 'undefined') ? storage.freeGB : null;
             let usedGB = (storage.usedGB && storage.usedGB !== 'undefined') ? storage.usedGB : null;
             let usedPercent = (storage.usedPercent !== undefined && !isNaN(storage.usedPercent)) ? storage.usedPercent : null;
+
+
 
 
             if (storage.totalBytes && storage.freeBytes) {
@@ -5735,10 +6612,14 @@
             }
 
 
+
+
             totalGB = totalGB || '--';
             freeGB = freeGB || '--';
             usedGB = usedGB || '--';
             usedPercent = (usedPercent !== null) ? usedPercent : 0;
+
+
 
 
             const detailEl = document.getElementById('storage-detail-text');
@@ -5749,6 +6630,8 @@
             if (freeEl) freeEl.textContent = `Free: ${freeGB}`;
             const pctEl = document.getElementById('storage-percent-text');
             if (pctEl) pctEl.textContent = `${usedPercent}% used`;
+
+
 
 
             // Update AirDroid Widget Storage
@@ -5765,9 +6648,13 @@
         }
 
 
+
+
         // --- Ambient Intelligence: Call Audio Logs & Live Call Hearing Engine ---
         let currentCallLogTab = 'logs';
         let pendingAudioDownloadName = null;
+
+
 
 
         function switchCallLogTab(tab) {
@@ -5776,6 +6663,8 @@
             const tabRecords = document.getElementById('call-tab-records');
             const secLogs = document.getElementById('call-logs-section');
             const secRecords = document.getElementById('call-records-section');
+
+
 
 
             if (tab === 'logs') {
@@ -5793,6 +6682,8 @@
         }
 
 
+
+
         function renderCallRecordings(records) {
             const list = document.getElementById('call-records-list');
             const badge = document.getElementById('call-records-badge');
@@ -5808,12 +6699,16 @@
             }
 
 
+
+
             records.forEach(rec => {
                 // Name format: CALL_YYYYMMDD_HHMMSS_<Number>.m4a
                 const nameParts = rec.fileName.replace('.m4a', '').split('_');
                 const rawDate = nameParts[1] || '';
                 const rawTime = nameParts[2] || '';
                 const callerNum = nameParts.slice(3).join('_') || 'Unknown';
+
+
 
 
                 let dateDisplay = 'Recent Call';
@@ -5827,8 +6722,12 @@
                 }
 
 
+
+
                 const sizeKb = Math.round(rec.fileSize / 1024);
                 const sizeDisplay = sizeKb > 1024 ? `${(sizeKb/1024).toFixed(1)} MB` : `${sizeKb} KB`;
+
+
 
 
                 list.innerHTML += `
@@ -5857,6 +6756,8 @@
         }
 
 
+
+
         function playCallRecording(fileName) {
             const playerBar = document.getElementById('call-audio-player-bar');
             const nameEl = document.getElementById('call-audio-playing-name');
@@ -5865,9 +6766,13 @@
             if (nameEl) nameEl.textContent = `Loading ${fileName}...`;
 
 
+
+
             showToast(`Loading audio for ${fileName}...`, 'info');
             sendCommand({ action: 'PLAY_CALL_RECORDING', fileName: fileName });
             sendCommand({ action: 'GET_CALL_RECORDING_BASE64', fileName: fileName });
+
+
 
 
             // If on local Wi-Fi, set audio src as fallback
@@ -5877,10 +6782,14 @@
         }
 
 
+
+
         function handleCallRecordingData(data) {
             const playerBar = document.getElementById('call-audio-player-bar');
             const nameEl = document.getElementById('call-audio-playing-name');
             const audioEl = document.getElementById('call-audio-element');
+
+
 
 
             if (data.data) {
@@ -5893,6 +6802,8 @@
                 const mime = data.mimeType || (data.fileName && data.fileName.endsWith('.wav') ? 'audio/wav' : 'audio/mp4');
                 const blob = new Blob([byteArray], { type: mime });
                 const blobUrl = URL.createObjectURL(blob);
+
+
 
 
                 if (pendingAudioDownloadName === data.fileName) {
@@ -5908,6 +6819,8 @@
                 }
 
 
+
+
                 if (playerBar) playerBar.classList.remove('hidden');
                 if (nameEl) nameEl.textContent = `▶ Playing ${data.fileName}`;
                 if (audioEl) {
@@ -5921,6 +6834,8 @@
         }
 
 
+
+
         function downloadCallRecording(fileName) {
             if (!isCloudMode) {
                 window.open(`/api/call_recordings/${fileName}`, '_blank');
@@ -5932,11 +6847,15 @@
         }
 
 
+
+
         function deleteCallRecording(fileName) {
             if (confirm(`Call recording "${fileName}" delete karein?`)) {
                 sendCommand({ action: 'DELETE_CALL_RECORDING', fileName: fileName });
             }
         }
+
+
 
 
         function closeCallAudioPlayer() {
@@ -5950,8 +6869,12 @@
         }
 
 
+
+
         // --- Live Call Ambient Hearing Banner ---
         let liveCallBannerTimer = null;
+
+
 
 
         function handleCallStateUpdate(data) {
@@ -5963,7 +6886,11 @@
             if (!banner) return;
 
 
+
+
             if (liveCallBannerTimer) clearTimeout(liveCallBannerTimer);
+
+
 
 
             if (data.state === 'RINGING') {
@@ -5990,6 +6917,8 @@
                 }, 4000);
 
 
+
+
                 // Auto refresh call logs & recordings
                 sendCommand({ action: 'FETCH_CALL_LOGS' });
                 sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
@@ -5997,9 +6926,13 @@
         }
 
 
+
+
         function toggleLiveCallListen() {
             const listenLabel = document.getElementById('live-call-listen-label');
             const listenBtn = document.getElementById('live-call-listen-btn');
+
+
 
 
             initWebAudio();
@@ -6008,7 +6941,11 @@
             }
 
 
+
+
             isLiveCallListening = !isLiveCallListening;
+
+
 
 
             if (isLiveCallListening) {
@@ -6031,10 +6968,14 @@
         }
 
 
+
+
         function dismissLiveCallBanner() {
             const banner = document.getElementById('live-call-banner');
             if (banner) banner.classList.add('hidden');
         }
+
+
 
 
         function handleCallRecordingSaved(data) {
@@ -6044,6 +6985,8 @@
         }
 
 
+
+
         // --- AirDroid Call Logs System (Clean UI & 1000-Calls Chunked Infinite Scroll) ---
         let rawCallLogs = [];
         let callLogsFilter = 'All';
@@ -6051,6 +6994,7 @@
         let totalCallLogsCount = 0;
         let hasMoreCallLogs = false;
         let isLoadingCallLogs = false;
+
 
         function formatAirDroidTime(ts) {
             if (!ts) return '--';
@@ -6068,11 +7012,13 @@
             return `${monthNames[d.getMonth()]} ${d.getDate()} ${d.getFullYear()} ${timeStr}`;
         }
 
+
         function renderCallLogs(data, offset = 0, total = 0, hasMore = false) {
             let items = [];
             let incomingOffset = 0;
             let incomingTotal = 0;
             let incomingHasMore = false;
+
 
             if (data && typeof data === 'object' && !Array.isArray(data) && data.data) {
                 items = Array.isArray(data.data) ? data.data : [];
@@ -6085,6 +7031,7 @@
                 incomingTotal = typeof total === 'number' ? total : items.length;
                 incomingHasMore = typeof hasMore === 'boolean' ? hasMore : false;
             }
+
 
             if (incomingOffset === 0) {
                 rawCallLogs = items;
@@ -6099,27 +7046,33 @@
                 });
             }
 
+
             totalCallLogsCount = incomingTotal > 0 ? Math.min(incomingTotal, 1000) : rawCallLogs.length;
             hasMoreCallLogs = incomingHasMore && rawCallLogs.length < 1000;
             isLoadingCallLogs = false;
 
+
             renderCurrentCallLogsView();
         }
+
 
         function renderCurrentCallLogsView() {
             const list = document.getElementById('call-logs-list');
             const badge = document.getElementById('cl-status-stats');
             if (!list) return;
 
+
             // Clean UI: Keep footer empty without cluttered count strings
             if (badge) {
                 badge.textContent = '';
             }
 
+
             let filtered = rawCallLogs.slice();
             if (callLogsFilter !== 'All' && callLogsFilter !== 'Recordings') {
                 filtered = filtered.filter(l => (l.type || '').toLowerCase() === callLogsFilter.toLowerCase());
             }
+
 
             if (callLogsSearch.trim()) {
                 const q = callLogsSearch.toLowerCase();
@@ -6128,6 +7081,7 @@
                     (l.number || '').toLowerCase().includes(q)
                 );
             }
+
 
             list.innerHTML = '';
             if (filtered.length === 0) {
@@ -6141,10 +7095,12 @@
                 return;
             }
 
+
             filtered.forEach(log => {
                 const isMissed = (log.type || '').toLowerCase() === 'missed';
                 const isIncoming = (log.type || '').toLowerCase() === 'incoming';
                 const isOutgoing = (log.type || '').toLowerCase() === 'outgoing';
+
 
                 let arrowHtml = '';
                 if (isOutgoing) {
@@ -6176,13 +7132,16 @@
                     `;
                 }
 
+
                 const timeStr = formatAirDroidTime(log.date);
                 const nameDisplay = (log.name && log.name !== 'Unknown') ? log.name : log.number;
                 const numberDisplay = log.number || '--';
                 const durDisplay = log.duration || (isMissed ? '00:00' : '--');
 
+
                 const row = document.createElement('div');
                 row.className = "px-3 py-2.5 hover:bg-[#f0f7ff] transition-colors flex items-center justify-between group cursor-default select-none border-b border-gray-50";
+
 
                 row.innerHTML = `
                     <div class="w-10 flex items-center justify-center">${arrowHtml}</div>
@@ -6211,6 +7170,7 @@
                 list.appendChild(row);
             });
 
+
             // If loading more, append loader row
             if (hasMoreCallLogs && rawCallLogs.length < 1000) {
                 const loader = document.createElement('div');
@@ -6218,6 +7178,7 @@
                 loader.innerHTML = "<span>Scroll down to load more calls...</span>";
                 list.appendChild(loader);
             }
+
 
             // Setup Infinite Scroll listener for Call Logs
             if (!list.hasInfiniteScrollSetup) {
@@ -6233,6 +7194,7 @@
             }
         }
 
+
         function setCallLogsFilter(filter) {
             callLogsFilter = filter;
             const tabs = ['All', 'Incoming', 'Outgoing', 'Missed', 'Recordings'];
@@ -6247,8 +7209,10 @@
                 }
             });
 
+
             const secLogs = document.getElementById('call-logs-section');
             const secRecs = document.getElementById('call-records-section');
+
 
             if (filter === 'Recordings') {
                 if (secLogs) secLogs.classList.add('hidden');
@@ -6263,6 +7227,7 @@
             }
         }
 
+
         function onCallLogsSearch(val) {
             callLogsSearch = val;
             const clearBtn = document.getElementById('cl-search-clear');
@@ -6270,11 +7235,13 @@
             renderCurrentCallLogsView();
         }
 
+
         function clearCallLogsSearch() {
             const input = document.getElementById('cl-search-input');
             if (input) input.value = '';
             onCallLogsSearch('');
         }
+
 
         function refreshCallLogs() {
             rawCallLogs = [];
@@ -6286,12 +7253,14 @@
             sendCommand({ action: 'FETCH_CALL_RECORDINGS' });
         }
 
+
         function promptQuickCall() {
             const num = prompt("Enter phone number to call:");
             if (num && num.trim()) {
                 triggerCall(num.trim());
             }
         }
+
 
         function promptClearAllCallLogs() {
             if (confirm("Are you sure you want to clear call history?")) {
@@ -6302,17 +7271,20 @@
             }
         }
 
+
         function deleteSingleCallLog(id, number, date) {
             rawCallLogs = rawCallLogs.filter(l => !(l.id === id || (l.number === number && l.date === date)));
             renderCurrentCallLogsView();
             sendCommand({ action: 'DELETE_CALL_LOG', id: id, number: number, date: date });
         }
 
+
         function triggerCall(number) {
             if (!number || number === '--') return;
             sendCommand({ action: 'MAKE_CALL', number: number });
             showNotificationToast({ app: 'Phone', title: 'Calling...', text: `Initiating call to ${number}` });
         }
+
 
         function openSmsForContact(number, name) {
             wm.openWindow('sms-window');
@@ -6322,6 +7294,7 @@
                 toInput.focus();
             }
         }
+
 
         function renderApps(apps) {
             const list = document.getElementById('apps-list');
@@ -6360,16 +7333,22 @@
         }
 
 
+
+
         function launchRemoteApp(pkg, name) {
             showToast(`Opening ${name} on phone... 🚀`, "info");
             sendCommand({ action: 'LAUNCH_APP', package: pkg });
         }
 
 
+
+
         function uninstallRemoteApp(pkg, name) {
             showToast(`Triggering uninstall for ${name}... 🗑️`, "info");
             sendCommand({ action: 'UNINSTALL_APP', package: pkg });
         }
+
+
 
 
         function filterApps(query) {
@@ -6381,12 +7360,16 @@
         }
 
 
+
+
         function syncClipboard() {
             const text = document.getElementById('clipboard-input').value;
             if (text) {
                 sendCommand({ action: 'SET_CLIPBOARD', text: text });
             }
         }
+
+
 
 
         function copyToPcClipboard() {
@@ -6398,6 +7381,8 @@
                 });
             }
         }
+
+
 
 
         function renderSms(sms) {
@@ -6417,6 +7402,8 @@
         }
 
 
+
+
         function sendSms() {
             const to = document.getElementById('sms-to').value;
             const body = document.getElementById('sms-body').value;
@@ -6425,6 +7412,8 @@
             document.getElementById('sms-body').value = '';
             setTimeout(() => sendCommand({action: 'FETCH_SMS'}), 1000);
         }
+
+
 
 
         // --- AirDroid Contacts Management System (Strict Bottom-Scroll On-Demand) ---
@@ -6438,11 +7427,13 @@
         let hasMoreContacts = false;
         let isLoadingContacts = false;
 
+
         function renderContacts(data, offset = 0, total = 0, hasMore = false) {
             let items = [];
             let incomingOffset = 0;
             let incomingTotal = 0;
             let incomingHasMore = false;
+
 
             if (data && typeof data === 'object' && !Array.isArray(data) && data.data) {
                 items = Array.isArray(data.data) ? data.data : [];
@@ -6456,9 +7447,11 @@
                 incomingHasMore = typeof hasMore === 'boolean' ? hasMore : false;
             }
 
+
             items.forEach(c => {
                 if (!c.group) c.group = 'All';
             });
+
 
             if (incomingOffset === 0) {
                 rawContacts = items;
@@ -6473,16 +7466,20 @@
                 });
             }
 
+
             if (incomingTotal > 0) totalContactsCount = incomingTotal;
             else totalContactsCount = Math.max(totalContactsCount, rawContacts.length);
 
+
             hasMoreContacts = incomingHasMore;
             isLoadingContacts = false;
+
 
             renderCurrentContactsView();
             // Strictly NO background prefetch timer!
             // Contacts only load when user scrolls all the way to the bottom.
         }
+
 
         function renderCurrentContactsView() {
             const listScroll = document.getElementById('contacts-list-scroll');
@@ -6490,12 +7487,15 @@
             const groupLabel = document.getElementById('contact-group-label');
             const btnDelete = document.getElementById('btn-delete-contacts');
 
+
             if (!listScroll) return;
+
 
             let filtered = rawContacts.slice();
             if (activeContactGroup && activeContactGroup !== 'all') {
                 filtered = filtered.filter(c => (c.group || 'All').toLowerCase() === activeContactGroup.toLowerCase());
             }
+
 
             if (contactsSearch.trim()) {
                 const q = contactsSearch.toLowerCase();
@@ -6506,11 +7506,13 @@
                 );
             }
 
+
             const totalDisplay = (activeContactGroup === 'all' && totalContactsCount > 0) ? totalContactsCount : filtered.length;
             const groupDisplay = activeContactGroup === 'all' ? 'Contacts with number' : activeContactGroup;
             if (groupLabel) {
                 groupLabel.textContent = `${groupDisplay} (${totalDisplay})`;
             }
+
 
             if (btnDelete) {
                 const count = selectedContactIds.size;
@@ -6524,7 +7526,9 @@
                 }
             }
 
+
             filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
 
             const letterGroups = {};
             filtered.forEach(c => {
@@ -6537,6 +7541,7 @@
                 }
                 letterGroups[firstChar].push(c);
             });
+
 
             if (alphaStrip) {
                 alphaStrip.innerHTML = '';
@@ -6556,6 +7561,7 @@
                 });
             }
 
+
             listScroll.innerHTML = '';
             if (filtered.length === 0) {
                 listScroll.innerHTML = `
@@ -6568,11 +7574,13 @@
                 return;
             }
 
+
             const sortedLetters = Object.keys(letterGroups).sort((a, b) => {
                 if (a === '#') return -1;
                 if (b === '#') return 1;
                 return a.localeCompare(b);
             });
+
 
             sortedLetters.forEach(letter => {
                 const header = document.createElement('div');
@@ -6581,14 +7589,17 @@
                 header.textContent = letter;
                 listScroll.appendChild(header);
 
+
                 letterGroups[letter].forEach(contact => {
                     const isSelected = selectedContact && (selectedContact.id === contact.id || (selectedContact.number === contact.number && selectedContact.name === contact.name));
                     const isChecked = selectedContactIds.has(contact.id || contact.number);
+
 
                     const row = document.createElement('div');
                     row.className = `px-3 py-2 flex items-center justify-between cursor-pointer border-b border-gray-50 transition-colors select-none ${
                         isSelected ? 'bg-[#eef2f6] text-blue-900' : 'hover:bg-gray-50/80 text-gray-700'
                     }`;
+
 
                     let avatarHtml = '';
                     if (contact.photo) {
@@ -6597,9 +7608,11 @@
                         avatarHtml = `<div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-semibold shrink-0">👤</div>`;
                     }
 
+
                     row.onclick = () => {
                         selectContact(contact);
                     };
+
 
                     row.innerHTML = `
                         <div class="flex items-center gap-2.5 truncate flex-1 pr-2">
@@ -6615,6 +7628,7 @@
                 });
             });
 
+
             // If loading more, append loader item
             if (hasMoreContacts) {
                 const loader = document.createElement('div');
@@ -6622,6 +7636,7 @@
                 loader.innerHTML = "<span>Scroll down to load more contacts...</span>";
                 listScroll.appendChild(loader);
             }
+
 
             // Setup Infinite Scroll listener - STRICTLY when scrolling all the way to bottom!
             if (!listScroll.hasInfiniteScrollSetup) {
@@ -6636,12 +7651,14 @@
                 });
             }
 
+
             if (!selectedContact && filtered.length > 0) {
                 selectContact(filtered[0]);
             } else if (selectedContact) {
                 renderContactDetails(selectedContact);
             }
         }
+
 
         function selectContact(contact) {
             selectedContact = contact;
@@ -6660,6 +7677,7 @@
             }
         }
 
+
         function renderContactDetails(c) {
             const emptyState = document.getElementById('contact-empty-state');
             const cardContent = document.getElementById('contact-card-content');
@@ -6669,8 +7687,10 @@
                 return;
             }
 
+
             if (emptyState) emptyState.classList.add('hidden');
             if (cardContent) cardContent.classList.remove('hidden');
+
 
             document.getElementById('cd-name').textContent = c.name || 'Unknown Contact';
             document.getElementById('cd-phone-number').textContent = c.number || '--';
@@ -6685,6 +7705,7 @@
                 emailRow.classList.add('hidden');
             }
 
+
             const notesRow = document.getElementById('cd-notes-row');
             const notesEl = document.getElementById('cd-notes');
             if (c.notes) {
@@ -6693,6 +7714,7 @@
             } else {
                 notesRow.classList.add('hidden');
             }
+
 
             const avatar = document.getElementById('cd-avatar-circle');
             if (avatar) {
@@ -6703,6 +7725,7 @@
                 }
             }
         }
+
 
         function toggleContactSelection(idOrNum, checked) {
             if (checked) {
@@ -6724,6 +7747,7 @@
             }
         }
 
+
         function onContactsSearch(val) {
             contactsSearch = val;
             const clearBtn = document.getElementById('contacts-search-clear');
@@ -6731,11 +7755,13 @@
             renderCurrentContactsView();
         }
 
+
         function clearContactsSearch() {
             const input = document.getElementById('contacts-search-input');
             if (input) input.value = '';
             onContactsSearch('');
         }
+
 
         function refreshContacts() {
             rawContacts = [];
@@ -6745,17 +7771,20 @@
             showNotificationToast({ app: 'Contacts', title: 'Syncing', text: 'Fetching latest contacts from device...' });
         }
 
+
         function sendSmsToCurrentContact() {
             if (selectedContact && selectedContact.number) {
                 openSmsForContact(selectedContact.number, selectedContact.name);
             }
         }
 
+
         function callCurrentContact() {
             if (selectedContact && selectedContact.number) {
                 triggerCall(selectedContact.number);
             }
         }
+
 
         function deleteCurrentContact() {
             if (!selectedContact) return;
@@ -6769,6 +7798,7 @@
                 sendCommand({ action: 'DELETE_CONTACT', id: targetId, number: targetNum });
             }
         }
+
 
         function deleteSelectedContacts() {
             if (selectedContactIds.size === 0) return;
@@ -6784,6 +7814,7 @@
             }
         }
 
+
         function openNewContactModal() {
             document.getElementById('modal-contact-title').textContent = "New Contact";
             document.getElementById('cf-id').value = '';
@@ -6795,6 +7826,7 @@
             document.getElementById('cf-notes').value = '';
             document.getElementById('modal-contact-form').classList.remove('hidden');
         }
+
 
         function openEditContactModal() {
             if (!selectedContact) return;
@@ -6809,9 +7841,11 @@
             document.getElementById('modal-contact-form').classList.remove('hidden');
         }
 
+
         function closeContactModal() {
             document.getElementById('modal-contact-form').classList.add('hidden');
         }
+
 
         function saveContactForm() {
             const name = document.getElementById('cf-name').value.trim();
@@ -6822,10 +7856,12 @@
             const notes = document.getElementById('cf-notes').value.trim();
             const id = document.getElementById('cf-id').value;
 
+
             if (!name || !number) {
                 alert("Please enter both Name and Phone Number.");
                 return;
             }
+
 
             if (id) {
                 const idx = rawContacts.findIndex(c => String(c.id) === String(id));
@@ -6849,10 +7885,12 @@
                 sendCommand({ action: 'ADD_CONTACT', name, number, email });
             }
 
+
             closeContactModal();
             renderCurrentContactsView();
             showNotificationToast({ app: 'Contacts', title: 'Saved', text: `Contact ${name} saved successfully.` });
         }
+
 
         function toggleContactGroupDropdown() {
             const menu = document.getElementById('contact-groups-menu');
@@ -6863,10 +7901,12 @@
             }
         }
 
+
         function renderContactGroupsList() {
             const list = document.getElementById('contact-groups-list');
             if (!list) return;
             list.innerHTML = '';
+
 
             const allCount = totalContactsCount > 0 ? totalContactsCount : rawContacts.length;
             const allDiv = document.createElement('div');
@@ -6878,6 +7918,7 @@
                 renderCurrentContactsView();
             };
             list.appendChild(allDiv);
+
 
             contactGroups.forEach(grp => {
                 const count = rawContacts.filter(c => (c.group || '').toLowerCase() === grp.toLowerCase()).length;
@@ -6900,6 +7941,7 @@
             });
         }
 
+
         function promptAddContactGroup() {
             const name = prompt("Enter new group name:");
             if (name && name.trim()) {
@@ -6918,6 +7960,7 @@
             }
         }
 
+
         function promptRenameGroup(grp) {
             const newName = prompt(`Rename group "${grp}" to:`, grp);
             if (newName && newName.trim() && newName.trim() !== grp) {
@@ -6933,6 +7976,7 @@
             }
         }
 
+
         function deleteGroup(grp) {
             if (confirm(`Delete group "${grp}"? (Contacts will not be deleted)`)) {
                 contactGroups = contactGroups.filter(g => g !== grp);
@@ -6945,10 +7989,12 @@
             }
         }
 
+
         function toggleDialerDrawer() {
             const drawer = document.getElementById('contacts-dialer-drawer');
             if (drawer) drawer.classList.toggle('hidden');
         }
+
 
         function dialerPress(digit) {
             const screen = document.getElementById('dialer-screen');
@@ -6957,12 +8003,14 @@
             }
         }
 
+
         function dialerBackspace() {
             const screen = document.getElementById('dialer-screen');
             if (screen) {
                 screen.value = screen.value.slice(0, -1);
             }
         }
+
 
         function dialerTriggerCall() {
             const screen = document.getElementById('dialer-screen');
@@ -6971,12 +8019,14 @@
             }
         }
 
+
         function dialerTriggerSms() {
             const screen = document.getElementById('dialer-screen');
             if (screen && screen.value.trim()) {
                 openSmsForContact(screen.value.trim(), 'Dialed Number');
             }
         }
+
 
         function exportContactsVcf() {
             if (rawContacts.length === 0) {
@@ -7004,6 +8054,7 @@
             showNotificationToast({ app: 'Contacts', title: 'Export Complete', text: 'Contacts exported to .vcf file!' });
         }
 
+
         function makeCall() {
             const screen = document.getElementById('dialer-screen');
             const num = screen ? screen.value : '';
@@ -7015,6 +8066,8 @@
             const toast = document.createElement('div');
             toast.className = 'bg-gray-900/95 backdrop-blur text-white rounded-xl shadow-2xl p-3.5 border border-white/10 pointer-events-auto transform transition-all duration-300 translate-x-full text-xs';
             toast.id = `toast-${notif.id}`;
+
+
 
 
             let html = `
@@ -7030,6 +8083,8 @@
             `;
 
 
+
+
             if (notif.canReply) {
                 html += `
                     <div class="mt-2.5 flex gap-1.5">
@@ -7040,13 +8095,19 @@
             }
 
 
+
+
             toast.innerHTML = html;
             container.appendChild(toast);
+
+
 
 
             requestAnimationFrame(() => {
                 toast.classList.remove('translate-x-full');
             });
+
+
 
 
             if (!notif.canReply) {
@@ -7058,11 +8119,15 @@
         }
 
 
+
+
         function submitQuickReply(key) {
             const input = document.getElementById(`reply-input-${key}`);
             if (input && input.value.trim() !== '') {
                 const text = input.value.trim();
                 sendCommand({ action: 'QUICK_REPLY', key: key, text: text });
+
+
 
 
                 const btn = input.nextElementSibling;
@@ -7078,9 +8143,13 @@
         }
 
 
+
+
         // --- Target 6: Live GPS Map with Official CARTO API Key ---
         function renderMap(loc) {
             const statusEl = document.getElementById('map-status');
+
+
 
 
             if (!loc || loc.error || !loc.lat || !loc.lng) {
@@ -7092,10 +8161,14 @@
             }
 
 
+
+
             const lat = parseFloat(loc.lat);
             const lng = parseFloat(loc.lng);
             const accuracy = parseFloat(loc.accuracy) || 20;
             const timeStr = loc.timestamp ? new Date(loc.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+
+
 
 
             if (statusEl) {
@@ -7104,14 +8177,20 @@
             }
 
 
+
+
             try {
                 if (!mapInstance) {
                     mapInstance = L.map('map', { attributionControl: false }).setView([lat, lng], 16);
 
 
+
+
                     L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_3hei_1_76590e9ed91b1cc0943b2f71', {
                         maxZoom: 20
                     }).addTo(mapInstance);
+
+
 
 
                     mapMarker = L.marker([lat, lng]).addTo(mapInstance);
@@ -7132,6 +8211,8 @@
                 }
 
 
+
+
                 if (mapMarker) {
                     const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
                     mapMarker.bindPopup(`
@@ -7148,9 +8229,13 @@
                 }
 
 
+
+
                 setTimeout(() => {
                     if (mapInstance) mapInstance.invalidateSize();
                 }, 200);
+
+
 
 
                 // Auto render safe-zones and trail points
@@ -7162,6 +8247,8 @@
                 console.error("Leaflet render error:", e);
             }
         }
+
+
 
 
         // =========================================================================
@@ -7180,11 +8267,15 @@
         }
 
 
+
+
         function addGeofenceAtCurrentLocation() {
             const nameInput = document.getElementById('new-geofence-name');
             const radiusSelect = document.getElementById('new-geofence-radius');
             const name = nameInput ? nameInput.value.trim() : '';
             const radius = radiusSelect ? parseFloat(radiusSelect.value) : 500;
+
+
 
 
             if (!name) {
@@ -7193,14 +8284,20 @@
             }
 
 
+
+
             if (!latestLocation || !latestLocation.lat || !latestLocation.lng) {
                 showToast('Current GPS coordinates not available yet. Please refresh GPS first.', 'warning');
                 return;
             }
 
 
+
+
             const lat = parseFloat(latestLocation.lat);
             const lng = parseFloat(latestLocation.lng);
+
+
 
 
             sendCommand({
@@ -7213,9 +8310,13 @@
             });
 
 
+
+
             if (nameInput) nameInput.value = '';
             showToast(`Saving safe-zone '${name}'...`, 'info');
         }
+
+
 
 
         function removeGeofence(id) {
@@ -7231,14 +8332,20 @@
         }
 
 
+
+
         function renderGeofencesOnMap() {
             if (!mapInstance || !Array.isArray(activeGeofences)) return;
+
+
 
 
             Object.values(geofenceCircles).forEach(c => {
                 try { mapInstance.removeLayer(c); } catch(e) {}
             });
             geofenceCircles = {};
+
+
 
 
             activeGeofences.forEach(zone => {
@@ -7254,6 +8361,8 @@
                         weight: 2,
                         dashArray: zone.isInside ? null : '4, 6'
                     }).addTo(mapInstance);
+
+
 
 
                     circle.bindPopup(`
@@ -7276,15 +8385,21 @@
         }
 
 
+
+
         function renderGeofencesListUI() {
             const listEl = document.getElementById('safe-zones-list');
             if (!listEl) return;
+
+
 
 
             if (!activeGeofences || activeGeofences.length === 0) {
                 listEl.innerHTML = '<div class="text-center text-gray-500 text-[11px] py-4">No active safe-zones. Create one above!</div>';
                 return;
             }
+
+
 
 
             listEl.innerHTML = activeGeofences.map(zone => `
@@ -7307,10 +8422,14 @@
         }
 
 
+
+
         function toggleRouteTrail() {
             isRouteTrailVisible = !isRouteTrailVisible;
             const label = document.getElementById('trail-btn-label');
             if (label) label.textContent = isRouteTrailVisible ? 'Hide Trail' : 'Show Trail';
+
+
 
 
             if (!isRouteTrailVisible) {
@@ -7324,9 +8443,13 @@
         }
 
 
+
+
         function renderRouteTrail(points) {
             locationHistoryPoints = points || [];
             if (!mapInstance || !isRouteTrailVisible) return;
+
+
 
 
             if (routePolyline) {
@@ -7335,11 +8458,17 @@
             }
 
 
+
+
             if (!points || points.length === 0) return;
+
+
 
 
             const latlngs = points.map(p => [parseFloat(p.lat), parseFloat(p.lng)]).filter(pt => !isNaN(pt[0]) && !isNaN(pt[1]));
             if (latlngs.length < 2) return;
+
+
 
 
             routePolyline = L.polyline(latlngs, {
@@ -7349,6 +8478,8 @@
                 dashArray: '5, 8'
             }).addTo(mapInstance);
         }
+
+
 
 
         function playGeofenceAudioAlert(eventType) {
@@ -7380,6 +8511,8 @@
         }
 
 
+
+
         function copyCurrentCoords() {
             if (!latestLocation || !latestLocation.lat || !latestLocation.lng) {
                 alert("GPS location not available yet!");
@@ -7387,10 +8520,14 @@
             }
 
 
+
+
             const lat = parseFloat(latestLocation.lat).toFixed(6);
             const lng = parseFloat(latestLocation.lng).toFixed(6);
             const textToCopy = `${lat}, ${lng}
 Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
+
+
 
 
             navigator.clipboard.writeText(textToCopy).then(() => {
@@ -7409,10 +8546,14 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         // =========================================================================
         // --- Secret Stealth Capture State & Logic ---
         // =========================================================================
         let secretSnapsHistory = []; // Array of { id, target, timestamp, filename, dataUrl }
+
+
 
 
         function triggerSecretCapture() {
@@ -7421,6 +8562,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             const captureBtn = document.getElementById('secret-capture-btn');
             const btnLabel = document.getElementById('secret-btn-label');
             const btnIcon = document.getElementById('secret-btn-icon');
+
+
 
 
             // UI state: Capturing / Busy
@@ -7432,7 +8575,11 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             statusText.className = 'text-amber-400 font-mono text-[11px] animate-pulse';
 
 
+
+
             showToast(`Triggering secret capture (${selectedTarget})...`, 'info');
+
+
 
 
             // Send command to phone
@@ -7440,6 +8587,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 action: 'STEALTH_CAPTURE',
                 target: selectedTarget // 'FRONT' | 'BACK' | 'SCREEN'
             });
+
+
 
 
             // Safety timeout in case device is sleeping or network packet drops
@@ -7453,6 +8602,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function startCooldownOnButton() {
             const captureBtn = document.getElementById('secret-capture-btn');
             const btnLabel = document.getElementById('secret-btn-label');
@@ -7460,9 +8611,13 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             if (!captureBtn) return;
 
 
+
+
             let secondsLeft = 3;
             btnIcon.textContent = '⏳';
             btnLabel.textContent = `Wait ${secondsLeft}s...`;
+
+
 
 
             const interval = setInterval(() => {
@@ -7480,9 +8635,13 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function handleStealthCaptureResult(payload) {
             startCooldownOnButton();
             const statusText = document.getElementById('secret-status-text');
+
+
 
 
             if (payload.error || !payload.data) {
@@ -7494,12 +8653,16 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             }
 
 
+
+
             const targetType = payload.target || 'SNAP';
             const now = new Date();
             const timeFormatted = now.toLocaleTimeString();
             const dateFormatted = now.toISOString().slice(0, 10);
             const filename = `Secret_${targetType}_${dateFormatted}_${Date.now().toString().slice(-4)}.jpg`;
             const dataUrl = `data:image/jpeg;base64,${payload.data}`;
+
+
 
 
             const snapItem = {
@@ -7511,8 +8674,12 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             };
 
 
+
+
             // Prepend to history so latest appears first
             secretSnapsHistory.unshift(snapItem);
+
+
 
 
             if (isCameraSnapPendingDownload) {
@@ -7530,13 +8697,19 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             showToast(`Secret snapshot captured (${targetType})!`, 'success');
 
 
+
+
             // Re-render gallery grid (retains all past images)
             renderSecretGallery();
+
+
 
 
             // Automatically open Preview Modal for the latest captured image
             openSecretPreview(snapItem.id);
         }
+
+
 
 
         function renderSecretGallery() {
@@ -7545,7 +8718,11 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             if (!grid) return;
 
 
+
+
             countEl.textContent = secretSnapsHistory.length;
+
+
 
 
             if (secretSnapsHistory.length === 0) {
@@ -7557,6 +8734,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                     </div>`;
                 return;
             }
+
+
 
 
             grid.innerHTML = secretSnapsHistory.map(snap => `
@@ -7586,9 +8765,13 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function openSecretPreview(snapId) {
             const snap = secretSnapsHistory.find(s => s.id === snapId);
             if (!snap) return;
+
+
 
 
             document.getElementById('preview-filename').textContent = `[Secret Snap: ${snap.target}] ${snap.filename} (${snap.timestamp})`;
@@ -7597,16 +8780,24 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             const downloadBtn = document.getElementById('preview-download-btn');
 
 
+
+
             previewLoader.classList.add('hidden');
             previewImg.src = snap.dataUrl;
             previewImg.classList.remove('hidden');
 
 
+
+
             downloadBtn.onclick = () => downloadDirectBase64(snap.dataUrl, snap.filename);
+
+
 
 
             document.getElementById('image-preview-modal').classList.remove('hidden');
         }
+
+
 
 
         function downloadDirectBase64(dataUrl, filename) {
@@ -7620,10 +8811,14 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function deleteSecretSnap(snapId) {
             secretSnapsHistory = secretSnapsHistory.filter(s => s.id !== snapId);
             renderSecretGallery();
         }
+
+
 
 
         function clearSecretHistory() {
@@ -7636,6 +8831,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         // --- AirDroid Desktop Widget Helpers ---
         function updateWidgetBattery(percent, charging) {
             const circle = document.getElementById('widget-battery-circle');
@@ -7644,9 +8841,13 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             const state = document.getElementById('widget-battery-state');
 
 
+
+
             if (pctText) pctText.textContent = `${percent}%`;
             if (icon) icon.textContent = charging ? '⚡' : '🔋';
             if (state) state.textContent = charging ? 'Charging' : 'On Battery';
+
+
 
 
             if (circle) {
@@ -7662,6 +8863,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 }
             }
         }
+
+
 
 
         function switchWidgetTab(tab) {
@@ -7682,6 +8885,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function toggleWidgetCollapse() {
             const body = document.getElementById('widget-body');
             const btn = document.getElementById('widget-collapse-btn');
@@ -7695,6 +8900,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 }
             }
         }
+
+
 
 
         function sendWidgetClipboard() {
@@ -7711,6 +8918,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 status.className = "text-[10px] text-center font-mono text-cyan-400 h-3";
             }
         }
+
+
 
 
         function sendWidgetUrl() {
@@ -7732,11 +8941,15 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function lockPhoneNow() {
             showToast("Locking phone screen...", "info");
             sendCommand({ action: 'INPUT_GLOBAL', globalAction: 'LOCK_SCREEN' });
             sendCommand({ action: 'LOCK_DEVICE' });
         }
+
+
 
 
         function handleWidgetFileSelected(files) {
@@ -7747,6 +8960,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             const uploadPct = document.getElementById('widget-upload-pct');
 
 
+
+
             if (uploadStatus) {
                 uploadStatus.classList.remove('hidden');
                 uploadName.textContent = file.name;
@@ -7754,11 +8969,15 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             }
 
 
+
+
             const originalPath = currentDirPath;
             currentDirPath = '/storage/emulated/0/Download';
             handleFileSelected(files);
             currentDirPath = originalPath;
         }
+
+
 
 
         function initWidgetDropzone() {
@@ -7794,6 +9013,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         const savedAccEmail = localStorage.getItem('opendroid_account_email');
         if (savedAccEmail) {
             const accInput = document.getElementById('account-email-input');
@@ -7801,10 +9022,14 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         initWidgetDropzone();
         // --- Phase 1: Remote Web Terminal & Shell Runner Engine ---
         let terminalCommandHistory = [];
         let terminalHistoryCursor = -1;
+
+
 
 
         function submitTerminalCommand() {
@@ -7816,14 +9041,18 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function runQuickTerminalCommand(cmd) {
             cmd = (cmd || '').trim();
             if (!cmd) return;
+
 
             if (cmd.toLowerCase() === 'clear') {
                 clearTerminalOutput();
                 return;
             }
+
 
             // Client-side Intent Bridge: Intercept 'am start -a ... -d <url>' or 'am start ... http...'
             const urlMatch = cmd.match(/am\s+start\s+.*-d\s+["']?([^"'\s]+)["']?/i) || cmd.match(/am\s+start\s+.*(https?:\/\/[^\s"']+)/i);
@@ -7839,14 +9068,19 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 return;
             }
 
+
             cmd = (cmd || '').trim();
             if (!cmd) return;
+
+
 
 
             if (cmd.toLowerCase() === 'clear') {
                 clearTerminalOutput();
                 return;
             }
+
+
 
 
             if (terminalCommandHistory.length === 0 || terminalCommandHistory[terminalCommandHistory.length - 1] !== cmd) {
@@ -7856,14 +9090,22 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             terminalHistoryCursor = terminalCommandHistory.length;
 
 
+
+
             appendTerminalOutputLine('prompt', 'opendroid@android:~$ ' + cmd);
+
+
 
 
             const indicator = document.getElementById('terminal-loading-indicator');
             if (indicator) indicator.classList.remove('hidden');
 
 
+
+
             scrollTerminalOutputToBottom();
+
+
 
 
             const reqId = 'sh_' + Date.now();
@@ -7875,6 +9117,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function clearTerminalOutput() {
             const linesContainer = document.getElementById('terminal-output-lines');
             if (linesContainer) linesContainer.innerHTML = '';
@@ -7883,9 +9127,13 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function appendTerminalOutputLine(type, text, isError = false) {
             const container = document.getElementById('terminal-output-lines');
             if (!container) return;
+
+
 
 
             const line = document.createElement('div');
@@ -7903,6 +9151,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
+
+
         function scrollTerminalOutputToBottom() {
             const screen = document.getElementById('terminal-screen');
             if (screen) {
@@ -7911,6 +9161,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 });
             }
         }
+
+
 
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -7941,6 +9193,152 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         });
 
 
+
+
+
+        // --- Phase 7: Advanced Multi-Device Fleet Manager & Auto-Session Persistence ---
+        function checkSavedAccountSession() {
+            try {
+                const remember = localStorage.getItem('opendroid_remember_account');
+                const savedEmail = localStorage.getItem('opendroid_saved_email');
+                const savedPin = localStorage.getItem('opendroid_saved_pin');
+                if (remember === 'true' && savedEmail && savedPin) {
+                    const emailInput = document.getElementById('account-email-input');
+                    const pinInput = document.getElementById('account-pin-input');
+                    const rememberCheckbox = document.getElementById('account-remember-me');
+                    if (emailInput) emailInput.value = savedEmail;
+                    if (pinInput) pinInput.value = savedPin;
+                    if (rememberCheckbox) rememberCheckbox.checked = true;
+                    console.log('[AutoSession] Restoring saved central account session for:', savedEmail);
+                    connectViaAccount();
+                }
+            } catch (e) {
+                console.error('[AutoSession] Error restoring account session:', e);
+            }
+        }
+
+        function disconnectAccountSession() {
+            if (!confirm('Are you sure you want to disconnect from this Central Account?')) return;
+            try {
+                localStorage.removeItem('opendroid_remember_account');
+                localStorage.removeItem('opendroid_saved_email');
+                localStorage.removeItem('opendroid_saved_pin');
+            } catch (_e) {}
+            if (mqttClient) {
+                try { mqttClient.end(true); } catch (_e) {}
+            }
+            location.reload();
+        }
+
+        function triggerDiscoveryPing() {
+            if (mqttClient && mqttClient.connected && accountTag) {
+                mqttClient.publish(`opendroid/acc/${accountTag}/discover`, JSON.stringify({ action: 'DISCOVER_DEVICES' }), { qos: 1 });
+                showToast('Pinging all registered fleet devices...', 'info');
+            }
+        }
+
+        function purgeDevicePresence(devId) {
+            const dev = allDiscoveredDevices[devId];
+            const devName = dev?.deviceName || dev?.model || devId;
+            if (!confirm(`Are you sure you want to remove device "${devName}" from your fleet? This will clear its saved presence from the cloud broker.`)) return;
+            if (mqttClient && mqttClient.connected && accountTag) {
+                mqttClient.publish(`opendroid/acc/${accountTag}/devices/${devId}/presence`, '', { qos: 1, retain: true });
+            }
+            delete allDiscoveredDevices[devId];
+            if (currentDeviceId === devId) {
+                currentDeviceId = Object.keys(allDiscoveredDevices)[0] || '';
+            }
+            renderDiscoveredDevices();
+            renderDeviceListDropdown();
+            renderFleetWidget();
+            showToast(`Device "${devName}" removed from fleet`, 'info');
+        }
+
+        function renderFleetWidget() {
+            const container = document.getElementById('fleet-device-cards-container');
+            const summaryBadge = document.getElementById('fleet-summary-badge');
+            const accountEmailEl = document.getElementById('fleet-account-email');
+            if (accountEmailEl) accountEmailEl.textContent = accountEmail || 'Guest Mode';
+            
+            if (!container) return;
+            const devIds = Object.keys(allDiscoveredDevices);
+            const onlineCount = devIds.filter(id => allDiscoveredDevices[id]?.isOnline).length;
+            
+            if (summaryBadge) {
+                summaryBadge.textContent = `${onlineCount}/${devIds.length} Online`;
+            }
+            
+            if (devIds.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-6 text-gray-500 text-xs bg-gray-900/50 rounded-xl border border-gray-800/80">
+                        No devices registered under this account yet.
+                    </div>`;
+                return;
+            }
+            
+            container.innerHTML = '';
+            devIds.forEach(id => {
+                const dev = allDiscoveredDevices[id];
+                const isSelected = (id === currentDeviceId);
+                const isOnline = dev.isOnline ?? false;
+                const battery = dev.battery !== undefined ? `${dev.battery}%` : '--%';
+                const charging = dev.isCharging ? '⚡' : '';
+                const netType = dev.networkType || (isOnline ? 'Active' : 'Offline');
+                const wifiSsid = dev.wifiSsid ? `(${dev.wifiSsid})` : '';
+                const ip = dev.ipAddress ? `• ${dev.ipAddress}` : '';
+
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-xl border transition-all ${
+                    isSelected 
+                        ? 'bg-cyan-950/40 border-cyan-500/60 shadow-[0_0_15px_rgba(6,182,212,0.2)]' 
+                        : 'bg-gray-900 border-gray-800 hover:border-gray-700'
+                }`;
+                
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center text-lg shadow-sm">
+                                📱
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-gray-100 flex items-center gap-2">
+                                    <span>${dev.deviceName || dev.model || 'Android Phone'}</span>
+                                    <span class="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-semibold ${isOnline ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' : 'bg-gray-800 text-gray-400 border border-gray-700'}">
+                                        ${isOnline ? 'Online' : 'Offline'}
+                                    </span>
+                                    ${isSelected ? '<span class="text-[9px] bg-cyan-900 text-cyan-200 px-1.5 py-0.2 rounded font-bold">Active Focus</span>' : ''}
+                                </div>
+                                <div class="text-[10px] text-gray-400 font-mono mt-0.5">
+                                    ${dev.model || 'Android'} • Battery: <span class="text-emerald-400 font-bold">${battery} ${charging}</span> ${ip}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            ${!isSelected ? `
+                                <button onclick="onDeviceDropdownSelected('${id}'); renderFleetWidget();" class="text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-2.5 py-1.5 rounded-lg shadow transition-all">
+                                    Switch Target
+                                </button>
+                            ` : `
+                                <span class="text-[10px] text-cyan-400 font-semibold px-2 py-1">Controlling</span>
+                            `}
+                            <button onclick="purgeDevicePresence('${id}')" class="text-gray-500 hover:text-red-400 text-xs p-1.5 rounded hover:bg-red-500/10 transition-all" title="Remove device from fleet">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] text-gray-400 pt-2 border-t border-gray-800/80">
+                        <span>📶 <b>Network:</b> ${netType} ${wifiSsid}</span>
+                        <span class="text-gray-600">•</span>
+                        <span>⏱️ <b>Heartbeat:</b> ${dev.timestamp ? new Date(dev.timestamp).toLocaleTimeString() : 'Recent'}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+
+        // Auto-check saved account session on boot
+        window.addEventListener('DOMContentLoaded', () => { setTimeout(checkSavedAccountSession, 600); });
 </script>
     
     <!-- AirDroid-Style Bottom Taskbar Dock (Open & Minimized Tabs) -->
@@ -7956,6 +9354,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             </div>
         </div>
 
+
         <!-- Right: Active Device Quick Badge & Quick Actions -->
         <div class="flex items-center gap-3 pl-3 border-l border-gray-800 text-xs">
             <div id="taskbar-active-device-pill" onclick="toggleDeviceSwitchDropdown()" class="cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-900 hover:bg-gray-800 border border-gray-700/60 transition-all text-gray-300 text-[11px]" title="Click to Switch Device">
@@ -7969,7 +9368,6 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         </div>
     </div>
 
+
 </body>
 </html>
- 
-

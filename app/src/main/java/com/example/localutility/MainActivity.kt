@@ -230,6 +230,10 @@ class MainActivity : ComponentActivity() {
                                         Spacer(modifier = Modifier.height(6.dp))
 
                                         if (boundAccount.isNotEmpty()) {
+                                            var showUnbindDialog by remember { mutableStateOf(false) }
+                                            var isEditingName by remember { mutableStateOf(false) }
+                                            var tempName by remember { mutableStateOf(deviceName) }
+
                                             Text(
                                                 text = "Bound to Account:",
                                                 fontSize = 11.sp,
@@ -247,12 +251,39 @@ class MainActivity : ComponentActivity() {
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Text(
-                                                    text = "Device: $deviceName",
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = Color.DarkGray
-                                                )
+                                                if (isEditingName) {
+                                                    OutlinedTextField(
+                                                        value = tempName,
+                                                        onValueChange = { tempName = it },
+                                                        label = { Text("Device Nickname", fontSize = 10.sp) },
+                                                        singleLine = true,
+                                                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                                                    )
+                                                    IconButton(onClick = {
+                                                        updateDeviceNickname(tempName)
+                                                        isEditingName = false
+                                                    }) {
+                                                        Icon(Icons.Default.Check, contentDescription = "Save", tint = Color(0xFF2E7D32))
+                                                    }
+                                                } else {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.weight(1f)
+                                                    ) {
+                                                        Text(
+                                                            text = "Device: $deviceName",
+                                                            fontSize = 12.sp,
+                                                            fontWeight = FontWeight.Medium,
+                                                            color = Color.DarkGray
+                                                        )
+                                                        IconButton(
+                                                            onClick = { isEditingName = true; tempName = deviceName },
+                                                            modifier = Modifier.size(24.dp).padding(start = 4.dp)
+                                                        ) {
+                                                            Icon(Icons.Default.Edit, contentDescription = "Edit Nickname", tint = Color.Gray, modifier = Modifier.size(14.dp))
+                                                        }
+                                                    }
+                                                }
                                                 Text(
                                                     text = "🛡️ 6-Digit PIN Protected",
                                                     fontSize = 11.sp,
@@ -260,14 +291,42 @@ class MainActivity : ComponentActivity() {
                                                     color = Color(0xFF1565C0)
                                                 )
                                             }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "🟢 Live Fleet Sync Active (Heartbeat: 30s) • ID: ${LocalFileServerService.openDroidDeviceId.ifEmpty { "Active" }}",
+                                                fontSize = 10.sp,
+                                                color = Color(0xFF2E7D32),
+                                                fontWeight = FontWeight.Medium
+                                            )
                                             Spacer(modifier = Modifier.height(10.dp))
                                             OutlinedButton(
-                                                onClick = { unbindAccount() },
+                                                onClick = { showUnbindDialog = true },
                                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC62828)),
                                                 modifier = Modifier.fillMaxWidth(),
                                                 shape = RoundedCornerShape(10.dp)
                                             ) {
                                                 Text("Unbind from Account", fontSize = 12.sp)
+                                            }
+
+                                            if (showUnbindDialog) {
+                                                AlertDialog(
+                                                    onDismissRequest = { showUnbindDialog = false },
+                                                    title = { Text("Unbind Device?", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                                                    text = { Text("Are you sure you want to unbind this phone from account $boundAccount? It will stop appearing in your WebOS Multi-Device fleet.", fontSize = 13.sp) },
+                                                    confirmButton = {
+                                                        TextButton(onClick = {
+                                                            showUnbindDialog = false
+                                                            unbindAccount()
+                                                        }) {
+                                                            Text("Unbind", color = Color.Red, fontWeight = FontWeight.Bold)
+                                                        }
+                                                    },
+                                                    dismissButton = {
+                                                        TextButton(onClick = { showUnbindDialog = false }) {
+                                                            Text("Cancel")
+                                                        }
+                                                    }
+                                                )
                                             }
                                         } else {
                                             Text(
@@ -782,6 +841,17 @@ class MainActivity : ComponentActivity() {
         boundPinState.value = cleanPin
         deviceNameState.value = cleanName
         LocalFileServerService.instance?.bindAccount(cleanEmail, cleanPin, cleanName)
+    }
+
+    private fun updateDeviceNickname(name: String) {
+        val cleanName = if (name.trim().isEmpty()) (Build.MODEL ?: "Android Device") else name.trim()
+        val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("device_name", cleanName).apply()
+        deviceNameState.value = cleanName
+        LocalFileServerService.deviceNickname = cleanName
+        if (boundAccountState.value.isNotEmpty() && boundPinState.value.isNotEmpty()) {
+            LocalFileServerService.instance?.bindAccount(boundAccountState.value, boundPinState.value, cleanName)
+        }
     }
 
     private fun unbindAccount() {

