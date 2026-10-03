@@ -3,7 +3,9 @@ package com.example.localutility
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjection
+import android.util.DisplayMetrics
 import android.util.Log
+import android.view.WindowManager
 import org.json.JSONObject
 import org.webrtc.*
 import org.webrtc.CameraVideoCapturer.CameraSwitchHandler
@@ -33,6 +35,7 @@ class WebRtcManager private constructor(private val context: Context) {
     var onSendMessage: ((String) -> Unit)? = null
     var isFrontCamera = false
     var lastMediaProjectionIntent: Intent? = null
+    var activeStreamType: String = "NONE" // "SCREEN" or "CAMERA" or "NONE"
 
     // Candidate queue to prevent dropping
     private val queuedRemoteCandidates = ArrayList<IceCandidate>()
@@ -58,59 +61,70 @@ class WebRtcManager private constructor(private val context: Context) {
             .createPeerConnectionFactory()
     }
 
+    private fun setupPeerConnection() {
+        if (peerConnection != null) return
+
+        val iceServers = listOf(
+            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
+            PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
+            PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer(),
+            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:80")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer(),
+            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer(),
+            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443?transport=tcp")
+                .setUsername("openrelayproject")
+                .setPassword("openrelayproject")
+                .createIceServer()
+        )
+
+        val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
+            sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+            continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+        }
+
+        peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
+            override fun onIceCandidate(candidate: IceCandidate) {
+                val json = JSONObject().apply {
+                    put("type", "candidate")
+                    put("sdpMLineIndex", candidate.sdpMLineIndex)
+                    put("sdpMid", candidate.sdpMid)
+                    put("candidate", candidate.sdp)
+                }
+                onSendMessage?.invoke(json.toString())
+            }
+            override fun onSignalingChange(state: PeerConnection.SignalingState?) {
+                Log.d("WebRTC", "SignalingState: $state")
+            }
+            override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
+                Log.d("WebRTC", "IceConnectionState: $state")
+            }
+            override fun onIceConnectionReceivingChange(receiving: Boolean) {}
+            override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {
+                Log.d("WebRTC", "IceGatheringState: $state")
+            }
+            override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) {}
+            override fun onAddStream(stream: MediaStream?) {}
+            override fun onRemoveStream(stream: MediaStream?) {}
+            override fun onDataChannel(dataChannel: DataChannel?) {}
+            override fun onRenegotiationNeeded() {}
+            override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {}
+        })
+    }
+
     @Synchronized
-    fun startCameraSession(frontFacing: Boolean, onBound: () -> Unit) {
+    fun startCameraSession(frontFacing: Boolean, onBound: () -> Unit = {}) {
         try {
             stopCapture()
 
             queuedRemoteCandidates.clear()
             isRemoteDescriptionSet = false
 
-            val iceServers = listOf(
-                PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
-                PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
-                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:80")
-                    .setUsername("openrelayproject")
-                    .setPassword("openrelayproject")
-                    .createIceServer(),
-                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443")
-                    .setUsername("openrelayproject")
-                    .setPassword("openrelayproject")
-                    .createIceServer(),
-                PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443?transport=tcp")
-                    .setUsername("openrelayproject")
-                    .setPassword("openrelayproject")
-                    .createIceServer()
-            )
-
-            val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
-                sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
-                continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
-            }
-
-            peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, object : PeerConnection.Observer {
-                override fun onIceCandidate(candidate: IceCandidate) {
-                    val json = JSONObject().apply {
-                        put("type", "candidate")
-                        put("sdpMLineIndex", candidate.sdpMLineIndex)
-                        put("sdpMid", candidate.sdpMid)
-                        put("candidate", candidate.sdp)
-                    }
-                    onSendMessage?.invoke(json.toString())
-                }
-                override fun onSignalingChange(state: PeerConnection.SignalingState?) {}
-                override fun onIceConnectionChange(state: PeerConnection.IceConnectionState?) {
-                    Log.d("WebRTC", "IceConnectionState: $state")
-                }
-                override fun onIceConnectionReceivingChange(receiving: Boolean) {}
-                override fun onIceGatheringChange(state: PeerConnection.IceGatheringState?) {}
-                override fun onIceCandidatesRemoved(candidates: Array<out IceCandidate>?) {}
-                override fun onAddStream(stream: MediaStream?) {}
-                override fun onRemoveStream(stream: MediaStream?) {}
-                override fun onDataChannel(dataChannel: DataChannel?) {}
-                override fun onRenegotiationNeeded() {}
-                override fun onAddTrack(receiver: RtpReceiver?, mediaStreams: Array<out MediaStream>?) {}
-            })
+            setupPeerConnection()
 
             surfaceTextureHelper = SurfaceTextureHelper.create("CameraCaptureThread", rootEglBase.eglBaseContext)
             videoSource = peerConnectionFactory?.createVideoSource(false)
@@ -138,6 +152,7 @@ class WebRtcManager private constructor(private val context: Context) {
 
             peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
 
+            activeStreamType = "CAMERA"
             Log.d("WebRTC", "Camera hardware bound cleanly!")
             onBound()
         } catch (e: Exception) {
@@ -145,8 +160,58 @@ class WebRtcManager private constructor(private val context: Context) {
         }
     }
 
+    @Synchronized
+    fun startScreenSession(mediaProjectionIntent: Intent, onBound: () -> Unit = {}) {
+        try {
+            lastMediaProjectionIntent = mediaProjectionIntent
+            stopCapture()
+
+            queuedRemoteCandidates.clear()
+            isRemoteDescriptionSet = false
+
+            setupPeerConnection()
+
+            surfaceTextureHelper = SurfaceTextureHelper.create("ScreenCaptureThread", rootEglBase.eglBaseContext)
+            videoSource = peerConnectionFactory?.createVideoSource(true) // Screencast optimization
+
+            val wm = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+            val metrics = DisplayMetrics()
+            wm?.defaultDisplay?.getRealMetrics(metrics)
+
+            var width = if (metrics.widthPixels > 0) metrics.widthPixels else 720
+            var height = if (metrics.heightPixels > 0) metrics.heightPixels else 1280
+
+            // Ensure dimensions are even numbers (hardware encoder constraint)
+            if (width % 2 != 0) width -= 1
+            if (height % 2 != 0) height -= 1
+
+            val mediaProjectionCallback = object : MediaProjection.Callback() {
+                override fun onStop() {
+                    Log.d("WebRTC", "MediaProjection stopped by system")
+                    stopCapture()
+                }
+            }
+
+            currentVideoCapturer = ScreenCapturerAndroid(mediaProjectionIntent, mediaProjectionCallback)
+            currentVideoCapturer?.initialize(surfaceTextureHelper, context, videoSource!!.capturerObserver)
+            currentVideoCapturer?.startCapture(width, height, 30)
+
+            val newTrack = peerConnectionFactory?.createVideoTrack("ARDAMSv0", videoSource)
+            newTrack?.setEnabled(true)
+            videoTrack = newTrack
+
+            peerConnection?.addTrack(newTrack, listOf("ARDAMS"))
+
+            activeStreamType = "SCREEN"
+            Log.d("WebRTC", "Screen capture hardware bound cleanly ($width x $height @ 30fps)!")
+            onBound()
+        } catch (e: Exception) {
+            Log.e("WebRTC", "Error in startScreenSession", e)
+        }
+    }
+
     fun startScreenCapture(mediaProjectionIntent: Intent) {
-        lastMediaProjectionIntent = mediaProjectionIntent
+        startScreenSession(mediaProjectionIntent) {}
     }
 
     fun startCameraCapture(frontFacing: Boolean) {
@@ -227,6 +292,8 @@ class WebRtcManager private constructor(private val context: Context) {
             surfaceTextureHelper = null
             videoSource = null
             videoTrack = null
+            activeStreamType = "NONE"
+            Log.d("WebRTC", "WebRTC capture stopped and resources recycled")
         } catch (e: Exception) {
             Log.e("WebRTC", "stopCapture error", e)
         }
@@ -239,3 +306,4 @@ open class SimpleSdpObserver : SdpObserver {
     override fun onCreateFailure(error: String?) {}
     override fun onSetFailure(error: String?) {}
 }
+
