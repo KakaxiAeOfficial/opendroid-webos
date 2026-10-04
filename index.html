@@ -2722,23 +2722,24 @@
 
         // --- 7-Server Multi-Broker Cascade Pool ---
         const EMQX_SERVERS = [
-            { name: "Server 1", host: "ceee508c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 2", host: "mfca5de2.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 3", host: "f9a916bf.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 4", host: "zf2cebac.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 5", host: "w21b112c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 6", host: "e62c118f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 7", host: "w501fd1f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Public Lifeline", host: "broker.emqx.io", port: 8084, user: "", pass: "" }
+            { name: "Server 1 (Primary - Asia)", host: "mfca5de2.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 2 (Backup A)", host: "f9a916bf.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 3 (Backup B)", host: "zf2cebac.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 4 (Backup C)", host: "w21b112c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 5 (Backup D)", host: "e62c118f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Server 6 (Backup E)", host: "w501fd1f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Public Lifeline", host: "broker.emqx.io", port: 8084, user: "", pass: "" },
+            { name: "Exhausted Cluster Backup", host: "ceee508c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" }
         ];
         let activeServerIndex = 0;
         let accountConnectWatchdog = null;
         let cloudConnectWatchdog = null;
 
 
-        let deviceSearchTimeout = null;
+        let isSilentSessionReload = false;
 
         async function connectViaAccount(isSilent = false) {
+            isSilentSessionReload = isSilent;
             const email = (document.getElementById('account-email-input')?.value || '').trim();
             const pin = (document.getElementById('account-pin-input')?.value || '').trim();
             if (!email || !email.includes('@')) {
@@ -2766,56 +2767,45 @@
                 localStorage.removeItem('opendroid_saved_pin');
             }
 
-            // CRITICAL AUTH GATE: Do NOT prematurely activate session or hide modal until a genuine online device is verified!
             if (!isSilent) {
                 const loginBtn = document.getElementById('account-login-btn');
                 if (loginBtn) {
-                    loginBtn.textContent = 'Connecting to server...';
+                    loginBtn.innerHTML = `
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Discovering Devices...</span>
+                    `;
                     loginBtn.disabled = true;
                 }
                 const devList = document.getElementById('account-devices-list');
-                if (devList) devList.innerHTML = '<div class="text-[11px] text-cyan-400 text-center py-2 animate-pulse">Searching for your phones...</div>';
+                if (devList) {
+                    devList.innerHTML = `
+                        <div class="p-3 text-center text-xs text-cyan-400 animate-pulse flex items-center justify-center gap-2 bg-gray-900/40 rounded-xl border border-gray-800">
+                            <span>📡</span> Scanning OpenDroid Cloud for your devices...
+                        </div>
+                    `;
+                }
                 document.getElementById('account-devices-container')?.classList.remove('hidden');
-
-                // 6-Second Active Phone Presence Guard
-                if (deviceSearchTimeout) clearTimeout(deviceSearchTimeout);
-                deviceSearchTimeout = setTimeout(() => {
-                    const onlineDevices = Object.values(allDiscoveredDevices).filter(d => d.isOnline);
-                    if (onlineDevices.length === 0) {
-                        if (loginBtn) {
-                            loginBtn.textContent = '🌐 Sign In & Open Desktop';
-                            loginBtn.disabled = false;
-                        }
-                        const devCount = document.getElementById('account-devices-count');
-                        if (devCount) devCount.textContent = '0 Online';
-                        if (devList) {
-                            devList.innerHTML = `
-                                <div class="p-2.5 rounded-xl bg-red-950/40 border border-red-800/60 text-red-300 text-xs text-left">
-                                    <div class="font-bold text-[11px] flex items-center gap-1">⚠️ No Online Phone Found</div>
-                                    <div class="text-[10px] text-gray-300 mt-1">Please open the OpenDroid app on your phone, enter this exact Email & PIN, and tap <b>Secure & Bind This Device</b>.</div>
-                                </div>
-                            `;
-                        }
-                        showToast('No active phone detected for this account.', 'error');
-                        localStorage.removeItem('opendroid_session_active');
-                        document.getElementById('pair-modal')?.classList.remove('hidden');
-                    }
-                }, 6000);
             }
 
-            initAccountMqtt(0, isSilent);
+            // High-Speed Instant Connection: Read cached working server index from localStorage!
+            const savedBrokerIdx = parseInt(localStorage.getItem('opendroid_active_server_idx') || '0', 10);
+            initAccountMqtt(isNaN(savedBrokerIdx) ? 0 : savedBrokerIdx, isSilent);
         }
 
 
         function initAccountMqtt(serverIdx = 0, isSilent = false) {
+            isSilentSessionReload = isSilent;
             if (serverIdx >= EMQX_SERVERS.length) {
                 const loginBtn = document.getElementById('account-login-btn');
                 if (loginBtn) {
-                    loginBtn.textContent = '⚠️ All 7 Servers Busy (Click to Retry)';
+                    loginBtn.textContent = '⚠️ All Servers Busy (Click to Retry)';
                     loginBtn.disabled = false;
                     loginBtn.className = "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 cursor-pointer";
                 }
-                showToast('All 7 servers are currently unreachable. Please check phone internet and retry.', 'error');
+                showToast('All cloud servers unreachable. Please check phone connection and retry.', 'error');
                 return;
             }
 
@@ -2823,7 +2813,7 @@
             activeServerIndex = serverIdx;
             const currentBroker = EMQX_SERVERS[activeServerIndex];
             const loginBtn = document.getElementById('account-login-btn');
-            if (loginBtn) {
+            if (loginBtn && !isSilent) {
                 loginBtn.textContent = `[${activeServerIndex + 1}/${EMQX_SERVERS.length}] Connecting to ${currentBroker.name}...`;
                 loginBtn.disabled = true;
                 loginBtn.className = "w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 opacity-90";
@@ -2866,6 +2856,9 @@
             mqttClient.on('connect', () => {
                 if (accountConnectWatchdog) clearTimeout(accountConnectWatchdog);
                 
+                // Smart Server Memory: Remember this active working broker index!
+                localStorage.setItem('opendroid_active_server_idx', activeServerIndex);
+
                 // In silent auto-session reload mode, guarantee pair-modal remains 100% hidden
                 if (isSilent) {
                     document.getElementById('pair-modal')?.classList.add('hidden');
@@ -2873,7 +2866,7 @@
                     document.getElementById('account-devices-container')?.classList.remove('hidden');
                 }
 
-                if (loginBtn) {
+                if (loginBtn && !isSilent) {
                     loginBtn.textContent = `✓ Connected to ${currentBroker.name}`;
                     loginBtn.className = "w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5";
                 }
@@ -2891,12 +2884,12 @@
                 const pcWildcard = `opendroid/acc/${accountTag}/+/pc`;
                 mqttClient.subscribe(pcWildcard, { qos: 1 });
 
-                // 3. Immediate Active Discovery Ping
+                // 3. Immediate Active Discovery Ping (QoS 1)
                 const discoverTopic = `opendroid/acc/${accountTag}/discover`;
-                mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES' }), { qos: 1 });
+                mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES', timestamp: Date.now() }), { qos: 1 });
 
                 if (!isSilent) {
-                    showToast(`Signed in on ${currentBroker.name}. Discovering devices...`, 'success');
+                    showToast(`Connected to ${currentBroker.name}. Discovering devices...`, 'success');
                 }
             });
 
@@ -2985,64 +2978,19 @@
 
                 allDiscoveredDevices[devId] = data;
                 
-                // Strict Genuine Device Authentication Gate: ONLY bind and unlock desktop if device is ONLINE!
-                const isOnline = data.isOnline ?? false;
-                const savedLastDev = localStorage.getItem('opendroid_last_device_id');
-                const devKeys = Object.keys(allDiscoveredDevices);
-                const devName = data.deviceName || data.model || 'Android Phone';
-
-                if (isOnline && ((savedLastDev && devId === savedLastDev) || !currentDeviceId || currentDeviceId === devId || devKeys.length === 1)) {
-                    if (deviceSearchTimeout) { clearTimeout(deviceSearchTimeout); deviceSearchTimeout = null; }
-                    currentDeviceId = devId;
-                    localStorage.setItem('opendroid_last_device_id', currentDeviceId);
-                    localStorage.setItem('opendroid_session_active', 'true');
-
-                    // Verified Online Device: Unlock Desktop and Dismiss Login Modal!
-                    document.getElementById('pair-modal')?.classList.add('hidden');
-                    document.getElementById('device-selector-wrapper')?.classList.remove('hidden');
-                    
-                    // Update Top Taskbar & Header with Verified Connection
-                    const taskbarStatus = document.getElementById('ws-status-taskbar');
-                    if (taskbarStatus) {
-                        taskbarStatus.textContent = `● Connected: ${devName}`;
-                        taskbarStatus.className = "text-emerald-400 text-xs font-semibold";
-                    }
-
-                    const hdrDev = document.getElementById('header-active-device-name');
-                    if (hdrDev) hdrDev.textContent = devName;
-                    const hdrBatt = document.getElementById('header-active-device-battery');
-                    if (hdrBatt && data.battery !== undefined) hdrBatt.textContent = `${data.battery}%`;
-                    
-                    // Update Right Widget
-                    const wModel = document.getElementById('widget-device-model');
-                    if (wModel) wModel.textContent = devName;
-                    const wConn = document.getElementById('widget-connection-status');
-                    if (wConn) {
-                        wConn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span><span>Connected</span>';
-                        wConn.className = 'text-[10px] text-green-400 flex items-center gap-1 font-medium';
-                    }
-                    if (data.battery !== undefined && typeof updateWidgetBattery === 'function') {
-                        updateWidgetBattery(data.battery, data.isCharging);
-                    }
-                    
-                    // Update Bottom Taskbar
-                    const tskDev = document.getElementById('taskbar-device-name');
-                    if (tskDev) tskDev.textContent = devName;
-                    const tskBatt = document.getElementById('taskbar-battery-percent');
-                    if (tskBatt && data.battery !== undefined) tskBatt.textContent = `${data.battery}%`;
-                    
-                    // Ensure PC channel is subscribed
-                    if (mqttClient && mqttClient.connected) {
-                        mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
-                    }
-                    
-                    // Send instant handshake to fetch full storage stats, location, battery details
-                    sendCommand({ action: 'HANDSHAKE' });
-                    sendCommand({ action: 'GET_DEVICE_INFO' });
-                }
-                
+                // Render the fleet list immediately on modal & top dock
                 renderDiscoveredDevices();
                 updateTopDockDeviceDropdown();
+
+                // If in silent reload mode with an active session, auto-reconnect cleanly
+                const isOnline = data.isOnline ?? false;
+                const savedLastDev = localStorage.getItem('opendroid_last_device_id');
+                const isSessionActive = localStorage.getItem('opendroid_session_active') === 'true';
+
+                if (isSilentSessionReload && isSessionActive && savedLastDev && devId === savedLastDev && isOnline) {
+                    currentDeviceId = devId;
+                    confirmAccountDeviceConnection(true);
+                }
             } catch (e) {
                 console.error('Error parsing presence:', e);
             }
@@ -3072,52 +3020,104 @@
         function renderDiscoveredDevices() {
             const list = document.getElementById('account-devices-list');
             const countEl = document.getElementById('account-devices-count');
+            const connectBtn = document.getElementById('account-connect-device-btn');
             if (!list) return;
 
-
             const devIds = Object.keys(allDiscoveredDevices);
-            if (countEl) countEl.textContent = `${devIds.length} Discovered`;
-
+            const onlineCount = devIds.filter(id => allDiscoveredDevices[id].isOnline).length;
+            if (countEl) countEl.textContent = `${onlineCount} Online (${devIds.length} Total)`;
 
             if (devIds.length === 0) {
-                list.innerHTML = '<div class="text-[11px] text-gray-400 text-center py-2">Searching for your phones...</div>';
+                list.innerHTML = `
+                    <div class="p-3 rounded-xl bg-gray-900/60 border border-gray-800 text-center text-xs text-gray-400">
+                        Searching for your devices... Please ensure OpenDroid app is open on your phone.
+                    </div>
+                `;
+                if (connectBtn) {
+                    connectBtn.disabled = true;
+                    connectBtn.innerHTML = `Select a Device to Connect 🚀`;
+                    connectBtn.className = "w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition-all mt-2.5 flex items-center justify-center gap-1.5 opacity-40 cursor-not-allowed";
+                }
                 return;
             }
 
+            // If no current device selected, pre-select the first online device (or first device)
+            if (!currentDeviceId || !allDiscoveredDevices[currentDeviceId]) {
+                const firstOnline = devIds.find(id => allDiscoveredDevices[id].isOnline) || devIds[0];
+                currentDeviceId = firstOnline;
+            }
 
             list.innerHTML = '';
             devIds.forEach(id => {
                 const dev = allDiscoveredDevices[id];
-                const isSelected = (currentDeviceId === id) || (devIds.length === 1 && !currentDeviceId);
-                if (devIds.length === 1 && !currentDeviceId) currentDeviceId = id;
-
+                const isSelected = (currentDeviceId === id);
+                const isOnline = dev.isOnline ?? false;
+                const devName = dev.deviceName || dev.model || 'Android Device';
+                const model = dev.model || 'Android Phone';
+                const battery = dev.battery !== undefined ? `${dev.battery}%` : '--%';
 
                 list.innerHTML += `
-                    <label class="p-2 border rounded-lg flex items-center justify-between hover:bg-white cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200'}">
-                        <div class="flex items-center gap-2">
-                            <input type="radio" name="account_device_radio" value="${id}" ${isSelected ? 'checked' : ''} onchange="onDeviceRadioSelected('${id}')" class="text-blue-600">
-                            <div>
-                                <div class="font-bold text-xs text-gray-800">${dev.deviceName || dev.model}</div>
-                                <div class="text-[10px] text-gray-400">${dev.model || 'Android'} • Battery ${dev.battery || '--'}%</div>
+                    <div onclick="selectAccountDevice('${id}')" 
+                         class="p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                             isSelected 
+                                 ? 'bg-cyan-950/40 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)]' 
+                                 : 'bg-gray-900/60 border-gray-800 hover:border-gray-700 hover:bg-gray-800/50'
+                         }">
+                        <div class="flex items-center gap-3">
+                            <div class="w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? 'border-cyan-400' : 'border-gray-600'}">
+                                ${isSelected ? '<div class="w-2 h-2 rounded-full bg-cyan-400"></div>' : ''}
+                            </div>
+                            <div class="text-left">
+                                <div class="font-bold text-xs ${isSelected ? 'text-cyan-300' : 'text-gray-200'} flex items-center gap-1.5">
+                                    <span>📱</span>
+                                    <span>${devName}</span>
+                                    ${dev.deviceName && dev.model && dev.deviceName !== dev.model ? `<span class="text-[10px] text-gray-400 font-normal">(${model})</span>` : ''}
+                                </div>
+                                <div class="text-[10px] text-gray-400 mt-0.5 flex items-center gap-2">
+                                    <span>ID: <code class="text-gray-300 font-mono">${id}</code></span>
+                                    <span>•</span>
+                                    <span>🔋 ${battery}</span>
+                                </div>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-[10px] ${dev.isOnline ? 'text-green-600 font-bold' : 'text-gray-400'}">
-                                ${dev.isOnline ? '● Online' : '○ Offline'}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                isOnline 
+                                    ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 flex items-center gap-1' 
+                                    : 'bg-gray-800 text-gray-400 border border-gray-700'
+                            }">
+                                ${isOnline ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Online' : 'Offline'}
                             </span>
-                            <button type="button" onclick="forgetDevice('${id}', event)" title="Remove / Forget this device" class="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-all">
+                            <button type="button" onclick="forgetDevice('${id}', event)" title="Remove / Forget this device" class="p-1 text-gray-500 hover:text-red-400 hover:bg-red-950/30 rounded-lg transition-all">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                         </div>
-                    </label>
+                    </div>
                 `;
             });
 
-
-            const connectBtn = document.getElementById('account-connect-device-btn');
-            if (connectBtn) connectBtn.disabled = !currentDeviceId;
+            if (connectBtn) {
+                const selectedDev = allDiscoveredDevices[currentDeviceId];
+                if (selectedDev && selectedDev.isOnline) {
+                    connectBtn.disabled = false;
+                    connectBtn.innerHTML = `Connect to ${selectedDev.deviceName || selectedDev.model || 'Selected Device'} 🚀`;
+                    connectBtn.className = "w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition-all mt-2.5 flex items-center justify-center gap-1.5 cursor-pointer";
+                } else if (selectedDev && !selectedDev.isOnline) {
+                    connectBtn.disabled = true;
+                    connectBtn.innerHTML = `⚠️ ${selectedDev.deviceName || selectedDev.model} is Offline`;
+                    connectBtn.className = "w-full bg-gray-800 text-gray-500 font-bold py-2.5 rounded-xl text-xs shadow-md transition-all mt-2.5 flex items-center justify-center gap-1.5 cursor-not-allowed opacity-60";
+                } else {
+                    connectBtn.disabled = true;
+                    connectBtn.innerHTML = `Select an Online Device to Connect 🚀`;
+                    connectBtn.className = "w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition-all mt-2.5 flex items-center justify-center gap-1.5 opacity-40 cursor-not-allowed";
+                }
+            }
         }
 
+        function selectAccountDevice(devId) {
+            currentDeviceId = devId;
+            renderDiscoveredDevices();
+        }
 
         function onDeviceRadioSelected(id) {
             currentDeviceId = id;
@@ -3128,36 +3128,66 @@
 
         function confirmAccountDeviceConnection(silent = false) {
             if (!currentDeviceId) return;
-            localStorage.setItem('opendroid_last_device_id', currentDeviceId);
-            localStorage.setItem('opendroid_session_active', 'true');
-            document.getElementById('pair-modal').classList.add('hidden');
-            document.getElementById('device-selector-wrapper').classList.remove('hidden');
-
-
             const dev = allDiscoveredDevices[currentDeviceId];
+            const activeName = dev?.deviceName || dev?.model || 'Android Device';
             const isDevOnline = dev?.isOnline ?? true;
 
+            localStorage.setItem('opendroid_last_device_id', currentDeviceId);
+            localStorage.setItem('opendroid_session_active', 'true');
+            document.getElementById('pair-modal')?.classList.add('hidden');
+            document.getElementById('device-selector-wrapper')?.classList.remove('hidden');
 
             // Subscribe to this device's PC telemetry channel
             const pcChannel = `opendroid/acc/${accountTag}/${currentDeviceId}/pc`;
             mqttClient.subscribe(pcChannel, { qos: 1 });
 
+            // Update Taskbar
+            const taskbarStatus = document.getElementById('ws-status-taskbar');
+            if (taskbarStatus) {
+                if (isDevOnline) {
+                    taskbarStatus.textContent = `● Connected: ${activeName}`;
+                    taskbarStatus.className = 'text-emerald-400 text-xs font-semibold';
+                } else {
+                    taskbarStatus.textContent = '● Device Offline';
+                    taskbarStatus.className = 'text-red-400 text-xs font-semibold';
+                }
+            }
 
             if (isDevOnline) {
-                document.getElementById('ws-status-taskbar').textContent = '● Connecting Device...';
                 if (handshakeInterval) clearInterval(handshakeInterval);
                 handshakeInterval = setInterval(() => {
                     sendCommand({ action: 'HANDSHAKE' });
                 }, 1500);
                 sendCommand({ action: 'HANDSHAKE' });
-                showToast(`Connecting to ${dev?.deviceName || 'device'}... 🚀`, 'info');
+                if (!silent) showToast(`Connected to ${activeName} 🚀`, 'success');
             } else {
-                setDeviceOfflineUI(dev?.deviceName || 'Device', dev?.model || 'Android');
-                showToast(`${dev?.deviceName || 'Device'} is currently offline.`, 'warning');
+                if (!silent) showToast(`${activeName} is currently offline. Actions will be queued.`, 'warning');
             }
+
+            // Update Top Header & Right Sidebar Widget
+            const hdrName = document.getElementById('header-active-device-name');
+            if (hdrName) hdrName.textContent = activeName;
+            const hdrBatt = document.getElementById('header-active-device-battery');
+            if (hdrBatt && dev?.battery !== undefined) hdrBatt.textContent = `${dev.battery}%`;
+
+            const widgetModel = document.getElementById('widget-device-model');
+            if (widgetModel) widgetModel.textContent = activeName;
+            const widgetBatt = document.getElementById('widget-battery-level');
+            if (widgetBatt && dev?.battery !== undefined) widgetBatt.textContent = `${dev.battery}%`;
+
+            const wConn = document.getElementById('widget-connection-status');
+            if (wConn) {
+                if (isDevOnline) {
+                    wConn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span>Connected</span>';
+                    wConn.className = 'text-[10px] text-emerald-400 flex items-center gap-1 font-semibold';
+                } else {
+                    wConn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-400"></span><span>Offline</span>';
+                    wConn.className = 'text-[10px] text-red-400 flex items-center gap-1 font-semibold';
+                }
+            }
+
+            updateTopDockDeviceDropdown();
         }
-
-
         function updateTopDockDeviceDropdown() {
             const dropdown = document.getElementById('device-selector-dropdown');
             if (!dropdown) return;

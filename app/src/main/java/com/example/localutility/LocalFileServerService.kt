@@ -288,21 +288,29 @@ class LocalFileServerService : Service() {
 
         // --- 7-Server Multi-Broker Cascade Pool (Resilient Auto-Failover) ---
     private val EMQX_BROKERS = listOf(
-        "ssl://ceee508c.ala.asia-southeast1.emqxsl.com:8883",
-        "ssl://mfca5de2.ala.asia-southeast1.emqxsl.com:8883",
-        "ssl://f9a916bf.ala.asia-southeast1.emqxsl.com:8883",
-        "ssl://zf2cebac.ala.asia-southeast1.emqxsl.com:8883",
-        "ssl://w21b112c.ala.asia-southeast1.emqxsl.com:8883",
-        "ssl://e62c118f.ala.asia-southeast1.emqxsl.com:8883",
-        "ssl://w501fd1f.ala.asia-southeast1.emqxsl.com:8883",
-        "ssl://broker.emqx.io:8883"
+        "ssl://mfca5de2.ala.asia-southeast1.emqxsl.com:8883", // Server 1 (Primary Active - Asia)
+        "ssl://f9a916bf.ala.asia-southeast1.emqxsl.com:8883", // Server 2 (Backup A)
+        "ssl://zf2cebac.ala.asia-southeast1.emqxsl.com:8883", // Server 3 (Backup B)
+        "ssl://w21b112c.ala.asia-southeast1.emqxsl.com:8883", // Server 4 (Backup C)
+        "ssl://e62c118f.ala.asia-southeast1.emqxsl.com:8883", // Server 5 (Backup D)
+        "ssl://w501fd1f.ala.asia-southeast1.emqxsl.com:8883", // Server 6 (Backup E)
+        "ssl://broker.emqx.io:8883",                         // Public Lifeline
+        "ssl://ceee508c.ala.asia-southeast1.emqxsl.com:8883"  // Exhausted Cluster Backup
     )
     @Volatile
     private var activeBrokerIndex = 0
 
     private fun initCloudBridge(brokerIdx: Int = 0) {
         serviceScope.launch {
-            val safeIdx = brokerIdx % EMQX_BROKERS.size
+            val targetIdx = if (brokerIdx == 0) {
+                try {
+                    val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
+                    prefs.getInt("active_broker_index", 0)
+                } catch (_: Exception) { 0 }
+            } else {
+                brokerIdx
+            }
+            val safeIdx = targetIdx % EMQX_BROKERS.size
             activeBrokerIndex = safeIdx
             val brokerUrl = EMQX_BROKERS[safeIdx]
             try {
@@ -347,6 +355,10 @@ class LocalFileServerService : Service() {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
                         Log.d("CloudBridge", "Connected to Broker [$activeBrokerIndex]: $serverURI")
                         isCloudConnected = true
+                        try {
+                            val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
+                            prefs.edit().putInt("active_broker_index", activeBrokerIndex).apply()
+                        } catch (_: Exception) {}
                         serviceScope.launch(Dispatchers.Main) {
                             onCloudStatusChanged?.invoke(true)
                         }
