@@ -2015,25 +2015,18 @@ fun exportContactsToVcf(): String {
 
                 if (!processedIds.contains(id)) {
                     processedIds.add(id)
-                    sb.append("BEGIN:VCARD
-")
-                    sb.append("VERSION:3.0
-")
-                    sb.append("FN:$name
-")
-                    sb.append("N:;$name;;;
-")
+                    sb.append("BEGIN:VCARD\r\n")
+                    sb.append("VERSION:3.0\r\n")
+                    sb.append("FN:").append(name).append("\r\n")
+                    sb.append("N:;").append(name).append(";;;\r\n")
                     if (num.isNotEmpty()) {
-                        sb.append("TEL;TYPE=CELL:$num
-")
+                        sb.append("TEL;TYPE=CELL:").append(num).append("\r\n")
                     }
                     val emails = emailMap[id]
                     emails?.forEach { mail ->
-                        sb.append("EMAIL;TYPE=HOME:$mail
-")
+                        sb.append("EMAIL;TYPE=HOME:").append(mail).append("\r\n")
                     }
-                    sb.append("END:VCARD
-")
+                    sb.append("END:VCARD\r\n")
                 }
             }
         }
