@@ -114,12 +114,11 @@
                     </button>
                 </div>
 
-                <!-- Active Device Nickname Customization -->
+                <!-- Active Device Nickname -->
                 <div class="p-4 bg-gray-900/50 border border-gray-800 rounded-2xl space-y-3">
                     <div class="flex items-center justify-between pb-2 border-b border-gray-800">
                         <div class="flex items-center gap-2">
-                            <span class="text-cyan-400 font-bold text-xs">📱 Device Name & Nickname</span>
-                            <span class="text-[10px] text-gray-500 font-normal">(Personalize Active Phone)</span>
+                            <span class="text-cyan-400 font-bold text-xs">📱 Nickname</span>
                         </div>
                         <span id="st-device-model-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30">
                             Connected Phone
@@ -127,14 +126,14 @@
                     </div>
 
                     <div class="space-y-2">
-                        <label class="text-[11px] text-gray-400 block">Set a custom nickname for your active device (e.g. My Phone, Office Redmi, Personal):</label>
+                        <label class="text-[11px] text-gray-400 block">Set nickname:</label>
                         <div class="flex items-center gap-2">
-                            <input type="text" id="st-device-nickname-input" placeholder="e.g. My Primary Phone" class="flex-1 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition-all font-medium">
+                            <input type="text" id="st-device-nickname-input" placeholder="Enter nickname" class="flex-1 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition-all font-medium">
                             <button onclick="saveActiveDeviceNickname()" class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-sm active:scale-[0.98]">
-                                Save Nickname
+                                Save
                             </button>
                         </div>
-                        <p id="st-device-nickname-msg" class="text-[10px] text-emerald-400 font-semibold hidden">✔ Device nickname saved successfully!</p>
+                        <p id="st-device-nickname-msg" class="text-[10px] text-emerald-400 font-semibold hidden">✔ Nickname updated!</p>
                     </div>
                 </div>
 
@@ -717,9 +716,12 @@
                 <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-lg shadow">📱</div>
                 <div class="truncate">
                     <div id="widget-device-model" class="font-bold text-xs text-white truncate max-w-[170px]">Android Device</div>
-                    <div id="widget-connection-status" class="text-[10px] text-green-400 flex items-center gap-1 font-medium">
-                        <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                        <span>Connected</span>
+                    <div class="flex items-center gap-1.5 text-[10px]">
+                        <span id="widget-hardware-model" class="text-cyan-300 font-mono text-[9px] bg-cyan-950/80 px-1.5 py-0.2 rounded border border-cyan-800/50 hidden"></span>
+                        <div id="widget-connection-status" class="text-green-400 flex items-center gap-1 font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                            <span>Connected</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -10205,6 +10207,9 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 alert('No active device found. Please connect your phone first.');
                 return;
             }
+            const rawModel = allDiscoveredDevices[devId]?.model || allDiscoveredDevices[devId]?.name || devId;
+            const targetName = nick || rawModel;
+
             if (nick) {
                 localStorage.setItem('opendroid_dev_nickname_' + devId, nick);
             } else {
@@ -10212,10 +10217,28 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             }
             if (allDiscoveredDevices[devId]) {
                 allDiscoveredDevices[devId].customNickname = nick;
+                allDiscoveredDevices[devId].deviceName = targetName;
             }
+
+            // 1. Dispatch update to Child Phone companion service so it updates device_name in app prefs and presence
+            sendCommand({ action: 'UPDATE_DEVICE_NICKNAME', name: targetName });
+
+            // 2. Update retained cloud presence so all WebOS views immediately reflect new nickname
+            if (mqttClient && mqttClient.connected && accountTag) {
+                const presenceTopic = `opendroid/acc/${accountTag}/${devId}/presence`;
+                const existingData = allDiscoveredDevices[devId] || {};
+                const updatedPresence = {
+                    ...existingData,
+                    deviceName: targetName,
+                    model: rawModel,
+                    timestamp: Date.now()
+                };
+                mqttClient.publish(presenceTopic, JSON.stringify(updatedPresence), { qos: 1, retain: true });
+            }
+
+            // 3. Update WebOS UI
             updateActiveDeviceNameAcrossUI();
             const badge = document.getElementById('st-device-model-badge');
-            const rawModel = allDiscoveredDevices[devId]?.model || allDiscoveredDevices[devId]?.name || devId;
             if (badge) badge.textContent = nick ? `${nick} (${rawModel})` : rawModel;
             const msg = document.getElementById('st-device-nickname-msg');
             if (msg) {
@@ -10236,6 +10259,17 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             if (wgtModel) wgtModel.textContent = dispName;
             const devModelTxt = document.getElementById('device-model-text');
             if (devModelTxt) devModelTxt.textContent = dispName;
+            const rawModel = allDiscoveredDevices[devId]?.model || allDiscoveredDevices[devId]?.name || '';
+            const savedNick = localStorage.getItem('opendroid_dev_nickname_' + devId);
+            const hwModelEl = document.getElementById('widget-hardware-model');
+            if (hwModelEl) {
+                if (savedNick && rawModel && savedNick.trim() !== rawModel.trim()) {
+                    hwModelEl.textContent = rawModel;
+                    hwModelEl.classList.remove('hidden');
+                } else {
+                    hwModelEl.classList.add('hidden');
+                }
+            }
             renderSettingsDevices();
             if (typeof renderAccountDiscoveredDevices === 'function') {
                 renderAccountDiscoveredDevices();
