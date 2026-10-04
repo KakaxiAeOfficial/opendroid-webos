@@ -113,82 +113,86 @@
     </div>
 
 
-    <div id="pair-modal" class="fixed inset-0 bg-black/75 backdrop-blur-md z-[100] flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full text-center">
-            <div class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-2 shadow-lg text-white">📱</div>
-            <h2 class="text-xl font-bold text-gray-900">OpenDroid WebOS</h2>
-            <p class="text-xs text-gray-500 mt-0.5 mb-3">AirDroid-Style Wireless Remote Management</p>
+    <div id="pair-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4 hidden transition-opacity duration-300">
+        <div class="bg-gray-900/95 border border-gray-700/80 text-white rounded-3xl shadow-2xl p-7 max-w-md w-full text-center relative overflow-hidden backdrop-blur-2xl">
+            <!-- Ambient Top Glow -->
+            <div class="absolute -top-16 -left-16 w-36 h-36 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -top-16 -right-16 w-36 h-36 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
+            <div class="w-14 h-14 bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-3 shadow-lg shadow-blue-500/25 border border-cyan-400/30 text-white">
+                📱
+            </div>
+            <h2 class="text-2xl font-bold tracking-tight text-white flex items-center justify-center gap-2">
+                <span>OpenDroid</span>
+                <span class="text-[10px] bg-gradient-to-r from-cyan-400 to-blue-500 text-gray-950 px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide">WebOS v2</span>
+            </h2>
+            <p class="text-xs text-gray-400 mt-1 mb-5">AirDroid-Grade Remote Device Management</p>
 
             <!-- Mode Tabs -->
-            <div class="flex bg-gray-100 p-1 rounded-xl mb-4 text-xs font-semibold">
-                <button id="tab-btn-account" onclick="switchPairingMode('account')" class="flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm transition-all flex items-center justify-center gap-1">
+            <div class="flex bg-gray-800/90 p-1.5 rounded-2xl mb-5 text-xs font-semibold border border-gray-700/60">
+                <button id="tab-btn-account" onclick="switchPairingMode('account')" class="flex-1 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer">
                     <span>🔐</span><span>Central Account</span>
                 </button>
-                <button id="tab-btn-code" onclick="switchPairingMode('code')" class="flex-1 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1">
-                    <span>📱</span><span>6-Digit Code</span>
+                <button id="tab-btn-code" onclick="switchPairingMode('code')" class="flex-1 py-2 rounded-xl text-gray-400 hover:text-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                    <span>⚡</span><span>Quick Code</span>
                 </button>
             </div>
 
-
             <!-- Mode 1: Central Account & Multi-Device Hub -->
-            <div id="mode-account-section" class="space-y-3">
+            <div id="mode-account-section" class="space-y-3.5">
                 <div class="text-left">
-                    <label class="text-[11px] font-semibold text-gray-700">Account Email</label>
-                    <input type="email" id="account-email-input" placeholder="e.g. user@gmail.com" class="w-full text-xs border border-gray-300 rounded-xl p-2.5 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label class="text-[11px] font-semibold text-gray-300">Account Email</label>
+                    <input type="email" id="account-email-input" placeholder="e.g. user@gmail.com" class="w-full text-xs bg-gray-800/80 border border-gray-700 rounded-xl p-3 mt-1 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
                 </div>
 
-
                 <div class="text-left">
-                    <label class="text-[11px] font-semibold text-gray-700 flex items-center justify-between">
+                    <label class="text-[11px] font-semibold text-gray-300 flex items-center justify-between">
                         <span>6-Digit Secret PIN</span>
-                        <span class="text-[10px] text-blue-600 font-normal">🛡️ Private Security</span>
+                        <span class="text-[10px] text-cyan-400 font-normal">🛡️ Private Security</span>
                     </label>
-                    <input type="password" id="account-pin-input" placeholder="e.g. 843635" maxlength="12" class="w-full text-xs border border-gray-300 rounded-xl p-2.5 mt-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="account-pin-input" placeholder="e.g. 843635" maxlength="12" class="w-full text-xs bg-gray-800/80 border border-gray-700 rounded-xl p-3 mt-1 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all tracking-wider font-mono">
                 </div>
-
 
                 <div class="flex items-center justify-between px-1 py-1">
-                    <label class="flex items-center gap-2 cursor-pointer text-[11px] text-gray-600 select-none">
-                        <input type="checkbox" id="account-remember-me" checked class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
-                        <span>Remember Account on this Browser</span>
+                    <label class="flex items-center gap-2 cursor-pointer text-[11px] text-gray-400 hover:text-gray-300 select-none">
+                        <input type="checkbox" id="account-remember-me" checked class="rounded border-gray-700 bg-gray-800 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
+                        <span>Stay signed in on this computer</span>
                     </label>
                 </div>
-                <button id="account-login-btn" onclick="connectViaAccount()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs flex items-center justify-center gap-1.5">
-                    <span>🌐</span><span>Sign In & Load Devices</span>
+
+                <button id="account-login-btn" onclick="connectViaAccount()" class="w-full bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/30 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]">
+                    <span>🌐</span><span>Sign In & Open Desktop</span>
                 </button>
 
-
                 <!-- Discovered Devices Selector (Revealed after sign in) -->
-                <div id="account-devices-container" class="hidden text-left bg-gray-50 border rounded-xl p-3 space-y-2">
-                    <div class="flex items-center justify-between text-[11px] font-semibold text-gray-700">
+                <div id="account-devices-container" class="hidden text-left bg-gray-800/70 border border-gray-700/80 rounded-2xl p-3.5 space-y-2.5">
+                    <div class="flex items-center justify-between text-[11px] font-semibold text-gray-300">
                         <span>Select Device to Control:</span>
-                        <span id="account-devices-count" class="text-blue-600 font-mono text-[10px]">0 Online</span>
+                        <span id="account-devices-count" class="text-cyan-400 font-mono text-[10px] bg-cyan-950/80 border border-cyan-800/60 px-2 py-0.5 rounded-full">0 Online</span>
                     </div>
-                    <div id="account-devices-list" class="space-y-1.5 max-h-36 overflow-y-auto">
+                    <div id="account-devices-list" class="space-y-1.5 max-h-40 overflow-y-auto">
                         <div class="text-[11px] text-gray-400 text-center py-2">Searching for your phones...</div>
                     </div>
-                    <button id="account-connect-device-btn" onclick="confirmAccountDeviceConnection()" disabled class="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white font-bold py-2 rounded-lg text-xs shadow transition-all mt-1">
+                    <button id="account-connect-device-btn" onclick="confirmAccountDeviceConnection()" disabled class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition-all mt-1">
                         Connect to Selected Device 🚀
                     </button>
                 </div>
             </div>
 
-
             <!-- Mode 2: Quick 6-Digit Guest Code -->
-            <div id="mode-code-section" class="hidden space-y-3">
-                <p class="text-xs text-gray-500">Enter the 6-digit code shown on your phone:</p>
-                <input type="text" id="pairing-code-input" placeholder="e.g. 932941" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold border-2 border-blue-400 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-600 uppercase">
-                <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition-all text-xs">Connect 5G Stream</button>
+            <div id="mode-code-section" class="hidden space-y-3.5">
+                <p class="text-xs text-gray-400">Enter the 6-digit code shown on your phone:</p>
+                <input type="text" id="pairing-code-input" placeholder="e.g. 932941" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold bg-gray-800/80 border-2 border-cyan-500/60 text-cyan-300 rounded-2xl p-3 focus:outline-none focus:ring-2 focus:ring-cyan-400 uppercase">
+                <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-xs">Connect 5G Stream</button>
             </div>
 
-
-            <div class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-center gap-4 text-xs">
-                <button onclick="connectLocal()" class="text-gray-400 hover:text-gray-600 underline text-[11px]">Connect via Local Wi-Fi</button>
+            <div class="mt-4 pt-3 border-t border-gray-800 flex items-center justify-center gap-4 text-xs text-gray-400">
+                <button onclick="connectLocal()" class="hover:text-cyan-400 transition-colors">Connect via Local Wi-Fi</button>
+                <span>•</span>
+                <button onclick="openWallpaperModal()" class="hover:text-cyan-400 transition-colors">Theme Manager 🎨</button>
             </div>
         </div>
     </div>
-
 
     <!-- On-Demand Image Preview Modal -->
     <div id="image-preview-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
@@ -231,7 +235,7 @@
     <header class="fixed top-0 left-0 right-0 h-12 bg-gray-950/85 backdrop-blur-xl border-b border-gray-800/80 z-50 flex items-center justify-between px-4 text-xs select-none">
         <!-- Left: OpenDroid Branding & Active Connection Pill -->
         <div class="flex items-center gap-3">
-            <div class="flex items-center gap-2 cursor-pointer group" onclick="location.reload()">
+            <div class="flex items-center gap-2 cursor-pointer group" onclick="wm.minimizeAll()">
                 <div class="w-7 h-7 bg-gradient-to-tr from-cyan-400 via-blue-600 to-indigo-600 rounded-lg flex items-center justify-center font-black text-sm text-white shadow-[0_0_12px_rgba(59,130,246,0.5)] group-hover:scale-105 transition-transform">
                     O
                 </div>
@@ -318,7 +322,7 @@
 
 
             <!-- 6. Disconnect / Power Button -->
-            <button onclick="location.reload()" title="Sign Out / Disconnect" class="w-8 h-8 rounded-full bg-gray-900/90 hover:bg-rose-950/80 text-gray-400 hover:text-rose-400 border border-gray-700/80 hover:border-rose-500/70 transition-all flex items-center justify-center cursor-pointer group">
+            <button onclick="disconnectAccountSession()" title="Sign Out / Disconnect" class="w-8 h-8 rounded-full bg-gray-900/90 hover:bg-rose-950/80 text-gray-400 hover:text-rose-400 border border-gray-700/80 hover:border-rose-500/70 transition-all flex items-center justify-center cursor-pointer group">
                 <svg class="w-4 h-4 text-gray-300 group-hover:text-rose-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
                     <line x1="12" y1="2" x2="12" y2="12"></line>
@@ -2571,15 +2575,14 @@
             const secAccount = document.getElementById('mode-account-section');
             const secCode = document.getElementById('mode-code-section');
 
-
             if (mode === 'account') {
-                tabAccount.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm transition-all flex items-center justify-center gap-1';
-                tabCode.className = 'flex-1 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1';
+                tabAccount.className = 'flex-1 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer';
+                tabCode.className = 'flex-1 py-2 rounded-xl text-gray-400 hover:text-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer';
                 secAccount.classList.remove('hidden');
                 secCode.classList.add('hidden');
             } else {
-                tabCode.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-600 shadow-sm transition-all flex items-center justify-center gap-1';
-                tabAccount.className = 'flex-1 py-1.5 rounded-lg text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1';
+                tabCode.className = 'flex-1 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer';
+                tabAccount.className = 'flex-1 py-2 rounded-xl text-gray-400 hover:text-gray-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer';
                 secCode.classList.remove('hidden');
                 secAccount.classList.add('hidden');
             }
@@ -9499,6 +9502,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
         function disconnectAccountSession() {
             if (!confirm('Are you sure you want to log out from this Central Account?')) return;
+
+            // 1. Wipe active session keys from localStorage
             try {
                 localStorage.removeItem('opendroid_session_active');
                 localStorage.removeItem('opendroid_remember_account');
@@ -9506,21 +9511,80 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 localStorage.removeItem('opendroid_saved_pin');
                 localStorage.removeItem('opendroid_last_device_id');
             } catch (_e) {}
+
+            // 2. Safely end active MQTT, WebSocket, and WebRTC streaming sessions
             if (mqttClient) {
                 try { mqttClient.end(true); } catch (_e) {}
+                mqttClient = null;
             }
-            // Explicit user logout reveals the login modal cleanly
-            const pairModal = document.getElementById('pair-modal');
-            if (pairModal) pairModal.classList.remove('hidden');
-            const devContainer = document.getElementById('account-devices-container');
-            if (devContainer) devContainer.classList.add('hidden');
+            if (localWs) {
+                try { localWs.close(); } catch (_e) {}
+                localWs = null;
+            }
+            try { closeWebRtcPeerConnection(); } catch (_e) {}
+            if (handshakeInterval) { clearInterval(handshakeInterval); handshakeInterval = null; }
+            if (accountConnectWatchdog) { clearTimeout(accountConnectWatchdog); accountConnectWatchdog = null; }
+
+            // 3. Close all open WebOS floating windows in-place
+            if (typeof wm !== 'undefined' && wm && wm.openWindows) {
+                Object.keys(wm.openWindows).forEach(winId => {
+                    try { wm.closeWindow(winId); } catch (_e) {}
+                });
+            }
+
+            // 4. Reset in-memory fleet and device state
+            accountEmail = '';
+            accountTag = '';
+            currentDeviceId = '';
+            allDiscoveredDevices = {};
+
+            // 5. Reset desktop header, widgets, and taskbar in-place
+            const hdrDev = document.getElementById('header-active-device-name');
+            if (hdrDev) hdrDev.textContent = 'Disconnected';
+            const hdrBatt = document.getElementById('header-active-device-battery');
+            if (hdrBatt) hdrBatt.textContent = '--%';
+
+            const wModel = document.getElementById('widget-device-model');
+            if (wModel) wModel.textContent = 'Not Connected';
+            const wConn = document.getElementById('widget-connection-status');
+            if (wConn) {
+                wConn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span><span>Logged Out</span>';
+                wConn.className = 'text-[10px] text-gray-400 flex items-center gap-1 font-medium';
+            }
+
+            const tskDev = document.getElementById('taskbar-device-name');
+            if (tskDev) tskDev.textContent = 'Logged Out';
+            const tskBatt = document.getElementById('taskbar-battery-percent');
+            if (tskBatt) tskBatt.textContent = '--%';
+
             const taskbarStatus = document.getElementById('ws-status-taskbar');
             if (taskbarStatus) {
                 taskbarStatus.textContent = '● Logged Out';
                 taskbarStatus.className = 'text-gray-400 text-xs font-semibold';
             }
-            showToast('Logged out successfully.', 'info');
-            location.reload();
+
+            const devWrapper = document.getElementById('device-selector-wrapper');
+            if (devWrapper) devWrapper.classList.add('hidden');
+
+            // 6. Reset Login UI form & show AirDroid v2 Login Modal in-place (ZERO PAGE RELOAD!)
+            const pinInput = document.getElementById('account-pin-input');
+            if (pinInput) pinInput.value = '';
+            const devContainer = document.getElementById('account-devices-container');
+            if (devContainer) devContainer.classList.add('hidden');
+            const loginBtn = document.getElementById('account-login-btn');
+            if (loginBtn) {
+                loginBtn.textContent = '🌐 Sign In & Open Desktop';
+                loginBtn.disabled = false;
+                loginBtn.className = "w-full bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-600 hover:to-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/30 transition-all text-xs flex items-center justify-center gap-2 cursor-pointer";
+            }
+
+            const pairModal = document.getElementById('pair-modal');
+            if (pairModal) {
+                pairModal.classList.remove('hidden');
+            }
+
+            showToast('Logged out successfully. Sign in again anytime.', 'info');
+            // Single Page in-place logout complete without page refresh!
         }
 
 
