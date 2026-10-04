@@ -1,4 +1,3 @@
-
 name: Build and Release OpenDroid APK
 
 on:
@@ -30,6 +29,10 @@ jobs:
       uses: android-actions/setup-android@v3
       with:
         packages: ''
+
+    - name: Setup Consistent Signing Keystore
+      run: |
+        echo "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" | base64 --decode > app/opendroid.keystore
 
     - name: Initialize Gradle Wrapper
       run: |
@@ -67,6 +70,7 @@ jobs:
           🔖 **Commit:** `${{ github.sha }}`
 
           #### ✨ Features Included:
+          - 🔄 **In-Place Seamless App Updates:** Consistent cryptographic signing key (no uninstalling needed!).
           - 🛡️ **6-Digit Secret PIN Security:** SHA-256 salted zero-knowledge channel.
           - 🌐 **Central Account & Multi-Device Hub:** Manage multiple phones seamlessly.
           - 📱 **5G Screen Mirroring (~30 FPS):** Full remote touch, swipes & hardware keys.
@@ -74,6 +78,7 @@ jobs:
           - 🎙️ **Two-Way Audio (Walkie-Talkie):** Speak through phone loudspeaker.
           - 📁 **Advanced File Explorer:** Batch ZIP download, rename, delete & APK installer.
           - 📞 **SMS, Dialer, Call Logs & Live GPS Tracker.**
+          - 📇 **Contacts Manager & Bi-Directional VCF Backup / Restore.**
           - 🥷 **Stealth Mode & Device Admin Lock.**
 
           ---
@@ -88,3 +93,4 @@ jobs:
         make_latest: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

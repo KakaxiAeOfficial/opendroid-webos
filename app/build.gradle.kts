@@ -11,13 +11,30 @@ android {
         applicationId = "com.example.localutility"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.0.0-PROD"
+        // Automatically increments with every GitHub Actions build run to allow seamless in-place updates
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 100
+        versionName = "1.0.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("opendroid.keystore")
+            storePassword = "android"
+            keyAlias = "opendroid"
+            keyPassword = "android"
+            enableV1Signing = true
+            enableV2Signing = true
+        }
     }
 
     buildTypes {
-        release {
+        getByName("debug") {
+            // Sign debug build with persistent release key for seamless in-place APK updates without uninstalling
+            signingConfig = signingConfigs.getByName("release")
+        }
+        getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
