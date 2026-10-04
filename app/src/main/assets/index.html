@@ -54,7 +54,237 @@
 
 
     <!-- Connect / Pairing Modal (Dual-Mode: 6-Digit Guest or Central Account) -->
-        <!-- Admin Custom Wallpaper Modal -->
+            <!-- Window: Settings & Account Preferences (AirDroid Style Revamped) -->
+    <div id="settings-window" class="window hidden" style="display: none; width: 780px; height: 580px; top: 60px; left: 240px; min-width: 650px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55); border-radius: 1rem; border: 1px solid rgba(75, 85, 99, 0.4); background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(20px);">
+        <!-- Title Bar -->
+        <div class="title-bar bg-gray-900/90 text-white px-4 py-2.5 flex justify-between items-center select-none border-b border-gray-800">
+            <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">⚙️</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Settings & Preferences</span>
+            </div>
+            <div class="flex items-center gap-1.5 no-drag">
+                <button onclick="wm.minimizeWindow('settings-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('settings-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('settings-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+            </div>
+        </div>
+
+        <!-- Settings Top Tab Navigation (AirDroid Style) -->
+        <div class="bg-gray-900/60 border-b border-gray-800/80 px-4 py-2 flex items-center gap-2 text-xs select-none">
+            <button id="btn-tab-setting-account" onclick="switchSettingsTab('account')" class="px-3.5 py-1.5 rounded-lg font-semibold transition-all bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer">
+                <span>👤</span> Account
+            </button>
+            <button id="btn-tab-setting-general" onclick="switchSettingsTab('general')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 flex items-center gap-1.5 cursor-pointer">
+                <span>⚙️</span> General
+            </button>
+            <button id="btn-tab-setting-devices" onclick="switchSettingsTab('devices')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 flex items-center gap-1.5 cursor-pointer">
+                <span>📱</span> Devices
+            </button>
+            <button id="btn-tab-setting-quota" onclick="switchSettingsTab('quota')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 flex items-center gap-1.5 cursor-pointer">
+                <span>📊</span> Cloud Quota
+            </button>
+            <button id="btn-tab-setting-about" onclick="switchSettingsTab('about')" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 flex items-center gap-1.5 cursor-pointer">
+                <span>ℹ️</span> About
+            </button>
+        </div>
+
+        <!-- Settings Content Body -->
+        <div class="flex-1 overflow-y-auto p-5 text-gray-200 font-sans text-xs">
+            <!-- TAB 1: ACCOUNT (Pure Account Info & Device Nickname Customization) -->
+            <div id="settings-tab-account" class="space-y-4">
+                <div class="p-4 bg-gray-900/70 border border-gray-800 rounded-2xl flex items-center justify-between">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-blue-600/30">
+                            👤
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span id="st-account-email" class="text-sm font-bold text-white select-text">kakaxiaeofficial@gmail.com</span>
+                                <span class="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-semibold border border-emerald-500/30">Verified ✔</span>
+                            </div>
+                            <div class="text-[11px] text-gray-400 mt-0.5 flex items-center gap-2">
+                                <span>Security: <strong class="text-cyan-400 font-mono">6-Digit Secret PIN Protected 🛡️</strong></span>
+                                <span>•</span>
+                                <span>Plan: <strong class="text-amber-400 font-medium">Enterprise Unlimited</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="handleLogout()" class="px-3.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl transition-all font-semibold text-xs flex items-center gap-1.5 cursor-pointer">
+                        <span>🚪</span> Sign Out
+                    </button>
+                </div>
+
+                <!-- Active Device Nickname Customization -->
+                <div class="p-4 bg-gray-900/50 border border-gray-800 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                        <div class="flex items-center gap-2">
+                            <span class="text-cyan-400 font-bold text-xs">📱 Device Name & Nickname</span>
+                            <span class="text-[10px] text-gray-500 font-normal">(Personalize Active Phone)</span>
+                        </div>
+                        <span id="st-device-model-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            Connected Phone
+                        </span>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-[11px] text-gray-400 block">Set a custom nickname for your active device (e.g. My Phone, Office Redmi, Personal):</label>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="st-device-nickname-input" placeholder="e.g. My Primary Phone" class="flex-1 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 transition-all font-medium">
+                            <button onclick="saveActiveDeviceNickname()" class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-sm active:scale-[0.98]">
+                                Save Nickname
+                            </button>
+                        </div>
+                        <p id="st-device-nickname-msg" class="text-[10px] text-emerald-400 font-semibold hidden">✔ Device nickname saved successfully!</p>
+                    </div>
+                </div>
+
+                <!-- Security & Privacy Status -->
+                <div class="p-4 bg-gray-900/50 border border-gray-800 rounded-2xl space-y-2 text-xs">
+                    <div class="flex items-center gap-2 font-bold text-gray-300">
+                        <span>🔒</span><span>Account Privacy & Session Guard</span>
+                    </div>
+                    <p class="text-gray-400 text-[11px] leading-relaxed">
+                        Your account credentials and devices communicate exclusively through end-to-end authenticated sessions. Devices are only accessible using your personal 6-digit security PIN.
+                    </p>
+                </div>
+            </div>
+
+            <!-- TAB 2: GENERAL PREFERENCES -->
+            <div id="settings-tab-general" class="hidden space-y-4">
+                <div class="p-4 bg-gray-900/70 border border-gray-800 rounded-2xl space-y-3.5">
+                    <h4 class="font-bold text-xs text-white border-b border-gray-800 pb-2">Desktop & Audio Alerts</h4>
+                    
+                    <label class="flex items-center justify-between cursor-pointer group">
+                        <div>
+                            <div class="font-semibold text-gray-200 group-hover:text-white">Desktop Notifications</div>
+                            <div class="text-[11px] text-gray-400">Show native browser popups when SMS, calls, or alerts arrive</div>
+                        </div>
+                        <input type="checkbox" id="pref-desktop-notifs" checked class="w-4 h-4 text-cyan-600 rounded bg-gray-800 border-gray-700 focus:ring-cyan-500 cursor-pointer">
+                    </label>
+
+                    <label class="flex items-center justify-between cursor-pointer group pt-2 border-t border-gray-800/60">
+                        <div>
+                            <div class="font-semibold text-gray-200 group-hover:text-white">Notification Sounds</div>
+                            <div class="text-[11px] text-gray-400">Play pleasant sound chimes on incoming phone notifications</div>
+                        </div>
+                        <input type="checkbox" id="pref-sound-alerts" checked class="w-4 h-4 text-cyan-600 rounded bg-gray-800 border-gray-700 focus:ring-cyan-500 cursor-pointer">
+                    </label>
+                </div>
+
+                <div class="p-4 bg-gray-900/70 border border-gray-800 rounded-2xl flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold text-gray-200">Custom Wallpaper & Themes</div>
+                        <div class="text-[11px] text-gray-400">Choose from curated themes or upload a local wallpaper</div>
+                    </div>
+                    <button onclick="openWallpaperModal()" class="px-3.5 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl transition-all font-semibold text-xs cursor-pointer">
+                        🎨 Change Wallpaper
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 3: CONNECTED DEVICES (AirDroid Style) -->
+            <div id="settings-tab-devices" class="hidden space-y-4">
+                <div class="flex items-center justify-between px-1">
+                    <span id="st-device-count" class="font-bold text-xs text-gray-300">Connected Devices: 1 Active</span>
+                    <button onclick="renderSettingsDevices()" class="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-semibold cursor-pointer">
+                        <span>🔄</span> Refresh List
+                    </button>
+                </div>
+                <div id="st-devices-list" class="space-y-2.5">
+                    <!-- Populated dynamically by renderSettingsDevices() -->
+                </div>
+            </div>
+
+            <!-- TAB 4: CLOUD QUOTA & ENCRYPTED RELAYS (Full Privacy Mode) -->
+            <div id="settings-tab-quota" class="hidden space-y-4">
+                <!-- Monthly Cloud Bandwidth Usage Bar -->
+                <div class="p-4 bg-gray-900/70 border border-gray-800 rounded-2xl space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-gray-200">Monthly Cloud Bandwidth:</span>
+                        <span class="text-emerald-400 font-mono font-semibold">Remaining: 1,023.2 MB / 1,024 MB</span>
+                    </div>
+                    <div class="w-full bg-gray-800 rounded-full h-2 overflow-hidden border border-gray-700/50">
+                        <div class="bg-gradient-to-r from-emerald-500 to-cyan-400 h-full rounded-full" style="width: 1.5%"></div>
+                    </div>
+                    <div class="flex justify-between items-center text-[10px] text-gray-400 pt-1">
+                        <span>0 MB</span>
+                        <span class="text-cyan-400 font-semibold">⚡ Ultra Data-Saver Active</span>
+                        <span>1,024 MB (1 GB)</span>
+                    </div>
+                </div>
+
+                <!-- Cloud Network Gateway (Zero Technical Jargon) -->
+                <div class="p-4 bg-gray-900/50 border border-gray-800 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                        <div class="flex items-center gap-2">
+                            <span class="text-cyan-400 font-bold text-xs">🌐 Cloud Network Gateway</span>
+                            <span class="text-[10px] text-gray-500 font-normal">(Encrypted Transmission)</span>
+                        </div>
+                        <span id="st-server-status-pill" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            ● Connected (Protected)
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-gray-950/60 p-3 rounded-xl border border-gray-800/80">
+                            <span class="text-gray-400 block text-[10px]">Active Secure Route:</span>
+                            <span id="st-current-server-name" class="font-bold text-white mt-0.5 block">Gateway 1 (Primary Active - Asia)</span>
+                            <span id="st-current-server-host" class="text-[10px] text-gray-400 font-medium block truncate mt-0.5">Encrypted Secure Relay</span>
+                        </div>
+                        <div class="bg-gray-950/60 p-3 rounded-xl border border-gray-800/80">
+                            <span class="text-gray-400 block text-[10px]">Switch Cloud Gateway:</span>
+                            <select id="st-server-select" onchange="manualSwitchCloudServer(this.value)" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-cyan-300 mt-1 focus:outline-none focus:border-cyan-500 cursor-pointer">
+                                <option value="0">Gateway 1 (Primary Active - Asia)</option>
+                                <option value="1">Gateway 2 (Backup A)</option>
+                                <option value="2">Gateway 3 (Backup B)</option>
+                                <option value="3">Gateway 4 (Backup C)</option>
+                                <option value="4">Gateway 5 (Backup D)</option>
+                                <option value="5">Gateway 6 (Backup E)</option>
+                                <option value="6">Gateway 7 (Global Relay)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- High-Speed Transmission Channels (Full Privacy - No P2P or Internal Jargon) -->
+                <div class="p-4 bg-gray-900/50 border border-gray-800 rounded-2xl space-y-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">⚡</span>
+                        <h4 class="font-bold text-xs text-white">High-Speed Transmission Modes</h4>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 pt-1">
+                        <div class="bg-gray-950 p-3 rounded-xl border border-gray-800">
+                            <span class="text-cyan-400 font-bold text-xs">🚀 Direct Remote Control</span>
+                            <p class="text-[11px] text-gray-400 mt-1">Real-time screen mirroring, remote camera, and device interaction.</p>
+                        </div>
+                        <div class="bg-gray-950 p-3 rounded-xl border border-gray-800">
+                            <span class="text-emerald-400 font-bold text-xs">🏠 Local Wi-Fi Fast Sync</span>
+                            <p class="text-[11px] text-gray-400 mt-1">Ultra-fast file transfers and two-way audio on the same local Wi-Fi.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: ABOUT (Clean Branding without build numbers) -->
+            <div id="settings-tab-about" class="hidden space-y-4 text-center py-4">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 mx-auto flex items-center justify-center text-3xl shadow-lg shadow-blue-500/25">
+                    📱
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-white">OpenDroid WebOS</h3>
+                    <div class="text-xs text-cyan-400 font-medium mt-0.5">Enterprise Edition</div>
+                </div>
+                <p class="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
+                    OpenDroid is an autonomous, cable-free remote operating system for Android devices. Featuring real-time screen mirroring, two-way audio walkie-talkie, SMS & call management, contacts backup, and remote camera control.
+                </p>
+                <div class="text-[11px] text-gray-500 pt-2">
+                    Engineered with OpenDroid Proprietary Core • Enterprise Encrypted Tunnel
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- Admin Custom Wallpaper Modal -->
     <div id="wallpaper-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md z-[120] flex items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-700 text-white rounded-2xl shadow-2xl p-6 max-w-lg w-full">
             <div class="flex items-center justify-between pb-3 border-b border-gray-800">
@@ -183,7 +413,7 @@
             <div id="mode-code-section" class="hidden space-y-3.5">
                 <p class="text-xs text-gray-400">Enter the 6-digit code shown on your phone:</p>
                 <input type="text" id="pairing-code-input" placeholder="e.g. 932941" maxlength="6" class="w-full text-center tracking-widest text-3xl font-mono font-bold bg-gray-800/80 border-2 border-cyan-500/60 text-cyan-300 rounded-2xl p-3 focus:outline-none focus:ring-2 focus:ring-cyan-400 uppercase">
-                <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-xs">Connect 5G Stream</button>
+                <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-xs">Connect Cloud Stream</button>
             </div>
 
             <div class="mt-4 pt-3 border-t border-gray-800 flex items-center justify-center text-xs text-gray-400">
@@ -299,7 +529,7 @@
 
 
             <!-- 4. Settings / Device Info (Gear Icon matching user image) -->
-            <button onclick="wm.openWindow('info-window')" class="w-8 h-8 rounded-full bg-gray-900/90 hover:bg-gray-800 text-gray-300 hover:text-blue-300 border border-gray-700/80 hover:border-blue-500/70 transition-all flex items-center justify-center cursor-pointer group" title="Device Information & Settings">
+            <button onclick="wm.openWindow('settings-window')" class="w-8 h-8 rounded-full bg-gray-900/90 hover:bg-gray-800 text-gray-300 hover:text-cyan-300 border border-gray-700/80 hover:border-cyan-500/70 transition-all flex items-center justify-center cursor-pointer group" title="Settings & Preferences">
                 <svg class="w-4 h-4 text-blue-400 group-hover:rotate-45 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="3"></circle>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -396,6 +626,12 @@
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('fleet-window')">
             <div class="app-tile bg-gradient-to-tr from-indigo-500 to-purple-600">🌐</div>
             <span class="text-xs font-medium text-center mt-1">Device Hub</span>
+        </div>
+
+        <!-- AirDroid-Style Settings & Account Preferences Icon -->
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('settings-window')">
+            <div class="app-tile bg-gradient-to-tr from-slate-700 to-gray-900 border border-gray-600/40">⚙️</div>
+            <span class="text-xs font-medium text-center mt-1">Settings</span>
         </div>
 
 
@@ -2028,7 +2264,7 @@
                 </div>
                 <div class="flex justify-between pb-2 border-b border-gray-200">
                     <span class="text-gray-500">Network:</span>
-                    <span class="font-bold text-green-600">5G Cloud Bridge</span>
+                    <span class="font-bold text-green-600">Cloud Relay</span>
                 </div>
                 <div class="flex justify-between pb-2 border-b border-gray-200">
                     <span class="text-gray-500">Battery:</span>
@@ -2143,7 +2379,7 @@
             <div class="flex items-center gap-2">
                 <span class="text-emerald-400 font-bold text-sm">💻</span>
                 <span class="font-bold text-xs text-gray-200">Remote Shell Console (sh)</span>
-                <span class="text-[10px] text-emerald-400/80 bg-emerald-950/70 border border-emerald-700/50 px-2 py-0.5 rounded-full font-mono">5G IPC</span>
+                <span class="text-[10px] text-emerald-400/80 bg-emerald-950/70 border border-emerald-700/50 px-2 py-0.5 rounded-full font-mono">Cloud IPC</span>
             </div>
             <div class="flex items-center gap-2">
                 <button onclick="clearTerminalOutput()" class="text-gray-400 hover:text-yellow-400 text-xs px-2 py-0.5 rounded hover:bg-white/5 transition-all" title="Clear Terminal">🧹 Clear</button>
@@ -2731,11 +2967,11 @@
         // --- 7-Server Multi-Broker Cascade Pool ---
         const EMQX_SERVERS = [
             { name: "Server 1 (Primary - Asia)", host: "mfca5de2.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 2 (Backup A)", host: "f9a916bf.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 3 (Backup B)", host: "zf2cebac.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 4 (Backup C)", host: "w21b112c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 5 (Backup D)", host: "e62c118f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
-            { name: "Server 6 (Backup E)", host: "w501fd1f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Gateway 2 (Backup A)", host: "f9a916bf.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Gateway 3 (Backup B)", host: "zf2cebac.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Gateway 4 (Backup C)", host: "w21b112c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Gateway 5 (Backup D)", host: "e62c118f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
+            { name: "Gateway 6 (Backup E)", host: "w501fd1f.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" },
             { name: "Public Lifeline", host: "broker.emqx.io", port: 8084, user: "", pass: "" },
             { name: "Exhausted Cluster Backup", host: "ceee508c.ala.asia-southeast1.emqxsl.com", port: 8084, user: "OpenDroid-v1", pass: "OpenDroid-v1@kakaxi69" }
         ];
@@ -2822,7 +3058,7 @@
             const currentBroker = EMQX_SERVERS[activeServerIndex];
             const loginBtn = document.getElementById('account-login-btn');
             if (loginBtn && !isSilent) {
-                loginBtn.textContent = `[${activeServerIndex + 1}/${EMQX_SERVERS.length}] Connecting to ${currentBroker.name}...`;
+                loginBtn.innerHTML = `<span>Connecting to OpenDroid Cloud...</span>`;
                 loginBtn.disabled = true;
                 loginBtn.className = "w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5 opacity-90";
             }
@@ -2838,7 +3074,7 @@
             // 5-Second Anti-Freeze Connection Watchdog
             accountConnectWatchdog = setTimeout(() => {
                 console.warn(`[Watchdog] ${currentBroker.name} timed out. Auto-cascading to next server...`);
-                showToast(`${currentBroker.name} busy/full. Trying ${activeServerIndex + 2 <= EMQX_SERVERS.length ? EMQX_SERVERS[activeServerIndex + 1]?.name : 'next'}...`, 'warning');
+                // Silent server cascade (no toast)
                 initAccountMqtt(activeServerIndex + 1);
             }, 5000);
 
@@ -2875,8 +3111,8 @@
                 }
 
                 if (loginBtn && !isSilent) {
-                    loginBtn.textContent = `✓ Connected to ${currentBroker.name}`;
-                    loginBtn.className = "w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-1.5";
+                    loginBtn.innerHTML = `<span>● Cloud Ready</span><span class="text-emerald-200 font-normal text-[11px]">(Connected)</span>`;
+                    loginBtn.className = "w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl shadow-md text-xs flex items-center justify-center gap-2";
                 }
                 const taskbarStatus = document.getElementById('ws-status-taskbar');
                 if (taskbarStatus) {
@@ -2908,14 +3144,14 @@
                     window.deviceScanCascadeTimeout = setTimeout(() => {
                         if (Object.keys(allDiscoveredDevices).length === 0 && (activeServerIndex + 1) < EMQX_SERVERS.length) {
                             const nextServer = EMQX_SERVERS[activeServerIndex + 1];
-                            showToast(`Searching next cloud server: ${nextServer.name}... 📡`, 'info');
+                            // Silent server search (no toast)
                             initAccountMqtt(activeServerIndex + 1, false);
                         }
                     }, 4500);
                 }
 
                 if (!isSilent) {
-                    showToast(`Connected to ${currentBroker.name}. Discovering devices...`, 'success');
+                    // Silent server connect (no toast)
                 }
             });
 
@@ -3141,7 +3377,7 @@
         function confirmAccountDeviceConnection(silent = false) {
             if (!currentDeviceId) return;
             const dev = allDiscoveredDevices[currentDeviceId];
-            const activeName = dev?.deviceName || dev?.model || 'Android Device';
+            const activeName = getDeviceDisplayName(currentDeviceId);
             const isDevOnline = dev?.isOnline ?? true;
 
             localStorage.setItem('opendroid_last_device_id', currentDeviceId);
@@ -3561,7 +3797,7 @@
                 if (placeholder) placeholder.classList.add('hidden');
                 updateScreenStatus("🟢 Live Screen Mirroring (30 FPS)");
             } else if (data.type === 'WEBRTC_SCREEN_READY') {
-                updateScreenStatus("🟢 Connecting WebRTC P2P...");
+                updateScreenStatus("🟢 Connecting Direct P2P...");
                 handleWebRtcReadyAndOffer('SCREEN');
                 const btn = document.getElementById('screen-toggle-btn');
                 if (btn) {
@@ -3570,7 +3806,7 @@
                     btn.onclick = () => stopScreenStream();
                 }
             } else if (data.type === 'WEBRTC_CAMERA_READY') {
-                updateCameraStatus("🟢 Connecting WebRTC Camera P2P...");
+                updateCameraStatus("🟢 Connecting HD Camera Stream...");
                 handleWebRtcReadyAndOffer('CAMERA');
                 const btn = document.getElementById('cam-toggle-btn');
                 if (btn) {
@@ -4025,7 +4261,7 @@
                         videoEl.classList.remove('hidden');
                         videoEl.play().catch(e => console.warn("[WebRTC] Autoplay error:", e));
                     }
-                    updateScreenStatus("🟢 WebRTC 60 FPS Ultra-Low Latency Active");
+                    updateScreenStatus("🟢 60 FPS Ultra-Low Latency Active");
                 } else if (streamType === 'CAMERA') {
                     const videoEl = document.getElementById('camera-webrtc-video');
                     const imgEl = document.getElementById('camera-frame-view');
@@ -4037,7 +4273,7 @@
                         videoEl.classList.remove('hidden');
                         videoEl.play().catch(e => console.warn("[WebRTC] Autoplay error:", e));
                     }
-                    updateCameraStatus("🟢 WebRTC Hardware 1080p Stream Active");
+                    updateCameraStatus("🟢 Hardware 1080p Stream Active");
                 }
                 startWebRtcStats();
             };
@@ -4176,7 +4412,7 @@
                 if (screenPlace) screenPlace.classList.remove('hidden');
             }
 
-            updateCameraStatus("🟡 Starting WebRTC Camera...");
+            updateCameraStatus("🟡 Starting Camera Stream...");
             sendCommand({ action: 'START_WEBRTC_CAMERA', type: 'START_WEBRTC_CAMERA', facing: facing || 'back' });
         }
 
@@ -4394,7 +4630,7 @@
                 if (camPlace) camPlace.classList.remove('hidden');
             }
 
-            updateScreenStatus("🟡 Initializing WebRTC Screen Mirror...");
+            updateScreenStatus("🟡 Initializing Screen Mirror...");
             sendCommand({ action: 'START_WEBRTC_SCREEN', type: 'START_WEBRTC_SCREEN' });
         }
 
@@ -6275,6 +6511,7 @@
                     'camera-window': { title: 'Camera Stream', icon: '📷' },
                     'secret-window': { title: 'Stealth Capture', icon: '🕵️' },
                     'file-window': { title: 'Internal Storage', icon: '📁' },
+                    'settings-window': { title: 'Settings', icon: '⚙️' },
                     'sms-window': { title: 'Messages', icon: '💬' },
                     'contacts-window': { title: 'Contacts', icon: '📇' },
                     'call-logs-window': { title: 'Call Logs', icon: '📞' },
@@ -6353,6 +6590,7 @@
                 if(id === 'sms-window') { initSmsWindow(); sendCommand({action: 'FETCH_SMS'}); }
                 if(id === 'contacts-window') sendCommand({action: 'FETCH_CONTACTS'});
                 if(id === 'info-window') sendCommand({action: 'FETCH_STORAGE'});
+                if(id === 'settings-window') switchSettingsTab('account');
                 if(id === 'call-logs-window') { setCallLogsFilter('All'); rawCallLogs = []; isLoadingCallLogs = true; sendCommand({action: 'FETCH_CALL_LOGS', offset: 0, limit: 100}); sendCommand({action: 'FETCH_CALL_RECORDINGS'}); }
                 if(id === 'apps-window') sendCommand({action: 'FETCH_APPS'});
                 if(id === 'clipboard-window') sendCommand({action: 'FETCH_CLIPBOARD'});
@@ -9944,6 +10182,171 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 
         window.addEventListener('DOMContentLoaded', () => { setTimeout(initFileWindowDropzone, 700); });
+
+        // --- OpenDroid Phase 14: Settings & Preferences Window Logic ---
+        
+        // --- OpenDroid Phase 14: Device Nickname & Account Privacy Helpers ---
+        function getDeviceDisplayName(devId) {
+            if (!devId) return 'Android Phone';
+            const savedNick = localStorage.getItem('opendroid_dev_nickname_' + devId);
+            if (savedNick && savedNick.trim()) return savedNick.trim();
+            if (allDiscoveredDevices[devId]) {
+                return allDiscoveredDevices[devId].deviceName || allDiscoveredDevices[devId].model || allDiscoveredDevices[devId].name || devId;
+            }
+            return devId;
+        }
+
+        function saveActiveDeviceNickname() {
+            const input = document.getElementById('st-device-nickname-input');
+            if (!input) return;
+            const nick = input.value.trim();
+            const devId = currentDeviceId || Object.keys(allDiscoveredDevices)[0];
+            if (!devId) {
+                alert('No active device found. Please connect your phone first.');
+                return;
+            }
+            if (nick) {
+                localStorage.setItem('opendroid_dev_nickname_' + devId, nick);
+            } else {
+                localStorage.removeItem('opendroid_dev_nickname_' + devId);
+            }
+            if (allDiscoveredDevices[devId]) {
+                allDiscoveredDevices[devId].customNickname = nick;
+            }
+            updateActiveDeviceNameAcrossUI();
+            const badge = document.getElementById('st-device-model-badge');
+            const rawModel = allDiscoveredDevices[devId]?.model || allDiscoveredDevices[devId]?.name || devId;
+            if (badge) badge.textContent = nick ? `${nick} (${rawModel})` : rawModel;
+            const msg = document.getElementById('st-device-nickname-msg');
+            if (msg) {
+                msg.classList.remove('hidden');
+                setTimeout(() => msg.classList.add('hidden'), 3000);
+            }
+        }
+
+        function updateActiveDeviceNameAcrossUI() {
+            const devId = currentDeviceId || Object.keys(allDiscoveredDevices)[0];
+            if (!devId) return;
+            const dispName = getDeviceDisplayName(devId);
+            const hdrName = document.getElementById('header-active-device-name');
+            if (hdrName) hdrName.textContent = dispName;
+            const tskName = document.getElementById('taskbar-device-name');
+            if (tskName) tskName.textContent = dispName;
+            const wgtModel = document.getElementById('widget-device-model');
+            if (wgtModel) wgtModel.textContent = dispName;
+            const devModelTxt = document.getElementById('device-model-text');
+            if (devModelTxt) devModelTxt.textContent = dispName;
+            renderSettingsDevices();
+            if (typeof renderAccountDiscoveredDevices === 'function') {
+                renderAccountDiscoveredDevices();
+            }
+        }
+
+        function switchSettingsTab(tabName) {
+            const tabs = ['account', 'general', 'devices', 'quota', 'about'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`btn-tab-setting-${t}`);
+                const panel = document.getElementById(`settings-tab-${t}`);
+                if (btn && panel) {
+                    if (t === tabName) {
+                        btn.className = "px-3.5 py-1.5 rounded-lg font-semibold transition-all bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer";
+                        panel.classList.remove('hidden');
+                    } else {
+                        btn.className = "px-3.5 py-1.5 rounded-lg font-medium transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 flex items-center gap-1.5 cursor-pointer";
+                        panel.classList.add('hidden');
+                    }
+                }
+            });
+            if (tabName === 'account') updateSettingsAccountInfo();
+            if (tabName === 'devices') renderSettingsDevices();
+        }
+
+        function updateSettingsAccountInfo() {
+            const emailEl = document.getElementById('st-account-email');
+            if (emailEl) emailEl.textContent = accountEmail || localStorage.getItem('opendroid_account_email') || 'kakaxiaeofficial@gmail.com';
+            
+            // Populate Device Nickname input and badge in Account tab
+            const devId = currentDeviceId || Object.keys(allDiscoveredDevices)[0];
+            const nickInput = document.getElementById('st-device-nickname-input');
+            const modelBadge = document.getElementById('st-device-model-badge');
+            if (devId) {
+                const savedNick = localStorage.getItem('opendroid_dev_nickname_' + devId) || '';
+                if (nickInput) nickInput.value = savedNick;
+                const rawModel = allDiscoveredDevices[devId]?.model || allDiscoveredDevices[devId]?.name || devId;
+                if (modelBadge) modelBadge.textContent = savedNick ? `${savedNick} (${rawModel})` : rawModel;
+            } else {
+                if (nickInput) nickInput.value = '';
+                if (modelBadge) modelBadge.textContent = 'No Device Connected';
+            }
+
+            const serverNameEl = document.getElementById('st-current-server-name');
+            const serverHostEl = document.getElementById('st-current-server-host');
+            const serverSelect = document.getElementById('st-server-select');
+            if (EMQX_SERVERS && EMQX_SERVERS[activeServerIndex]) {
+                const gatewayName = `Gateway ${activeServerIndex + 1} (${activeServerIndex === 0 ? "Primary Active - Asia" : activeServerIndex === 6 ? "Global Relay" : "Encrypted Backup"})`;
+                if (serverNameEl) serverNameEl.textContent = gatewayName;
+                if (serverHostEl) serverHostEl.textContent = 'Encrypted Secure Relay';
+                if (serverSelect) serverSelect.value = String(activeServerIndex);
+            }
+        }
+
+        function renderSettingsDevices() {
+            const list = document.getElementById('st-devices-list');
+            const countEl = document.getElementById('st-device-count');
+            if (!list) return;
+            const devIds = Object.keys(allDiscoveredDevices);
+            if (countEl) countEl.textContent = `Connected Devices: ${devIds.length} Active`;
+            if (devIds.length === 0) {
+                list.innerHTML = `<div class="p-4 bg-gray-900/50 rounded-xl text-center text-gray-400 text-xs">No devices discovered yet. Please ensure phone app is open and bound.</div>`;
+                return;
+            }
+            list.innerHTML = '';
+            devIds.forEach(id => {
+                const dev = allDiscoveredDevices[id];
+                const isCurrent = (currentDeviceId === id);
+                const devName = getDeviceDisplayName(id);
+                const model = dev.model || 'Android Device';
+                const isOnline = dev.isOnline ?? true;
+                list.innerHTML += `
+                    <div class="p-3 bg-gray-900/80 border ${isCurrent ? 'border-cyan-500/80 bg-cyan-950/20' : 'border-gray-800'} rounded-xl flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl">📱</span>
+                            <div>
+                                <div class="font-bold text-white text-xs flex items-center gap-2">
+                                    <span>${devName}</span>
+                                    ${isCurrent ? '<span class="text-[10px] bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full font-semibold border border-cyan-500/30">Current Device</span>' : ''}
+                                </div>
+                                <div class="text-[10px] text-gray-400 mt-0.5 flex items-center gap-2">
+                                    <span>Model: <strong class="text-gray-300">${model}</strong></span>
+                                    <span>•</span>
+                                    <span>ID: <code class="text-gray-300 font-mono">${id}</code></span>
+                                    <span>•</span>
+                                    <span>🔋 ${dev.battery || 50}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${isOnline ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800 text-gray-400'}">
+                                ${isOnline ? '● Online' : 'Offline'}
+                            </span>
+                            <button onclick="forgetDevice('${id}', event)" title="Forget Device" class="text-gray-500 hover:text-rose-400 p-1.5 rounded hover:bg-rose-500/10 transition-all cursor-pointer">
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function manualSwitchCloudServer(idxStr) {
+            const idx = parseInt(idxStr, 10);
+            if (isNaN(idx) || idx < 0 || idx >= EMQX_SERVERS.length) return;
+            activeServerIndex = idx;
+            localStorage.setItem('opendroid_active_server_idx', activeServerIndex);
+            updateSettingsAccountInfo();
+            showToast(`Switching to ${EMQX_SERVERS[idx].name}... 🌐`, 'info');
+            initAccountMqtt(idx, true);
+        }
 </script>
     
     <!-- OpenDroid Bottom Taskbar Dock (Open & Minimized Tabs) -->
