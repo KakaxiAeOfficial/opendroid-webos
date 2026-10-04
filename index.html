@@ -2892,9 +2892,27 @@
                 const pcWildcard = `opendroid/acc/${accountTag}/+/pc`;
                 mqttClient.subscribe(pcWildcard, { qos: 1 });
 
-                // 3. Immediate Active Discovery Ping (QoS 1)
+                // 3. Active Discovery Ping with Recurring Heartbeat & Auto-Server Fallback
                 const discoverTopic = `opendroid/acc/${accountTag}/discover`;
                 mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES', timestamp: Date.now() }), { qos: 1 });
+
+                if (window.discoveryInterval) clearInterval(window.discoveryInterval);
+                window.discoveryInterval = setInterval(() => {
+                    if (mqttClient && mqttClient.connected && accountTag && Object.keys(allDiscoveredDevices).length === 0) {
+                        mqttClient.publish(discoverTopic, JSON.stringify({ action: 'DISCOVER_DEVICES', timestamp: Date.now() }), { qos: 1 });
+                    }
+                }, 2000);
+
+                if (!isSilent) {
+                    if (window.deviceScanCascadeTimeout) clearTimeout(window.deviceScanCascadeTimeout);
+                    window.deviceScanCascadeTimeout = setTimeout(() => {
+                        if (Object.keys(allDiscoveredDevices).length === 0 && (activeServerIndex + 1) < EMQX_SERVERS.length) {
+                            const nextServer = EMQX_SERVERS[activeServerIndex + 1];
+                            showToast(`Searching next cloud server: ${nextServer.name}... 📡`, 'info');
+                            initAccountMqtt(activeServerIndex + 1, false);
+                        }
+                    }, 4500);
+                }
 
                 if (!isSilent) {
                     showToast(`Connected to ${currentBroker.name}. Discovering devices...`, 'success');
@@ -2963,25 +2981,11 @@
 
 
                 if (existingKey) {
-                    const existingItem = allDiscoveredDevices[existingKey];
-                    const isIncomingNewer = (data.timestamp || 0) >= (existingItem.timestamp || 0);
-                    if (isIncomingNewer) {
-                        // Purge old duplicate entry from local device list
-                        delete allDiscoveredDevices[existingKey];
-                        if (currentDeviceId === existingKey) currentDeviceId = devId;
-
-
-                        // Clean up stale retained MQTT topic from the cloud broker
-                        try {
-                            if (mqttClient && mqttClient.connected) {
-                                mqttClient.publish(`opendroid/acc/${accountTag}/devices/${existingKey}/presence`, '', { qos: 1, retain: true });
-                            }
-                        } catch(e) {}
-                    } else {
-                        // Incoming data is older than current data, ignore
-                        return;
-                    }
+                    delete allDiscoveredDevices[existingKey];
+                    if (currentDeviceId === existingKey) currentDeviceId = devId;
                 }
+                if (window.deviceScanCascadeTimeout) clearTimeout(window.deviceScanCascadeTimeout);
+                if (window.discoveryInterval) clearInterval(window.discoveryInterval);
 
 
                 allDiscoveredDevices[devId] = data;

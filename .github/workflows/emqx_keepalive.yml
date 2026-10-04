@@ -2,8 +2,8 @@ name: EMQX Multi-Broker 24/7 Keep-Alive Automation (7 Servers)
 
 on:
   schedule:
-    # Runs at minute 0 of every hour (24 times a day)
-    - cron: '0 * * * *'
+    # Runs every 30 minutes at offset minutes (17 and 47) to avoid top-of-hour GitHub runner congestion
+    - cron: '17,47 * * * *'
   workflow_dispatch: # Allows manual trigger from GitHub Actions tab
 
 jobs:
@@ -130,7 +130,7 @@ jobs:
                           "source": "GitHub_Actions_Cloud_Runner",
                           "timestamp": int(time.time() * 1000),
                           "status": "HEALTHY_ACTIVE",
-                          "traffic_buffer": "A" * (50 * 1024)
+                          "traffic_buffer": "A" * 2048 # Optimized 2KB heartbeat to preserve 1GB free monthly quota
                       }
                       payload_str = json.dumps(payload_data)
                       info = client.publish("opendroid/health/keepalive", payload_str, qos=1)

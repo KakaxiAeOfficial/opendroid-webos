@@ -438,7 +438,11 @@ class LocalFileServerService : Service() {
     fun bindAccount(email: String, pin: String, name: String) {
         bindAccountInternal(email, pin, name)
         subscribeToAccountChannels()
+        startPresenceHeartbeat()
         publishDevicePresence(true)
+        if (mqttClient?.isConnected != true) {
+            initCloudBridge(0)
+        }
     }
 
     fun unbindAccount() {
