@@ -126,7 +126,7 @@
                 <span>OpenDroid</span>
                 <span class="text-[10px] bg-gradient-to-r from-cyan-400 to-blue-500 text-gray-950 px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide">WebOS v2</span>
             </h2>
-            <p class="text-xs text-gray-400 mt-1 mb-5">AirDroid-Grade Remote Device Management</p>
+            <p class="text-xs text-gray-400 mt-1 mb-5">Enterprise Autonomous Remote Operating System</p>
 
             <!-- Mode Tabs -->
             <div class="flex bg-gray-800/90 p-1.5 rounded-2xl mb-5 text-xs font-semibold border border-gray-700/60">
@@ -186,10 +186,8 @@
                 <button id="connect-btn" onclick="connectViaCloud()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all text-xs">Connect 5G Stream</button>
             </div>
 
-            <div class="mt-4 pt-3 border-t border-gray-800 flex items-center justify-center gap-4 text-xs text-gray-400">
-                <button onclick="connectLocal()" class="hover:text-cyan-400 transition-colors">Connect via Local Wi-Fi</button>
-                <span>•</span>
-                <button onclick="openWallpaperModal()" class="hover:text-cyan-400 transition-colors">Theme Manager 🎨</button>
+            <div class="mt-4 pt-3 border-t border-gray-800 flex items-center justify-center text-xs text-gray-400">
+                <button onclick="connectLocal()" class="hover:text-cyan-400 transition-colors text-xs font-medium">Connect via Local Wi-Fi (LAN)</button>
             </div>
         </div>
     </div>
@@ -231,7 +229,7 @@
 
 
     <!-- Top Dock Bar -->
-    <!-- Top Navigation Header (AirDroid-Inspired Cybernetic Glassmorphic Bar) -->
+    <!-- Top Navigation Header (OpenDroid Cybernetic Glassmorphic Bar) -->
     <header class="fixed top-0 left-0 right-0 h-12 bg-gray-950/85 backdrop-blur-xl border-b border-gray-800/80 z-50 flex items-center justify-between px-4 text-xs select-none">
         <!-- Left: OpenDroid Branding & Active Connection Pill -->
         <div class="flex items-center gap-3">
@@ -266,7 +264,7 @@
 
         <!-- Right: Action Icons (Switch Device, Themes, Alerts, Settings, Terminal, Power) -->
         <div class="flex items-center gap-2.5">
-            <!-- 1. Switch Device Button (Matching AirDroid Dual-Phone Icon) -->
+            <!-- 1. Switch Device Button (Matching OpenDroid Dual-Phone Icon) -->
             <button id="switch-device-btn" onclick="toggleDeviceSwitchDropdown()" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-900/90 hover:bg-gray-800 border border-gray-700/80 hover:border-cyan-500/70 text-gray-200 transition-all shadow group cursor-pointer" title="Switch Connected Device">
                 <svg class="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="5" y="2" width="10" height="18" rx="2"></rect>
@@ -331,7 +329,7 @@
         </div>
 
 
-        <!-- AirDroid-Style Device Switcher Dropdown Modal -->
+        <!-- OpenDroid Device Switcher Dropdown Modal -->
         <div id="device-switch-dropdown" class="hidden absolute top-14 right-24 w-84 bg-gray-950/95 backdrop-blur-2xl border border-gray-700/80 rounded-2xl shadow-2xl z-50 p-4 text-gray-100 flex flex-col gap-3">
             <div class="flex items-center justify-between pb-2 border-b border-gray-800">
                 <div class="flex items-center gap-2">
@@ -375,7 +373,7 @@
     </div>
 
 
-    <!-- Desktop Icons Grid (Vertical Column-Wrapping AirDroid Style) -->
+    <!-- Desktop Icons Grid (Vertical Column-Wrapping OpenDroid Style) -->
     <div class="p-6 mt-12 flex flex-col flex-wrap gap-x-8 gap-y-6 max-h-[85vh] w-max">
 
 
@@ -473,7 +471,7 @@
     </div>
 
 
-    <!-- AirDroid-Style Right-Side Device & Quick Toolbox Widget -->
+    <!-- OpenDroid Right-Side Device & Quick Toolbox Widget -->
     <div id="airdroid-widget" class="fixed top-14 right-6 w-80 bg-gray-900/85 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-4 text-white z-20 transition-all duration-300 select-none">
 
 
@@ -962,7 +960,7 @@
         </div>
 
 
-        <!-- AirDroid Action Toolbar -->
+        <!-- OpenDroid Action Toolbar -->
         <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
             <!-- Left Controls: Search, View Switcher, Action Icons -->
             <div class="flex items-center gap-1.5 flex-wrap">
@@ -1148,7 +1146,7 @@
     </div>
 
 
-    <!-- AirDroid Right-Click Context Menu -->
+    <!-- OpenDroid Right-Click Context Menu -->
     <div id="file-context-menu" class="hidden fixed bg-white border border-gray-200 rounded-lg shadow-2xl py-1 w-44 z-[100] text-xs text-gray-700 select-none divide-y divide-gray-100" style="backdrop-filter: blur(8px);">
         <div class="py-0.5">
             <button onclick="promptCreateFolder(); hideContextMenu();" class="w-full text-left px-3 py-1.5 hover:bg-blue-500 hover:text-white flex items-center gap-2 transition-colors">
@@ -1297,7 +1295,7 @@
             <div class="flex items-center gap-2">
                 <span class="text-sm">💬</span>
                 <span class="font-bold text-xs tracking-wide">Messages</span>
-                <span id="sms-window-sync-status" class="text-[10px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded-full font-mono">AirDroid Killer v2.0</span>
+                <span id="sms-window-sync-status" class="text-[10px] text-gray-400 bg-gray-800 px-2 py-0.5 rounded-full font-mono">OpenDroid Enterprise v2.0</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
                 <button onclick="wm.minimizeWindow('sms-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
@@ -1468,7 +1466,7 @@
         </div>
 
 
-        <!-- AirDroid Contacts Toolbar -->
+        <!-- OpenDroid Contacts Toolbar -->
         <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
             <!-- Left: Search Box -->
             <div class="relative flex items-center">
@@ -1511,7 +1509,7 @@
                     </button>
 
 
-                    <!-- AirDroid Groups Popup Menu (image_2c041e.png) -->
+                    <!-- OpenDroid Groups Popup Menu (image_2c041e.png) -->
                     <div id="contact-groups-menu" class="hidden absolute top-full left-2 right-2 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1.5 z-40 text-xs">
                         <div id="contact-groups-list" class="max-h-60 overflow-y-auto divide-y divide-gray-50">
                             <!-- Populated dynamically -->
@@ -1527,7 +1525,7 @@
 
                 <!-- Contacts List + Alphabet Index Strip -->
                 <div class="flex-1 flex overflow-hidden relative">
-                    <!-- Alphabet Vertical Index Strip (AirDroid left margin) -->
+                    <!-- Alphabet Vertical Index Strip (OpenDroid left margin) -->
                     <div id="contacts-alphabet-strip" class="w-5 py-1 flex flex-col items-center justify-between text-[9px] font-bold text-gray-400 select-none border-r border-gray-100 overflow-y-auto bg-gray-50/50">
                         <!-- # A B C D ... Z -->
                     </div>
@@ -1570,7 +1568,7 @@
 
                         <!-- Contact Details Table -->
                         <div class="py-6 space-y-4">
-                            <!-- Mobile Number Row with AirDroid Quick Action Buttons -->
+                            <!-- Mobile Number Row with OpenDroid Quick Action Buttons -->
                             <div class="flex items-center text-xs">
                                 <span class="w-24 text-gray-400 font-medium">Mobile</span>
                                 <span id="cd-phone-number" class="text-gray-800 font-mono text-sm font-semibold select-text flex-1">--</span>
@@ -1705,7 +1703,7 @@
     </div>
 
 
-    <!-- Window: Call Logs & Audio Recordings (AirDroid Revamp) -->
+    <!-- Window: Call Logs & Audio Recordings (OpenDroid Revamp) -->
     <div id="call-logs-window" class="window hidden" style="display: none; width: 880px; height: 580px; top: 65px; left: 240px; min-width: 680px; min-height: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <!-- Title Bar -->
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
@@ -1721,7 +1719,7 @@
         </div>
 
 
-        <!-- AirDroid Call Logs Subheader Filter & Action Toolbar -->
+        <!-- OpenDroid Call Logs Subheader Filter & Action Toolbar -->
         <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
             <!-- Filter Tabs -->
             <div class="flex items-center gap-1">
@@ -2599,7 +2597,7 @@
         }
 
 
-        // --- AirDroid-Style Device Switcher Logic ---
+        // --- OpenDroid Device Switcher Logic ---
         function toggleDeviceSwitchDropdown() {
             const dropdown = document.getElementById('device-switch-dropdown');
             if (!dropdown) return;
@@ -2738,6 +2736,8 @@
         let cloudConnectWatchdog = null;
 
 
+        let deviceSearchTimeout = null;
+
         async function connectViaAccount(isSilent = false) {
             const email = (document.getElementById('account-email-input')?.value || '').trim();
             const pin = (document.getElementById('account-pin-input')?.value || '').trim();
@@ -2754,7 +2754,6 @@
             accountEmail = email.toLowerCase();
             accountTag = await getAccountTag(accountEmail, pin);
             localStorage.setItem('opendroid_account_email', accountEmail);
-            localStorage.setItem('opendroid_session_active', 'true');
 
             const rememberCheckbox = document.getElementById('account-remember-me');
             if ((rememberCheckbox && rememberCheckbox.checked) || isSilent) {
@@ -2767,8 +2766,41 @@
                 localStorage.removeItem('opendroid_saved_pin');
             }
 
-            if (isSilent) {
-                document.getElementById('pair-modal')?.classList.add('hidden');
+            // CRITICAL AUTH GATE: Do NOT prematurely activate session or hide modal until a genuine online device is verified!
+            if (!isSilent) {
+                const loginBtn = document.getElementById('account-login-btn');
+                if (loginBtn) {
+                    loginBtn.textContent = 'Connecting to server...';
+                    loginBtn.disabled = true;
+                }
+                const devList = document.getElementById('account-devices-list');
+                if (devList) devList.innerHTML = '<div class="text-[11px] text-cyan-400 text-center py-2 animate-pulse">Searching for your phones...</div>';
+                document.getElementById('account-devices-container')?.classList.remove('hidden');
+
+                // 6-Second Active Phone Presence Guard
+                if (deviceSearchTimeout) clearTimeout(deviceSearchTimeout);
+                deviceSearchTimeout = setTimeout(() => {
+                    const onlineDevices = Object.values(allDiscoveredDevices).filter(d => d.isOnline);
+                    if (onlineDevices.length === 0) {
+                        if (loginBtn) {
+                            loginBtn.textContent = '🌐 Sign In & Open Desktop';
+                            loginBtn.disabled = false;
+                        }
+                        const devCount = document.getElementById('account-devices-count');
+                        if (devCount) devCount.textContent = '0 Online';
+                        if (devList) {
+                            devList.innerHTML = `
+                                <div class="p-2.5 rounded-xl bg-red-950/40 border border-red-800/60 text-red-300 text-xs text-left">
+                                    <div class="font-bold text-[11px] flex items-center gap-1">⚠️ No Online Phone Found</div>
+                                    <div class="text-[10px] text-gray-300 mt-1">Please open the OpenDroid app on your phone, enter this exact Email & PIN, and tap <b>Secure & Bind This Device</b>.</div>
+                                </div>
+                            `;
+                        }
+                        showToast('No active phone detected for this account.', 'error');
+                        localStorage.removeItem('opendroid_session_active');
+                        document.getElementById('pair-modal')?.classList.remove('hidden');
+                    }
+                }, 6000);
             }
 
             initAccountMqtt(0, isSilent);
@@ -2847,8 +2879,8 @@
                 }
                 const taskbarStatus = document.getElementById('ws-status-taskbar');
                 if (taskbarStatus) {
-                    taskbarStatus.textContent = `● Connected`;
-                    taskbarStatus.className = "text-green-400 text-xs font-semibold";
+                    taskbarStatus.textContent = `● Searching for Phone...`;
+                    taskbarStatus.className = "text-yellow-400 text-xs font-semibold";
                 }
 
                 // 1. Listen for presence heartbeats of all devices under this account
@@ -2953,18 +2985,29 @@
 
                 allDiscoveredDevices[devId] = data;
                 
-                // AirDroid-Grade Auto-Bind to Last Active Device or Single Fleet Device
+                // Strict Genuine Device Authentication Gate: ONLY bind and unlock desktop if device is ONLINE!
+                const isOnline = data.isOnline ?? false;
                 const savedLastDev = localStorage.getItem('opendroid_last_device_id');
                 const devKeys = Object.keys(allDiscoveredDevices);
-                if ((savedLastDev && devId === savedLastDev) || !currentDeviceId || currentDeviceId === devId || devKeys.length === 1) {
+                const devName = data.deviceName || data.model || 'Android Phone';
+
+                if (isOnline && ((savedLastDev && devId === savedLastDev) || !currentDeviceId || currentDeviceId === devId || devKeys.length === 1)) {
+                    if (deviceSearchTimeout) { clearTimeout(deviceSearchTimeout); deviceSearchTimeout = null; }
                     currentDeviceId = devId;
                     localStorage.setItem('opendroid_last_device_id', currentDeviceId);
                     localStorage.setItem('opendroid_session_active', 'true');
+
+                    // Verified Online Device: Unlock Desktop and Dismiss Login Modal!
                     document.getElementById('pair-modal')?.classList.add('hidden');
                     document.getElementById('device-selector-wrapper')?.classList.remove('hidden');
-                    const devName = data.deviceName || data.model || 'Android Phone';
                     
-                    // Update Top Header
+                    // Update Top Taskbar & Header with Verified Connection
+                    const taskbarStatus = document.getElementById('ws-status-taskbar');
+                    if (taskbarStatus) {
+                        taskbarStatus.textContent = `● Connected: ${devName}`;
+                        taskbarStatus.className = "text-emerald-400 text-xs font-semibold";
+                    }
+
                     const hdrDev = document.getElementById('header-active-device-name');
                     if (hdrDev) hdrDev.textContent = devName;
                     const hdrBatt = document.getElementById('header-active-device-battery');
@@ -5176,7 +5219,7 @@
 
         // --- Directory Explorer ---
         
-        // --- AirDroid-Grade WebOS File Explorer Engine ---
+        // --- OpenDroid Enterprise WebOS File Explorer Engine ---
         let fileViewMode = 'grid';
         let currentRawFilesList = [];
         let filteredFilesList = [];
@@ -5363,7 +5406,7 @@
         }
 
 
-        function getAirDroidFolderIconSvg() {
+        function getOpenDroidFolderIconSvg() {
             return `
                 <svg class="w-14 h-14 drop-shadow-xs" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 28C12 23.5817 15.5817 20 20 20H48.4C51.6 20 54.6 21.6 56.4 24.3L61.6 32H108C112.418 32 116 35.5817 116 40V100C116 104.418 112.418 108 108 108H20C15.5817 108 12 104.418 12 100V28Z" fill="#F6B83D"/>
@@ -5376,7 +5419,7 @@
 
 
         function getFileIcon(name, isDir) {
-            if (isDir) return getAirDroidFolderIconSvg();
+            if (isDir) return getOpenDroidFolderIconSvg();
             const lower = name.toLowerCase();
             if (lower.match(/\.(png|jpg|jpeg|gif|webp|bmp|svg)$/)) return '<div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-2xl shadow-xs">🖼️</div>';
             if (lower.match(/\.(mp4|mkv|mov|avi|webm)$/)) return '<div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center text-2xl shadow-xs">🎬</div>';
@@ -6511,7 +6554,7 @@
             if (pctEl) pctEl.textContent = `${usedPercent}% used`;
 
 
-            // Update AirDroid Widget Storage
+            // Update OpenDroid Widget Storage
             const wStoragePercent = document.getElementById('widget-storage-percent');
             if (wStoragePercent) {
                 wStoragePercent.textContent = `${usedPercent}%`;
@@ -6825,7 +6868,7 @@
         }
 
 
-        // --- AirDroid Call Logs System (Clean UI & 1000-Calls Chunked Infinite Scroll) ---
+        // --- OpenDroid Call Logs System (Clean UI & 1000-Calls Chunked Infinite Scroll) ---
         let rawCallLogs = [];
         let callLogsFilter = 'All';
         let callLogsSearch = '';
@@ -6834,7 +6877,7 @@
         let isLoadingCallLogs = false;
 
 
-        function formatAirDroidTime(ts) {
+        function formatOpenDroidTime(ts) {
             if (!ts) return '--';
             const d = new Date(ts);
             if (isNaN(d.getTime())) return String(ts);
@@ -6971,7 +7014,7 @@
                 }
 
 
-                const timeStr = formatAirDroidTime(log.date);
+                const timeStr = formatOpenDroidTime(log.date);
                 const nameDisplay = (log.name && log.name !== 'Unknown') ? log.name : log.number;
                 const numberDisplay = log.number || '--';
                 const durDisplay = log.duration || (isMissed ? '00:00' : '--');
@@ -7213,7 +7256,7 @@
 
         
         // =========================================================================
-        // --- Phase 9: Advance AirDroid-Surpassing Messages & Infinite Sync Engine ---
+        // --- Phase 9: Advance OpenDroid-Surpassing Messages & Infinite Sync Engine ---
         // =========================================================================
         let smsThreads = [];
         let allSmsThreads = [];
@@ -7880,7 +7923,7 @@
         
 
 
-        // --- AirDroid Contacts Management System (Strict Bottom-Scroll On-Demand) ---
+        // --- OpenDroid Contacts Management System (Strict Bottom-Scroll On-Demand) ---
         let rawContacts = [];
         let selectedContact = null;
         let selectedContactIds = new Set();
@@ -9151,7 +9194,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
 
-        // --- AirDroid Desktop Widget Helpers ---
+        // --- OpenDroid Desktop Widget Helpers ---
         function updateWidgetBattery(percent, charging) {
             const circle = document.getElementById('widget-battery-circle');
             const pctText = document.getElementById('widget-battery-percent');
@@ -9465,10 +9508,11 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 const remember = localStorage.getItem('opendroid_remember_account');
                 const savedEmail = localStorage.getItem('opendroid_saved_email');
                 const savedPin = localStorage.getItem('opendroid_saved_pin');
-                const isSessionActive = (remember === 'true' && savedEmail && savedPin) || localStorage.getItem('opendroid_session_active') === 'true';
+                const savedLastDev = localStorage.getItem('opendroid_last_device_id');
+                const isSessionActive = localStorage.getItem('opendroid_session_active') === 'true';
 
-                if (isSessionActive && savedEmail && savedPin) {
-                    // Pre-suppress pair-modal before rendering to prevent ANY flicker
+                // STRICT AUTHENTICATION GUARD: A session is only restored on refresh if it was previously verified with a real device!
+                if (isSessionActive && savedEmail && savedPin && savedLastDev) {
                     const pairModal = document.getElementById('pair-modal');
                     if (pairModal) pairModal.classList.add('hidden');
 
@@ -9481,19 +9525,20 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
                     const taskbarStatus = document.getElementById('ws-status-taskbar');
                     if (taskbarStatus) {
-                        taskbarStatus.textContent = '● Connecting...';
+                        taskbarStatus.textContent = '● Connecting to phone...';
                         taskbarStatus.className = 'text-yellow-400 text-xs font-semibold';
                     }
 
-                    console.log('[AirDroidSession] Silently restoring active central account session for:', savedEmail);
-                    connectViaAccount(true); // Silent mode: zero modal popup, seamless reload
+                    console.log('[OpenDroidSession] Restoring verified session for device:', savedLastDev);
+                    connectViaAccount(true); // Silent mode: desktop stays open, background sync
                 } else {
-                    // First-time visitor or logged-out state: reveal login modal
+                    // Unverified or dummy account with no confirmed online device: REVEAL LOGIN MODAL!
                     const pairModal = document.getElementById('pair-modal');
                     if (pairModal) pairModal.classList.remove('hidden');
+                    localStorage.removeItem('opendroid_session_active');
                 }
             } catch (e) {
-                console.error('[AirDroidSession] Error restoring account session:', e);
+                console.error('[OpenDroidSession] Error restoring account session:', e);
                 const pairModal = document.getElementById('pair-modal');
                 if (pairModal) pairModal.classList.remove('hidden');
             }
@@ -9566,7 +9611,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             const devWrapper = document.getElementById('device-selector-wrapper');
             if (devWrapper) devWrapper.classList.add('hidden');
 
-            // 6. Reset Login UI form & show AirDroid v2 Login Modal in-place (ZERO PAGE RELOAD!)
+            // 6. Reset Login UI form & show OpenDroid v2 Login Modal in-place (ZERO PAGE RELOAD!)
             const pinInput = document.getElementById('account-pin-input');
             if (pinInput) pinInput.value = '';
             const devContainer = document.getElementById('account-devices-container');
@@ -9779,7 +9824,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         window.addEventListener('DOMContentLoaded', () => { setTimeout(initFileWindowDropzone, 700); });
 </script>
     
-    <!-- AirDroid-Style Bottom Taskbar Dock (Open & Minimized Tabs) -->
+    <!-- OpenDroid Bottom Taskbar Dock (Open & Minimized Tabs) -->
     <div id="webos-taskbar" class="fixed bottom-0 left-0 right-0 h-11 bg-gray-950/85 backdrop-blur-xl border-t border-gray-800/80 z-40 flex items-center justify-between px-3 select-none">
         <!-- Left: Open Window Tabs Container -->
         <div class="flex items-center gap-2 overflow-hidden flex-1 mr-4">
