@@ -615,7 +615,7 @@ class LocalFileServerService : Service() {
             }.toString())
         } catch (e: Exception) { e.printStackTrace() }
         try {
-            val contactsPaged = teleManager.getContactsPaged(0, 150)
+            val contactsPaged = teleManager.getContactsPaged(0, 100)
             broadcastMessage(JSONObject().apply {
                 put("type", "CONTACTS_LIST")
                 put("data", contactsPaged.getJSONArray("data"))
@@ -1648,7 +1648,7 @@ class LocalFileServerService : Service() {
 
             "FETCH_CONTACTS" -> {
                 val offset = json.optInt("offset", 0)
-                val limit = json.optInt("limit", 150)
+                val limit = json.optInt("limit", 100)
                 val paged = teleManager.getContactsPaged(offset, limit)
                 broadcastMessage(JSONObject().apply {
                     put("type", "CONTACTS_LIST")
@@ -1695,14 +1695,35 @@ class LocalFileServerService : Service() {
                 if (name.isNotEmpty() && number.isNotEmpty()) {
                     teleManager.addContact(name, number, if (email.isNotEmpty()) email else null)
                 }
-                val paged = teleManager.getContactsPaged(0, 150)
+                val paged = teleManager.getContactsPaged(0, 100)
                 broadcastMessage(JSONObject().apply {
                     put("type", "CONTACTS_LIST")
                     put("data", paged.getJSONArray("data"))
                     put("offset", 0)
-                    put("limit", 150)
+                    put("limit", 100)
                     put("total", paged.getInt("total"))
                     put("hasMore", paged.getBoolean("hasMore"))
+                }.toString())
+            }
+
+            // Phase 13: Full Bi-Directional Contact Update Engine
+            "UPDATE_CONTACT" -> {
+                val id = json.optLong("id", -1L)
+                val name = json.optString("name", "")
+                val number = json.optString("number", "")
+                val email = json.optString("email", "")
+                val success = if (id > 0 && name.isNotEmpty() && number.isNotEmpty()) {
+                    teleManager.updateContact(id, name, number, if (email.isNotEmpty()) email else null)
+                } else false
+                val paged = teleManager.getContactsPaged(0, 100)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CONTACTS_LIST")
+                    put("data", paged.getJSONArray("data"))
+                    put("offset", 0)
+                    put("limit", 100)
+                    put("total", paged.getInt("total"))
+                    put("hasMore", paged.getBoolean("hasMore"))
+                    put("actionStatus", if (success) "UPDATED" else "FAILED")
                 }.toString())
             }
 
@@ -1710,15 +1731,76 @@ class LocalFileServerService : Service() {
                 val id = if (json.has("id")) json.optLong("id", -1L) else -1L
                 val number = json.optString("number", "")
                 teleManager.deleteContact(if (id > 0) id else null, number)
-                val paged = teleManager.getContactsPaged(0, 150)
+                val paged = teleManager.getContactsPaged(0, 100)
                 broadcastMessage(JSONObject().apply {
                     put("type", "CONTACTS_LIST")
                     put("data", paged.getJSONArray("data"))
                     put("offset", 0)
-                    put("limit", 150)
+                    put("limit", 100)
                     put("total", paged.getInt("total"))
                     put("hasMore", paged.getBoolean("hasMore"))
                 }.toString())
+            }
+
+            // Phase 13: Batch / Bulk Delete Contacts Handler
+            "BULK_DELETE_CONTACTS" -> {
+                val idsArray = json.optJSONArray("ids") ?: JSONArray()
+                val idsList = mutableListOf<Long>()
+                for (i in 0 until idsArray.length()) {
+                    val contactId = idsArray.optLong(i, -1L)
+                    if (contactId > 0) idsList.add(contactId)
+                }
+                val deletedCount = if (idsList.isNotEmpty()) teleManager.bulkDeleteContacts(idsList) else 0
+                val paged = teleManager.getContactsPaged(0, 100)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CONTACTS_LIST")
+                    put("data", paged.getJSONArray("data"))
+                    put("offset", 0)
+                    put("limit", 100)
+                    put("total", paged.getInt("total"))
+                    put("hasMore", paged.getBoolean("hasMore"))
+                    put("deletedCount", deletedCount)
+                }.toString())
+            }
+
+            // Phase 13: Export All Contacts to vCard 3.0 (.vcf)
+            "EXPORT_VCF" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val vcfText = teleManager.exportContactsToVcf()
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "CONTACTS_VCF_EXPORTED")
+                            put("vcf", vcfText)
+                            put("timestamp", System.currentTimeMillis())
+                        }.toString())
+                    } catch (e: Exception) {
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "CONTACTS_VCF_EXPORTED")
+                            put("vcf", "")
+                            put("error", e.message ?: "Export failed")
+                        }.toString())
+                    }
+                }
+            }
+
+            // Phase 13: Bulk Import Contacts from vCard 3.0 (.vcf)
+            "IMPORT_VCF" -> {
+                val vcfData = json.optString("vcf", "")
+                serviceScope.launch(Dispatchers.IO) {
+                    val importedCount = if (vcfData.isNotEmpty()) {
+                        teleManager.importContactsFromVcf(vcfData)
+                    } else 0
+                    val paged = teleManager.getContactsPaged(0, 100)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CONTACTS_VCF_IMPORTED")
+                        put("count", importedCount)
+                        put("data", paged.getJSONArray("data"))
+                        put("offset", 0)
+                        put("limit", 100)
+                        put("total", paged.getInt("total"))
+                        put("hasMore", paged.getBoolean("hasMore"))
+                    }.toString())
+                }
             }
 
             "FETCH_STORAGE" -> {
@@ -2129,3 +2211,4 @@ class LocalFileServerService : Service() {
         }
     }
 }
+

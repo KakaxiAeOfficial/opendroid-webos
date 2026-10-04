@@ -1490,9 +1490,13 @@
                 <button onclick="toggleDialerDrawer()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1" title="Toggle Dialer Keypad">
                     <span>🔢 Dialer</span>
                 </button>
-                <button onclick="exportContactsVcf()" class="px-2 py-1 hover:bg-gray-100 text-gray-600 rounded transition-all text-xs" title="Export Contacts as .VCF">
-                    <span>📥 Export</span>
+                <button onclick="exportContactsVcf()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1" title="Export Contacts as .vcf">
+                    <span>📤 Export</span>
                 </button>
+                <button onclick="triggerImportVcf()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1" title="Import Contacts from .vcf file">
+                    <span>📥 Import</span>
+                </button>
+                <input type="file" id="contacts-vcf-import-input" accept=".vcf,text/vcard" class="hidden" onchange="handleVcfFileSelected(this)">
             </div>
         </div>
 
@@ -1572,7 +1576,11 @@
                             <div class="flex items-center text-xs">
                                 <span class="w-24 text-gray-400 font-medium">Mobile</span>
                                 <span id="cd-phone-number" class="text-gray-800 font-mono text-sm font-semibold select-text flex-1">--</span>
-                                <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-3">
+                                    <button onclick="copyCurrentContactNumber()" class="text-gray-500 hover:text-blue-600 font-medium flex items-center gap-1 transition-all" title="Copy Number">
+                                        <span class="text-xs">📋</span>
+                                        <span>Copy</span>
+                                    </button>
                                     <button onclick="sendSmsToCurrentContact()" class="text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-all">
                                         <span class="text-base">💬</span>
                                         <span>Send message</span>
@@ -3760,6 +3768,13 @@
                 handleSmsThreadDeleted(data);
             } else if (data.type === 'CONTACTS_LIST') {
                 renderContacts(data.data, data.offset, data.total, data.hasMore);
+                if (data.actionStatus === 'UPDATED') {
+                    showToast("Contact updated successfully on phone! 📇", "success");
+                }
+            } else if (data.type === 'CONTACTS_VCF_EXPORTED') {
+                handleContactsVcfExported(data);
+            } else if (data.type === 'CONTACTS_VCF_IMPORTED') {
+                handleContactsVcfImported(data);
             } else if (data.type === 'STORAGE_STATS') {
                 renderStorage(data.data);
             }
@@ -8340,14 +8355,21 @@
         function deleteSelectedContacts() {
             if (selectedContactIds.size === 0) return;
             if (confirm(`Are you sure you want to delete ${selectedContactIds.size} selected contact(s)?`)) {
+                const idsToDelete = [];
                 selectedContactIds.forEach(idOrNum => {
                     rawContacts = rawContacts.filter(c => !(c.id === idOrNum || c.number === idOrNum));
                     if (totalContactsCount > 0) totalContactsCount--;
-                    sendCommand({ action: 'DELETE_CONTACT', id: isNaN(idOrNum) ? null : Number(idOrNum), number: String(idOrNum) });
+                    if (!isNaN(idOrNum) && Number(idOrNum) > 0) {
+                        idsToDelete.push(Number(idOrNum));
+                    }
                 });
                 selectedContactIds.clear();
                 selectedContact = null;
                 renderCurrentContactsView();
+                if (idsToDelete.length > 0) {
+                    sendCommand({ action: 'BULK_DELETE_CONTACTS', ids: idsToDelete });
+                    showToast(`Deleted ${idsToDelete.length} contact(s) on phone!`, "success");
+                }
             }
         }
 
@@ -8406,6 +8428,8 @@
                     rawContacts[idx] = { ...rawContacts[idx], name, number, type, email, group, notes };
                     selectedContact = rawContacts[idx];
                 }
+                sendCommand({ action: 'UPDATE_CONTACT', id: Number(id), name, number, email });
+                showToast("Updating contact on phone...", "info");
             } else {
                 const newObj = {
                     id: Date.now(),
@@ -8565,9 +8589,39 @@
         }
 
 
+        function copyCurrentContactNumber() {
+            if (!selectedContact || !selectedContact.number) return;
+            navigator.clipboard.writeText(selectedContact.number).then(() => {
+                showToast("Phone number copied to clipboard! 📋", "info");
+            });
+        }
+
         function exportContactsVcf() {
+            showToast("Generating full phone contacts backup (.vcf)...", "info");
+            sendCommand({ action: 'EXPORT_VCF' });
+        }
+
+        function handleContactsVcfExported(data) {
+            const vcf = data.vcf;
+            if (vcf && vcf.length > 0) {
+                const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `OpenDroid_Contacts_Backup_${new Date().toISOString().slice(0,10)}.vcf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast("All phone contacts exported to .vcf backup file! 📇", "success");
+            } else {
+                exportContactsVcfFallback();
+            }
+        }
+
+        function exportContactsVcfFallback() {
             if (rawContacts.length === 0) {
-                alert("No contacts to export.");
+                alert("No contacts available to export.");
                 return;
             }
             let vcf = "";
@@ -8579,7 +8633,7 @@
                 if (c.notes) vcf += `NOTE:${c.notes}\r\n`;
                 vcf += "END:VCARD\r\n";
             });
-            const blob = new Blob([vcf], { type: 'text/vcard' });
+            const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -8588,7 +8642,41 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            showNotificationToast({ app: 'Contacts', title: 'Export Complete', text: 'Contacts exported to .vcf file!' });
+            showToast("Exported local contacts to .vcf file! 📇", "success");
+        }
+
+        function triggerImportVcf() {
+            const input = document.getElementById('contacts-vcf-import-input');
+            if (input) {
+                input.value = '';
+                input.click();
+            }
+        }
+
+        function handleVcfFileSelected(input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const vcfText = e.target.result;
+                if (vcfText && (vcfText.includes('BEGIN:VCARD') || vcfText.includes('begin:vcard'))) {
+                    showToast(`Importing ${file.name} to phone... 📥`, "info");
+                    sendCommand({ action: 'IMPORT_VCF', vcf: vcfText });
+                } else {
+                    alert('Invalid VCF file format. Please select a valid .vcf vCard file.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function handleContactsVcfImported(data) {
+            const count = data.count || 0;
+            showToast(`Successfully imported ${count} contacts to phone! 📇`, "success");
+            if (data.data) {
+                renderContacts(data.data, data.offset || 0, data.total || data.data.length, data.hasMore || false);
+            } else {
+                refreshContacts();
+            }
         }
 
 
@@ -9884,3 +9972,4 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
+
