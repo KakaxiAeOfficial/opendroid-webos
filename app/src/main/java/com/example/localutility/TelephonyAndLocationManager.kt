@@ -29,6 +29,14 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.ThumbnailUtils
+import android.media.MediaMetadataRetriever
+import android.media.RingtoneManager
+import android.app.WallpaperManager
+import java.io.ByteArrayOutputStream
+import android.provider.Settings
 
 data class GeofenceZone(
 val id: String,
@@ -2205,8 +2213,453 @@ fun getStorageStats(): JSONObject {
 
 }
 
+
+    // =========================================================================
+    // --- Phase 15: Remote Media Gallery & High-Speed Streamer Engine ---
+    // =========================================================================
+
+    fun getGalleryPhotos(offset: Int = 0, limit: Int = 100, bucketName: String? = null): JSONObject {
+        val result = JSONObject()
+        val photosArray = JSONArray()
+        val bucketsMap = mutableMapOf<String, Int>()
+        var totalCount = 0
+
+        try {
+            val projection = arrayOf(
+                MediaStore.Images.Media._ID,
+                MediaStore.Images.Media.DISPLAY_NAME,
+                MediaStore.Images.Media.DATA,
+                MediaStore.Images.Media.DATE_MODIFIED,
+                MediaStore.Images.Media.SIZE,
+                MediaStore.Images.Media.MIME_TYPE,
+                MediaStore.Images.Media.WIDTH,
+                MediaStore.Images.Media.HEIGHT,
+                MediaStore.Images.Media.BUCKET_DISPLAY_NAME
+            )
+
+            val cursor = context.contentResolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                "${MediaStore.Images.Media.DATE_MODIFIED} DESC"
+            )
+
+            cursor?.use {
+                val idCol = it.getColumnIndex(MediaStore.Images.Media._ID)
+                val nameCol = it.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
+                val dataCol = it.getColumnIndex(MediaStore.Images.Media.DATA)
+                val dateCol = it.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
+                val sizeCol = it.getColumnIndex(MediaStore.Images.Media.SIZE)
+                val mimeCol = it.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
+                val widthCol = it.getColumnIndex(MediaStore.Images.Media.WIDTH)
+                val heightCol = it.getColumnIndex(MediaStore.Images.Media.HEIGHT)
+                val bucketCol = it.getColumnIndex(MediaStore.Images.Media.BUCKET_DISPLAY_NAME)
+
+                var matchedIndex = 0
+
+                while (it.moveToNext()) {
+                    val path = if (dataCol >= 0) it.getString(dataCol) else null
+                    if (path == null || !File(path).exists()) continue
+
+                    val bucket = (if (bucketCol >= 0) it.getString(bucketCol) else null) ?: "Internal"
+                    bucketsMap[bucket] = (bucketsMap[bucket] ?: 0) + 1
+                    bucketsMap["All"] = (bucketsMap["All"] ?: 0) + 1
+
+                    val matchesFilter = bucketName.isNullOrEmpty() || bucketName.equals("All", ignoreCase = true) || bucket.equals(bucketName, ignoreCase = true)
+                    if (matchesFilter) {
+                        if (matchedIndex >= offset && photosArray.length() < limit) {
+                            val obj = JSONObject().apply {
+                                put("id", if (idCol >= 0) it.getLong(idCol) else 0L)
+                                put("name", if (nameCol >= 0) it.getString(nameCol) ?: File(path).name else File(path).name)
+                                put("path", path)
+                                put("date", if (dateCol >= 0) it.getLong(dateCol) * 1000L else File(path).lastModified())
+                                put("size", if (sizeCol >= 0) it.getLong(sizeCol) else File(path).length())
+                                put("mime", if (mimeCol >= 0) it.getString(mimeCol) ?: "image/jpeg" else "image/jpeg")
+                                put("width", if (widthCol >= 0) it.getInt(widthCol) else 0)
+                                put("height", if (heightCol >= 0) it.getInt(heightCol) else 0)
+                                put("bucket", bucket)
+                            }
+                            photosArray.put(obj)
+                        }
+                        matchedIndex++
+                    }
+                }
+                totalCount = matchedIndex
+            }
+
+            val bucketsArray = JSONArray()
+            bucketsMap.forEach { (bName, bCount) ->
+                bucketsArray.put(JSONObject().apply {
+                    put("name", bName)
+                    put("count", bCount)
+                })
+            }
+
+            result.put("status", "SUCCESS")
+            result.put("photos", photosArray)
+            result.put("buckets", bucketsArray)
+            result.put("offset", offset)
+            result.put("limit", limit)
+            result.put("total", totalCount)
+            result.put("hasMore", (offset + photosArray.length()) < totalCount)
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to query photos")
+        }
+        return result
+    }
+
+    fun getPhotoThumbnailBase64(path: String, maxDim: Int = 160): String? {
+        return try {
+            val file = File(path)
+            if (!file.exists()) return null
+
+            val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(path, boundsOptions)
+
+            var sampleSize = 1
+            val origWidth = boundsOptions.outWidth
+            val origHeight = boundsOptions.outHeight
+            if (origWidth > maxDim || origHeight > maxDim) {
+                val halfWidth = origWidth / 2
+                val halfHeight = origHeight / 2
+                while ((halfWidth / sampleSize) >= maxDim && (halfHeight / sampleSize) >= maxDim) {
+                    sampleSize *= 2
+                }
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.RGB_565
+            }
+
+            val bitmap = BitmapFactory.decodeFile(path, decodeOptions) ?: return null
+            val baos = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 65, baos)
+            bitmap.recycle()
+            Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun setPhotoAsWallpaper(path: String): JSONObject {
+        val result = JSONObject()
+        try {
+            val file = File(path)
+            if (!file.exists()) {
+                result.put("status", "ERROR")
+                result.put("error", "Image file does not exist")
+                return result
+            }
+
+            val bitmap = BitmapFactory.decodeFile(path)
+            if (bitmap == null) {
+                result.put("status", "ERROR")
+                result.put("error", "Failed to decode image bitmap")
+                return result
+            }
+
+            val wallpaperManager = WallpaperManager.getInstance(context)
+            wallpaperManager.setBitmap(bitmap)
+            bitmap.recycle()
+
+            result.put("status", "SUCCESS")
+            result.put("message", "Wallpaper updated successfully")
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to set wallpaper")
+        }
+        return result
+    }
+
+    fun getGalleryVideos(offset: Int = 0, limit: Int = 50): JSONObject {
+        val result = JSONObject()
+        val videosArray = JSONArray()
+        var totalCount = 0
+
+        try {
+            val projection = arrayOf(
+                MediaStore.Video.Media._ID,
+                MediaStore.Video.Media.DISPLAY_NAME,
+                MediaStore.Video.Media.TITLE,
+                MediaStore.Video.Media.DURATION,
+                MediaStore.Video.Media.DATA,
+                MediaStore.Video.Media.SIZE,
+                MediaStore.Video.Media.DATE_MODIFIED,
+                MediaStore.Video.Media.WIDTH,
+                MediaStore.Video.Media.HEIGHT
+            )
+
+            val cursor = context.contentResolver.query(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                "${MediaStore.Video.Media.DATE_MODIFIED} DESC"
+            )
+
+            cursor?.use {
+                val idCol = it.getColumnIndex(MediaStore.Video.Media._ID)
+                val nameCol = it.getColumnIndex(MediaStore.Video.Media.DISPLAY_NAME)
+                val titleCol = it.getColumnIndex(MediaStore.Video.Media.TITLE)
+                val durCol = it.getColumnIndex(MediaStore.Video.Media.DURATION)
+                val dataCol = it.getColumnIndex(MediaStore.Video.Media.DATA)
+                val sizeCol = it.getColumnIndex(MediaStore.Video.Media.SIZE)
+                val dateCol = it.getColumnIndex(MediaStore.Video.Media.DATE_MODIFIED)
+                val widthCol = it.getColumnIndex(MediaStore.Video.Media.WIDTH)
+                val heightCol = it.getColumnIndex(MediaStore.Video.Media.HEIGHT)
+
+                var idx = 0
+                while (it.moveToNext()) {
+                    val path = if (dataCol >= 0) it.getString(dataCol) else null
+                    if (path == null || !File(path).exists()) continue
+
+                    if (idx >= offset && videosArray.length() < limit) {
+                        val durationMs = if (durCol >= 0) it.getLong(durCol) else 0L
+                        val obj = JSONObject().apply {
+                            put("id", if (idCol >= 0) it.getLong(idCol) else 0L)
+                            put("name", if (nameCol >= 0) it.getString(nameCol) ?: File(path).name else File(path).name)
+                            put("title", if (titleCol >= 0) it.getString(titleCol) ?: "" else "")
+                            put("path", path)
+                            put("duration", durationMs)
+                            put("durationFormatted", formatDuration(durationMs))
+                            put("size", if (sizeCol >= 0) it.getLong(sizeCol) else File(path).length())
+                            put("date", if (dateCol >= 0) it.getLong(dateCol) * 1000L else File(path).lastModified())
+                            put("width", if (widthCol >= 0) it.getInt(widthCol) else 0)
+                            put("height", if (heightCol >= 0) it.getInt(heightCol) else 0)
+                        }
+                        videosArray.put(obj)
+                    }
+                    idx++
+                }
+                totalCount = idx
+            }
+
+            result.put("status", "SUCCESS")
+            result.put("videos", videosArray)
+            result.put("offset", offset)
+            result.put("limit", limit)
+            result.put("total", totalCount)
+            result.put("hasMore", (offset + videosArray.length()) < totalCount)
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to query videos")
+        }
+        return result
+    }
+
+    fun getVideoThumbnailBase64(path: String): String? {
+        return try {
+            val file = File(path)
+            if (!file.exists()) return null
+
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(path)
+            val frame = retriever.getFrameAtTime(1000000)
+            retriever.release()
+
+            if (frame == null) return null
+
+            val scaled = Bitmap.createScaledBitmap(frame, 180, 120, true)
+            val baos = ByteArrayOutputStream()
+            scaled.compress(Bitmap.CompressFormat.JPEG, 60, baos)
+            frame.recycle()
+            scaled.recycle()
+            Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun getMusicTracksDetailed(offset: Int = 0, limit: Int = 100): JSONObject {
+        val result = JSONObject()
+        val tracksArray = JSONArray()
+        var totalCount = 0
+
+        try {
+            val projection = arrayOf(
+                MediaStore.Audio.Media._ID,
+                MediaStore.Audio.Media.TITLE,
+                MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.ALBUM,
+                MediaStore.Audio.Media.DURATION,
+                MediaStore.Audio.Media.DATA,
+                MediaStore.Audio.Media.SIZE,
+                MediaStore.Audio.Media.DISPLAY_NAME,
+                MediaStore.Audio.Media.DATE_MODIFIED
+            )
+
+            val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+
+            val cursor = context.contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                null,
+                "${MediaStore.Audio.Media.TITLE} ASC"
+            )
+
+            cursor?.use {
+                val idCol = it.getColumnIndex(MediaStore.Audio.Media._ID)
+                val titleCol = it.getColumnIndex(MediaStore.Audio.Media.TITLE)
+                val artistCol = it.getColumnIndex(MediaStore.Audio.Media.ARTIST)
+                val albumCol = it.getColumnIndex(MediaStore.Audio.Media.ALBUM)
+                val durCol = it.getColumnIndex(MediaStore.Audio.Media.DURATION)
+                val dataCol = it.getColumnIndex(MediaStore.Audio.Media.DATA)
+                val sizeCol = it.getColumnIndex(MediaStore.Audio.Media.SIZE)
+                val nameCol = it.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
+                val dateCol = it.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED)
+
+                var idx = 0
+                while (it.moveToNext()) {
+                    val path = if (dataCol >= 0) it.getString(dataCol) else null
+                    if (path == null || !File(path).exists()) continue
+
+                    if (idx >= offset && tracksArray.length() < limit) {
+                        val durMs = if (durCol >= 0) it.getLong(durCol) else 0L
+                        val obj = JSONObject().apply {
+                            put("id", if (idCol >= 0) it.getLong(idCol) else 0L)
+                            put("title", if (titleCol >= 0) it.getString(titleCol) ?: "Unknown" else "Unknown")
+                            put("artist", if (artistCol >= 0) it.getString(artistCol) ?: "Unknown Artist" else "Unknown Artist")
+                            put("album", if (albumCol >= 0) it.getString(albumCol) ?: "Unknown Album" else "Unknown Album")
+                            put("duration", durMs)
+                            put("durationFormatted", formatDuration(durMs))
+                            put("path", path)
+                            put("size", if (sizeCol >= 0) it.getLong(sizeCol) else File(path).length())
+                            put("name", if (nameCol >= 0) it.getString(nameCol) ?: File(path).name else File(path).name)
+                            put("date", if (dateCol >= 0) it.getLong(dateCol) * 1000L else File(path).lastModified())
+                        }
+                        tracksArray.put(obj)
+                    }
+                    idx++
+                }
+                totalCount = idx
+            }
+
+            result.put("status", "SUCCESS")
+            result.put("tracks", tracksArray)
+            result.put("offset", offset)
+            result.put("limit", limit)
+            result.put("total", totalCount)
+            result.put("hasMore", (offset + tracksArray.length()) < totalCount)
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to query music")
+        }
+        return result
+    }
+
+    private fun formatDuration(durationMs: Long): String {
+        val totalSec = durationMs / 1000
+        val min = totalSec / 60
+        val sec = totalSec % 60
+        return String.format(java.util.Locale.US, "%02d:%02d", min, sec)
+    }
+
+    fun getDeviceRingtones(): JSONObject {
+        val result = JSONObject()
+        val ringtonesArray = JSONArray()
+        val notificationsArray = JSONArray()
+        val alarmsArray = JSONArray()
+
+        try {
+            val ringtoneManager = RingtoneManager(context)
+
+            val currentRingtoneUri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE)?.toString() ?: ""
+            val currentNotifUri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION)?.toString() ?: ""
+            val currentAlarmUri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM)?.toString() ?: ""
+
+            // 1. Phone Ringtones
+            ringtoneManager.setType(RingtoneManager.TYPE_RINGTONE)
+            ringtoneManager.cursor?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val title = cursor.getString(RingtoneManager.TITLE_COLUMN_INDEX)
+                    val uri = ringtoneManager.getRingtoneUri(cursor.position).toString()
+                    ringtonesArray.put(JSONObject().apply {
+                        put("title", title)
+                        put("uri", uri)
+                        put("isDefault", uri == currentRingtoneUri)
+                    })
+                }
+            }
+
+            // 2. Notifications
+            ringtoneManager.setType(RingtoneManager.TYPE_NOTIFICATION)
+            ringtoneManager.cursor?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val title = cursor.getString(RingtoneManager.TITLE_COLUMN_INDEX)
+                    val uri = ringtoneManager.getRingtoneUri(cursor.position).toString()
+                    notificationsArray.put(JSONObject().apply {
+                        put("title", title)
+                        put("uri", uri)
+                        put("isDefault", uri == currentNotifUri)
+                    })
+                }
+            }
+
+            // 3. Alarms
+            ringtoneManager.setType(RingtoneManager.TYPE_ALARM)
+            ringtoneManager.cursor?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val title = cursor.getString(RingtoneManager.TITLE_COLUMN_INDEX)
+                    val uri = ringtoneManager.getRingtoneUri(cursor.position).toString()
+                    alarmsArray.put(JSONObject().apply {
+                        put("title", title)
+                        put("uri", uri)
+                        put("isDefault", uri == currentAlarmUri)
+                    })
+                }
+            }
+
+            result.put("status", "SUCCESS")
+            result.put("ringtones", ringtonesArray)
+            result.put("notifications", notificationsArray)
+            result.put("alarms", alarmsArray)
+            result.put("currentRingtoneUri", currentRingtoneUri)
+            result.put("currentNotificationUri", currentNotifUri)
+            result.put("currentAlarmUri", currentAlarmUri)
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to query ringtones")
+        }
+        return result
+    }
+
+    fun setDeviceRingtone(uriString: String, typeString: String = "RINGTONE"): JSONObject {
+        val result = JSONObject()
+        try {
+            val type = when (typeString.uppercase(java.util.Locale.US)) {
+                "NOTIFICATION" -> RingtoneManager.TYPE_NOTIFICATION
+                "ALARM" -> RingtoneManager.TYPE_ALARM
+                else -> RingtoneManager.TYPE_RINGTONE
+            }
+
+            val targetUri = if (uriString.startsWith("content://") || uriString.startsWith("android.resource://")) {
+                Uri.parse(uriString)
+            } else {
+                val file = File(uriString)
+                if (file.exists()) Uri.fromFile(file) else Uri.parse(uriString)
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (!Settings.System.canWrite(context)) {
+                    result.put("status", "PERMISSION_REQUIRED")
+                    result.put("error", "Write Settings permission is required on the phone to change ringtones.")
+                    return result
+                }
+            }
+
+            RingtoneManager.setActualDefaultRingtoneUri(context, type, targetUri)
+            result.put("status", "SUCCESS")
+            result.put("message", "Ringtone updated successfully")
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to set ringtone")
+        }
+        return result
+    }
+
 }
-
-
-
 

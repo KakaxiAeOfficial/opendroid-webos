@@ -1456,6 +1456,86 @@ class LocalFileServerService : Service() {
                 }.toString())
             }
 
+            // --- Phase 15: Enhanced Remote Media Gallery & Streamer Actions ---
+            "FETCH_GALLERY_PHOTOS" -> {
+                val offset = json.optInt("offset", 0)
+                val limit = json.optInt("limit", 60)
+                val bucket = json.optString("bucket", "")
+                val result = teleManager.getGalleryPhotos(offset, limit, if (bucket.isEmpty()) null else bucket)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "GALLERY_PHOTOS_RESULT")
+                    put("data", result)
+                }.toString())
+            }
+
+            "GET_PHOTO_THUMBNAIL" -> {
+                val path = json.optString("path", "")
+                val maxDim = json.optInt("maxDim", 160)
+                val thumb = teleManager.getPhotoThumbnailBase64(path, maxDim)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "PHOTO_THUMBNAIL_RESULT")
+                    put("path", path)
+                    put("thumbnail", thumb ?: "")
+                }.toString())
+            }
+
+            "SET_WALLPAPER" -> {
+                val path = json.optString("path", "")
+                val result = teleManager.setPhotoAsWallpaper(path)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "SET_WALLPAPER_RESULT")
+                    put("data", result)
+                }.toString())
+            }
+
+            "FETCH_GALLERY_VIDEOS" -> {
+                val offset = json.optInt("offset", 0)
+                val limit = json.optInt("limit", 50)
+                val result = teleManager.getGalleryVideos(offset, limit)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "GALLERY_VIDEOS_RESULT")
+                    put("data", result)
+                }.toString())
+            }
+
+            "GET_VIDEO_THUMBNAIL" -> {
+                val path = json.optString("path", "")
+                val thumb = teleManager.getVideoThumbnailBase64(path)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "VIDEO_THUMBNAIL_RESULT")
+                    put("path", path)
+                    put("thumbnail", thumb ?: "")
+                }.toString())
+            }
+
+            "FETCH_MUSIC_TRACKS" -> {
+                val offset = json.optInt("offset", 0)
+                val limit = json.optInt("limit", 100)
+                val result = teleManager.getMusicTracksDetailed(offset, limit)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "MUSIC_TRACKS_RESULT")
+                    put("data", result)
+                }.toString())
+            }
+
+            "FETCH_RINGTONES" -> {
+                val result = teleManager.getDeviceRingtones()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "RINGTONES_RESULT")
+                    put("data", result)
+                }.toString())
+            }
+
+            "SET_RINGTONE" -> {
+                val uri = json.optString("uri", "")
+                val type = json.optString("type", "RINGTONE")
+                val result = teleManager.setDeviceRingtone(uri, type)
+                broadcastMessage(JSONObject().apply {
+                    put("type", "SET_RINGTONE_RESULT")
+                    put("data", result)
+                }.toString())
+            }
+
             "FETCH_DIR" -> {
                 val path = json.optString("path", "")
                 broadcastMessage(JSONObject().apply {
@@ -2138,6 +2218,17 @@ class LocalFileServerService : Service() {
                 }
             }
 
+            // Phase 15: High-Speed LAN Media Streamer (HTTP 206 Partial Content / Range Requests)
+            get("/api/media/stream") {
+                val path = call.request.queryParameters["path"] ?: ""
+                val file = File(path)
+                if (file.exists() && file.canRead()) {
+                    call.respondFile(file)
+                } else {
+                    call.respondText("File not found", status = HttpStatusCode.NotFound)
+                }
+            }
+
             post("/upload") {
                 val targetDirParam = call.request.queryParameters["targetPath"]
                 val destDir = if (!targetDirParam.isNullOrEmpty()) File(targetDirParam) else directory
@@ -2215,4 +2306,5 @@ class LocalFileServerService : Service() {
         }
     }
 }
+
 
