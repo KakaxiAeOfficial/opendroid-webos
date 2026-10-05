@@ -3965,14 +3965,18 @@
                     clearInterval(handshakeInterval);
                     handshakeInterval = null;
                 }
-                document.getElementById('ws-status-taskbar').textContent = '● Connected';
-                document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs font-semibold';
-
+                const activeName = (typeof getDeviceDisplayName === 'function' && currentDeviceId) ? getDeviceDisplayName(currentDeviceId) : '';
+                const taskbarStatus = document.getElementById('ws-status-taskbar');
+                if (taskbarStatus) {
+                    taskbarStatus.textContent = activeName ? ('● Connected: ' + activeName) : '● Connected';
+                    taskbarStatus.className = 'text-green-400 text-xs font-semibold';
+                }
 
                 if (data.device) {
                     document.getElementById('device-model-text').textContent = data.device;
-                    const wModel = document.getElementById('widget-device-model');
-                    if (wModel) wModel.textContent = data.device;
+                }
+                if (typeof updateActiveDeviceNameAcrossUI === 'function') {
+                    updateActiveDeviceNameAcrossUI();
                 }
 
 
