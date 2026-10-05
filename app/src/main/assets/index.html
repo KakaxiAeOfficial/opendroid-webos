@@ -2932,7 +2932,7 @@
             isCloudMode = false;
             localWs = new WebSocket(`ws://${location.host}/ws`);
             localWs.onopen = () => {
-                document.getElementById('ws-status-taskbar').textContent = '● Connected';
+                document.getElementById('ws-status-taskbar').textContent = 'Connected';
                 document.getElementById('ws-status-taskbar').className = 'text-green-400 text-xs font-semibold';
                 sendCommand({ action: 'HANDSHAKE' });
             };
@@ -3350,7 +3350,7 @@
                 }
                 const taskbarStatus = document.getElementById('ws-status-taskbar');
                 if (taskbarStatus) {
-                    taskbarStatus.textContent = `● Searching for Phone...`;
+                    taskbarStatus.textContent = 'Searching...';
                     taskbarStatus.className = "text-yellow-400 text-xs font-semibold";
                 }
 
@@ -3402,13 +3402,26 @@
             });
 
 
+            let lastProcessedMsgSig = '';
+            let lastProcessedMsgTime = 0;
+
             mqttClient.on('message', (topic, payload) => {
                 try {
                     if (topic.includes('/devices/') && topic.endsWith('/presence')) {
                         handlePresenceMessage(topic, payload);
                         return;
                     }
-                    const data = JSON.parse(payload.toString());
+                    const payloadStr = payload.toString();
+                    const now = Date.now();
+                    const msgSig = topic + ':' + payloadStr;
+                    // Deduplicate identical MQTT packets delivered within 500ms
+                    if (msgSig === lastProcessedMsgSig && (now - lastProcessedMsgTime) < 500) {
+                        return;
+                    }
+                    lastProcessedMsgSig = msgSig;
+                    lastProcessedMsgTime = now;
+
+                    const data = JSON.parse(payloadStr);
                     handleIncomingData(data);
                 } catch (e) { console.error(e); }
             });
@@ -3635,18 +3648,17 @@
             document.getElementById('pair-modal')?.classList.add('hidden');
             document.getElementById('device-selector-wrapper')?.classList.remove('hidden');
 
-            // Subscribe to this device's PC telemetry channel
-            const pcChannel = `opendroid/acc/${accountTag}/${currentDeviceId}/pc`;
-            mqttClient.subscribe(pcChannel, { qos: 1 });
+            // In account mode, pcWildcard (opendroid/acc/${accountTag}/+/pc) is already subscribed in initAccountMqtt.
+            // Avoid duplicate subscription to opendroid/acc/${accountTag}/${currentDeviceId}/pc which causes 2x message delivery from MQTT broker.
 
             // Update Taskbar
             const taskbarStatus = document.getElementById('ws-status-taskbar');
             if (taskbarStatus) {
                 if (isDevOnline) {
-                    taskbarStatus.textContent = `● Connected: ${activeName}`;
+                    taskbarStatus.textContent = 'Connected';
                     taskbarStatus.className = 'text-emerald-400 text-xs font-semibold';
                 } else {
-                    taskbarStatus.textContent = '● Device Offline';
+                    taskbarStatus.textContent = 'Offline';
                     taskbarStatus.className = 'text-red-400 text-xs font-semibold';
                 }
             }
@@ -3710,7 +3722,7 @@
         function setDeviceOfflineUI(name, model) {
             const statusEl = document.getElementById('ws-status-taskbar');
             if (statusEl) {
-                statusEl.textContent = `○ ${name} (Offline)`;
+                statusEl.textContent = 'Offline';
                 statusEl.className = 'text-[11px] text-amber-400 font-medium px-2 py-0.5 bg-amber-950/40 rounded border border-amber-800/50';
             }
             // Update dock card
@@ -3846,10 +3858,7 @@
             const isDevOnline = dev?.isOnline ?? true;
 
 
-            // Subscribe to target device channel
-            if (mqttClient && mqttClient.connected) {
-                mqttClient.subscribe(`opendroid/acc/${accountTag}/${currentDeviceId}/pc`, { qos: 1 });
-            }
+            // In account mode, pcWildcard (opendroid/acc/${accountTag}/+/pc) is already active across all devices.
 
 
             // Update Top Header
@@ -3886,7 +3895,7 @@
 
             // 4. Update UI according to Online vs Offline state
             if (isDevOnline) {
-                document.getElementById('ws-status-taskbar').textContent = `● Connecting to ${devName}...`;
+                document.getElementById('ws-status-taskbar').textContent = 'Connecting...';
                 document.getElementById('ws-status-taskbar').className = 'text-[11px] text-green-400 font-medium px-2 py-0.5 bg-green-950/40 rounded border border-green-800/50';
 
 
@@ -3931,7 +3940,19 @@
 
 
         // --- Sleek Non-Blocking Floating Toast System ---
+        // --- Sleek Non-Blocking Floating Toast System with Deduplication ---
+        let lastToastSignature = '';
+        let lastToastTime = 0;
+
         function showToast(message, type = 'info') {
+            const now = Date.now();
+            const sig = `${type}:${message}`;
+            if (sig === lastToastSignature && (now - lastToastTime) < 700) {
+                return; // Suppress duplicate toast notification within 700ms window
+            }
+            lastToastSignature = sig;
+            lastToastTime = now;
+
             const container = document.getElementById('toast-container');
             if (!container) return;
             const toast = document.createElement('div');
@@ -3968,7 +3989,7 @@
                 const activeName = (typeof getDeviceDisplayName === 'function' && currentDeviceId) ? getDeviceDisplayName(currentDeviceId) : '';
                 const taskbarStatus = document.getElementById('ws-status-taskbar');
                 if (taskbarStatus) {
-                    taskbarStatus.textContent = activeName ? ('● Connected: ' + activeName) : '● Connected';
+                    taskbarStatus.textContent = 'Connected';
                     taskbarStatus.className = 'text-green-400 text-xs font-semibold';
                 }
 
@@ -11005,7 +11026,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
                     const taskbarStatus = document.getElementById('ws-status-taskbar');
                     if (taskbarStatus) {
-                        taskbarStatus.textContent = '● Connecting to phone...';
+                        taskbarStatus.textContent = 'Connecting...';
                         taskbarStatus.className = 'text-yellow-400 text-xs font-semibold';
                     }
 
@@ -11091,7 +11112,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
             const taskbarStatus = document.getElementById('ws-status-taskbar');
             if (taskbarStatus) {
-                taskbarStatus.textContent = '● Logged Out';
+                taskbarStatus.textContent = 'Logged Out';
                 taskbarStatus.className = 'text-gray-400 text-xs font-semibold';
             }
 
