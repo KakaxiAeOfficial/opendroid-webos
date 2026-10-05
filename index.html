@@ -473,7 +473,7 @@
 
     <!-- Top Dock Bar -->
     <!-- Top Navigation Header (OpenDroid Cybernetic Glassmorphic Bar) -->
-    <header class="fixed top-0 left-0 right-0 h-12 bg-gray-950/85 backdrop-blur-xl border-b border-gray-800/80 z-50 flex items-center justify-between px-4 text-xs select-none">
+    <header id="webos-header" class="fixed top-2.5 left-1/2 -translate-x-1/2 h-11 w-auto max-w-[94vw] bg-gray-950/80 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.65)] z-40 flex items-center justify-between px-3.5 text-xs select-none gap-3">
         <!-- Left: OpenDroid Branding & Active Connection Pill -->
         <div class="flex items-center gap-3">
             <div class="flex items-center gap-2 cursor-pointer group" onclick="wm.minimizeAll()">
@@ -497,11 +497,11 @@
         </div>
 
 
-        <!-- Center: Global Quick Search Input -->
-        <div class="relative flex items-center flex-1 max-w-md mx-6">
-            <input type="text" id="top-search" oninput="handleGlobalSearch(this.value)" placeholder="Search apps, files, contacts..." class="w-full bg-gray-900/90 border border-gray-700/80 rounded-full pl-9 pr-8 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all shadow-inner">
-            <span class="absolute left-3 text-gray-400 text-xs">🔍</span>
-            <button onclick="document.getElementById('top-search').value=''; handleGlobalSearch('')" class="absolute right-2.5 text-gray-500 hover:text-gray-300 text-xs">✕</button>
+        <!-- Center: AirDroid-Style Global Quick Search Input -->
+        <div class="relative flex items-center w-64 md:w-80">
+            <input type="text" id="top-search" oninput="handleGlobalSearch(this.value)" placeholder="Search apps, files, contacts..." class="w-full bg-gray-900/80 border border-gray-700/70 rounded-full pl-8 pr-7 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 transition-all shadow-inner">
+            <span class="absolute left-2.5 text-gray-400 text-xs">🔍</span>
+            <button onclick="document.getElementById('top-search').value=''; handleGlobalSearch('')" class="absolute right-2 text-gray-500 hover:text-gray-300 text-xs">✕</button>
         </div>
 
 
@@ -7676,7 +7676,7 @@
                     e.preventDefault();
                     // Screen-friendly bound clamping: window moves freely even when maximized!
                     const newLeft = initialX + (e.clientX - startX);
-                    const newTop = Math.max(48, initialY + (e.clientY - startY));
+                    const newTop = Math.max(0, initialY + (e.clientY - startY));
                     win.style.left = `${newLeft}px`;
                     win.style.top = `${newTop}px`;
                 });
@@ -11540,4 +11540,3 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 </html>
 
 
- 
