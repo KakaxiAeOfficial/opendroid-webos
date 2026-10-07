@@ -26,6 +26,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Base64
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import io.ktor.http.ContentType
@@ -2306,7 +2307,7 @@ class LocalFileServerService : Service() {
                     teleManager.getPhotoThumbnailBase64(target, maxDim)
                 }
                 if (thumbBase64 != null) {
-                    val bytes = Base64.decode(thumbBase64, Base64.NO_WRAP)
+                    val bytes = android.util.Base64.decode(thumbBase64, android.util.Base64.NO_WRAP)
                     call.respondBytes(bytes, ContentType.parse("image/webp"))
                 } else {
                     call.respondText("Thumbnail failed", status = HttpStatusCode.NotFound)
