@@ -1481,55 +1481,75 @@ class LocalFileServerService : Service() {
             }
 
             // --- Phase 15: Enhanced Remote Media Gallery & Streamer Actions ---
-            "FETCH_GALLERY_PHOTOS" -> {
+            "FETCH_GALLERY_PHOTOS", "GET_MEDIA_ITEMS" -> {
                 val offset = json.optInt("offset", 0)
-                val limit = json.optInt("limit", 60)
+                val limit = json.optInt("limit", 100)
                 val bucket = json.optString("bucket", "")
-                val result = teleManager.getGalleryPhotos(offset, limit, if (bucket.isEmpty()) null else bucket)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "GALLERY_PHOTOS_RESULT")
-                    put("data", result)
-                }.toString())
+                serviceScope.launch(Dispatchers.IO) {
+                    val result = teleManager.getGalleryPhotos(offset, limit, if (bucket.isEmpty()) null else bucket)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "GALLERY_PHOTOS_RESULT")
+                        put("data", result)
+                    }.toString())
+                }
             }
 
             "GET_PHOTO_THUMBNAIL" -> {
                 val path = json.optString("path", "")
-                val maxDim = json.optInt("maxDim", 160)
-                val thumb = teleManager.getPhotoThumbnailBase64(path, maxDim)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "PHOTO_THUMBNAIL_RESULT")
-                    put("path", path)
-                    put("thumbnail", thumb ?: "")
-                }.toString())
+                val uri = json.optString("uri", "")
+                val maxDim = json.optInt("maxDim", 256)
+                val target = if (uri.isNotEmpty()) uri else path
+                serviceScope.launch(Dispatchers.IO) {
+                    val thumb = teleManager.getPhotoThumbnailBase64(target, maxDim)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "PHOTO_THUMBNAIL_RESULT")
+                        put("path", path)
+                        put("uri", uri)
+                        put("thumbnail", thumb ?: "")
+                    }.toString())
+                }
             }
 
             "SET_WALLPAPER" -> {
                 val path = json.optString("path", "")
-                val result = teleManager.setPhotoAsWallpaper(path)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "SET_WALLPAPER_RESULT")
-                    put("data", result)
-                }.toString())
+                val uri = json.optString("uri", "")
+                val target = if (uri.isNotEmpty()) uri else path
+                serviceScope.launch(Dispatchers.IO) {
+                    val result = teleManager.setPhotoAsWallpaper(target)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "SET_WALLPAPER_RESULT")
+                        put("data", result)
+                    }.toString())
+                }
             }
 
             "FETCH_GALLERY_VIDEOS" -> {
                 val offset = json.optInt("offset", 0)
                 val limit = json.optInt("limit", 50)
-                val result = teleManager.getGalleryVideos(offset, limit)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "GALLERY_VIDEOS_RESULT")
-                    put("data", result)
-                }.toString())
+                val bucket = json.optString("bucket", "")
+                serviceScope.launch(Dispatchers.IO) {
+                    val result = teleManager.getGalleryVideos(offset, limit, if (bucket.isEmpty()) null else bucket)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "GALLERY_VIDEOS_RESULT")
+                        put("data", result)
+                    }.toString())
+                }
             }
 
             "GET_VIDEO_THUMBNAIL" -> {
                 val path = json.optString("path", "")
-                val thumb = teleManager.getVideoThumbnailBase64(path)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "VIDEO_THUMBNAIL_RESULT")
-                    put("path", path)
-                    put("thumbnail", thumb ?: "")
-                }.toString())
+                val uri = json.optString("uri", "")
+                val maxDim = json.optInt("maxDim", 256)
+                val target = if (uri.isNotEmpty()) uri else path
+                serviceScope.launch(Dispatchers.IO) {
+                    val thumb = teleManager.getVideoThumbnailBase64(target, maxDim)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "VIDEO_THUMBNAIL_RESULT")
+                        put("path", path)
+                        put("uri", uri)
+                        put("thumbnail", thumb ?: "")
+                    }.toString())
+                }
             }
 
             "FETCH_MUSIC_TRACKS" -> {
@@ -2245,11 +2265,51 @@ class LocalFileServerService : Service() {
             // Phase 15: High-Speed LAN Media Streamer (HTTP 206 Partial Content / Range Requests)
             get("/api/media/stream") {
                 val path = call.request.queryParameters["path"] ?: ""
-                val file = File(path)
-                if (file.exists() && file.canRead()) {
+                val uriStr = call.request.queryParameters["uri"] ?: ""
+                val file = if (path.isNotEmpty()) File(path) else null
+                if (file != null && file.exists() && file.canRead()) {
                     call.respondFile(file)
                 } else {
-                    call.respondText("File not found", status = HttpStatusCode.NotFound)
+                    val targetUri = if (uriStr.isNotEmpty()) Uri.parse(uriStr) else if (path.startsWith("content://")) Uri.parse(path) else null
+                    if (targetUri != null) {
+                        try {
+                            val pfd = contentResolver.openFileDescriptor(targetUri, "r")
+                            if (pfd != null) {
+                                val mime = contentResolver.getType(targetUri) ?: "application/octet-stream"
+                                call.respondOutputStream(ContentType.parse(mime)) {
+                                    java.io.FileInputStream(pfd.fileDescriptor).use { input ->
+                                        input.copyTo(this, bufferSize = 64 * 1024)
+                                    }
+                                }
+                                pfd.close()
+                            } else {
+                                call.respondText("Media not found", status = HttpStatusCode.NotFound)
+                            }
+                        } catch (e: Exception) {
+                            call.respondText("Stream error: ${e.message}", status = HttpStatusCode.InternalServerError)
+                        }
+                    } else {
+                        call.respondText("File not found", status = HttpStatusCode.NotFound)
+                    }
+                }
+            }
+
+            get("/api/media/thumbnail") {
+                val path = call.request.queryParameters["path"] ?: ""
+                val uriStr = call.request.queryParameters["uri"] ?: ""
+                val type = call.request.queryParameters["type"] ?: "photo"
+                val maxDim = call.request.queryParameters["maxDim"]?.toIntOrNull() ?: 256
+                val target = if (uriStr.isNotEmpty()) uriStr else path
+                val thumbBase64 = if (type == "video") {
+                    teleManager.getVideoThumbnailBase64(target, maxDim)
+                } else {
+                    teleManager.getPhotoThumbnailBase64(target, maxDim)
+                }
+                if (thumbBase64 != null) {
+                    val bytes = Base64.decode(thumbBase64, Base64.NO_WRAP)
+                    call.respondBytes(bytes, ContentType.parse("image/webp"))
+                } else {
+                    call.respondText("Thumbnail failed", status = HttpStatusCode.NotFound)
                 }
             }
 
@@ -2330,6 +2390,7 @@ class LocalFileServerService : Service() {
         }
     }
 }
+
 
 
 

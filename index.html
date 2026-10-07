@@ -434,6 +434,7 @@
                 <div class="flex items-center gap-2">
                     <button id="preview-zoom-out" onclick="zoomLightboxPhoto(-0.2)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold" title="Zoom Out">🔍−</button>
                     <button id="preview-zoom-in" onclick="zoomLightboxPhoto(0.2)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold" title="Zoom In">🔍+</button>
+                    <button id="preview-rotate-btn" onclick="rotateLightboxPhoto()" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold text-white flex items-center gap-1" title="Rotate 90°">🔄 Rotate</button>
                     <button id="preview-wallpaper-btn" onclick="setLightboxPhotoAsWallpaper()" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-bold flex items-center gap-1 shadow-sm">
                         <span>🖼️</span><span>Set as Wallpaper</span>
                     </button>
@@ -2139,12 +2140,12 @@
     </div>
 
 
-    <!-- Window: Photos Gallery (Phase 15 High-Speed Remote Photo Suite) -->
-    <div id="photos-window" class="window hidden" style="display: none; width: 840px; height: 600px; top: 70px; left: 260px; min-width: 600px; min-height: 440px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+    <!-- Window: Photos Gallery (Phase 15.2 AirDroid-Grade Two-Pane Studio) -->
+    <div id="photos-window" class="window hidden" style="display: none; width: 940px; height: 620px; top: 65px; left: 230px; min-width: 680px; min-height: 460px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
                 <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">🖼️</div>
-                <span class="font-semibold text-xs tracking-wide text-gray-100">Photos Gallery</span>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Photos Studio</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
                 <button onclick="wm.minimizeWindow('photos-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
@@ -2152,31 +2153,50 @@
                 <button onclick="wm.closeWindow('photos-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
-        <div class="flex-1 bg-gray-950 overflow-hidden flex flex-col text-gray-200">
-            <!-- Toolbar: Bucket selector, refresh, search, stats -->
-            <div class="p-3 bg-gray-900/80 border-b border-gray-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div class="flex items-center gap-2">
-                    <span class="text-gray-400 text-[11px]">Album:</span>
-                    <select id="photos-bucket-select" onchange="onPhotoBucketChanged(this.value)" class="bg-gray-800 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-cyan-300 focus:outline-none focus:border-cyan-500 cursor-pointer">
-                        <option value="ALL">All Photos</option>
-                        <option value="Camera">Camera</option>
-                        <option value="Screenshots">Screenshots</option>
-                        <option value="Download">Download</option>
-                        <option value="WhatsApp">WhatsApp Images</option>
-                    </select>
-                    <span id="photos-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-800/40">0 Photos</span>
+        <div class="flex-1 bg-gray-950 overflow-hidden flex text-gray-200">
+            <!-- Left Sidebar: Albums Navigation (AirDroid Style) -->
+            <div class="w-56 bg-gray-900/90 border-r border-gray-800/90 flex flex-col select-none shrink-0">
+                <div class="p-3 border-b border-gray-800/80 flex items-center justify-between">
+                    <span class="text-[11px] font-bold tracking-wider text-gray-400 uppercase">Albums</span>
+                    <span id="photos-total-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-800/40">0</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="fetchGalleryPhotos(currentPhotoBucket)" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-gray-700/60">
-                        <span>🔄</span><span>Refresh</span>
+                <div id="photos-albums-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+                    <button onclick="selectPhotoAlbum('All')" id="photo-album-btn-All" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all text-left">
+                        <div class="flex items-center gap-2 truncate">
+                            <span>🖼️</span><span class="truncate">All Photos</span>
+                        </div>
+                        <span id="photo-album-count-All" class="text-[10px] font-mono opacity-80">--</span>
                     </button>
                 </div>
             </div>
-            <!-- Photos Grid Container -->
-            <div id="photos-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 select-none">
-                <div class="col-span-full py-16 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
-                    <span class="text-2xl animate-spin">⏳</span>
-                    <span>Loading high-res photos from device...</span>
+
+            <!-- Right Content Area -->
+            <div class="flex-1 flex flex-col overflow-hidden bg-gray-950">
+                <!-- Top Action Toolbar -->
+                <div class="p-2.5 bg-gray-900/70 border-b border-gray-800/80 flex items-center justify-between gap-3 text-xs select-none">
+                    <div class="flex items-center gap-2.5">
+                        <span id="photos-current-album-title" class="font-bold text-gray-100 text-sm">All Photos</span>
+                        <span id="photos-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-800 text-gray-300 border border-gray-700">0 Photos</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleSelectAllPhotos()" id="photos-select-all-btn" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1 cursor-pointer transition-all">
+                            <span>☑️</span><span>Select All</span>
+                        </button>
+                        <button onclick="downloadSelectedPhotos()" id="photos-batch-download-btn" class="hidden px-2.5 py-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
+                            <span>⬇</span><span>Download (<span id="photos-selected-count">0</span>)</span>
+                        </button>
+                        <button onclick="fetchGalleryPhotos(currentPhotoBucket)" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1 border border-gray-700 cursor-pointer transition-all">
+                            <span>🔄</span><span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Photos Grid Container -->
+                <div id="photos-grid" class="flex-1 overflow-y-auto p-3.5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 select-none">
+                    <div class="col-span-full py-20 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
+                        <span class="text-3xl animate-spin">⏳</span>
+                        <span>Loading photo library from phone...</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2267,12 +2287,12 @@
         </div>
     </div>
 
-    <!-- Window: Videos Manager (Phase 15 High-Speed Remote Video Streamer) -->
-    <div id="videos-window" class="window hidden" style="display: none; width: 840px; height: 600px; top: 75px; left: 270px; min-width: 600px; min-height: 440px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+    <!-- Window: Videos Manager (Phase 15.2 AirDroid-Grade Two-Pane Studio) -->
+    <div id="videos-window" class="window hidden" style="display: none; width: 940px; height: 620px; top: 75px; left: 240px; min-width: 680px; min-height: 460px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
                 <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-rose-500 to-red-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">🎬</div>
-                <span class="font-semibold text-xs tracking-wide text-gray-100">Videos</span>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Videos Studio</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
                 <button onclick="wm.minimizeWindow('videos-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
@@ -2280,22 +2300,44 @@
                 <button onclick="wm.closeWindow('videos-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
-        <div class="flex-1 bg-gray-950 overflow-hidden flex flex-col text-gray-200">
-            <!-- Toolbar -->
-            <div class="p-3 bg-gray-900/80 border-b border-gray-800/80 flex items-center justify-between text-xs">
-                <div class="flex items-center gap-2">
-                    <span class="text-gray-400 text-[11px]">Phone Videos:</span>
-                    <span id="videos-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-950/80 text-rose-300 border border-rose-800/40">0 Videos</span>
+        <div class="flex-1 bg-gray-950 overflow-hidden flex text-gray-200">
+            <!-- Left Sidebar: Video Folders Navigation -->
+            <div class="w-56 bg-gray-900/90 border-r border-gray-800/90 flex flex-col select-none shrink-0">
+                <div class="p-3 border-b border-gray-800/80 flex items-center justify-between">
+                    <span class="text-[11px] font-bold tracking-wider text-gray-400 uppercase">Folders</span>
+                    <span id="videos-total-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-rose-950/80 text-rose-300 border border-rose-800/40">0</span>
                 </div>
-                <button onclick="fetchGalleryVideos()" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border border-gray-700/60">
-                    <span>🔄</span><span>Refresh</span>
-                </button>
+                <div id="videos-albums-list" class="flex-1 overflow-y-auto p-2 space-y-1">
+                    <button onclick="selectVideoAlbum('All')" id="video-album-btn-All" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30 transition-all text-left">
+                        <div class="flex items-center gap-2 truncate">
+                            <span>🎬</span><span class="truncate">All Videos</span>
+                        </div>
+                        <span id="video-album-count-All" class="text-[10px] font-mono opacity-80">--</span>
+                    </button>
+                </div>
             </div>
-            <!-- Video Grid -->
-            <div id="videos-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 select-none">
-                <div class="col-span-full py-16 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
-                    <span class="text-2xl animate-spin">⏳</span>
-                    <span>Loading videos from phone...</span>
+
+            <!-- Right Content Area -->
+            <div class="flex-1 flex flex-col overflow-hidden bg-gray-950">
+                <!-- Top Action Toolbar -->
+                <div class="p-2.5 bg-gray-900/70 border-b border-gray-800/80 flex items-center justify-between gap-3 text-xs select-none">
+                    <div class="flex items-center gap-2.5">
+                        <span id="videos-current-album-title" class="font-bold text-gray-100 text-sm">All Videos</span>
+                        <span id="videos-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-800 text-gray-300 border border-gray-700">0 Videos</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="fetchGalleryVideos(currentVideoBucket)" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1 border border-gray-700 cursor-pointer transition-all">
+                            <span>🔄</span><span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Video Grid Container -->
+                <div id="videos-grid" class="flex-1 overflow-y-auto p-3.5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 select-none">
+                    <div class="col-span-full py-20 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
+                        <span class="text-3xl animate-spin">⏳</span>
+                        <span>Loading videos from phone...</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -6823,33 +6865,43 @@
         // --- PHASE 15: HIGH-SPEED REMOTE MEDIA GALLERY & STREAMER SUITE ---
         // =========================================================================
 
-        // --- 1. Photos Gallery & Lightbox Engine ---
+        // --- 1. Photos Gallery & Lightbox Engine (Phase 15.2 Studio) ---
         let allGalleryPhotos = [];
-        let currentPhotoBucket = 'ALL';
+        let currentPhotoBucket = 'All';
+        let photoBuckets = [];
+        let selectedPhotoIds = new Set();
         let currentLightboxIndex = -1;
-        let photoThumbnailsCache = {};
         let currentPhotoZoom = 1.0;
+        let currentPhotoRotation = 0;
+        let photoThumbnailsCache = {};
+        let photoThumbnailObserver = null;
+        let pendingPhotoThumbnailQueue = [];
+        let inFlightPhotoThumbnailRequests = 0;
+        const MAX_CONCURRENT_PHOTO_THUMBS = 6;
 
-        function fetchGalleryPhotos(bucket = '') {
-            currentPhotoBucket = bucket || 'ALL';
+        function fetchGalleryPhotos(bucket = 'All') {
+            currentPhotoBucket = bucket || 'All';
+            selectedPhotoIds.clear();
+            updatePhotoBatchSelectionUI();
+
+            const titleEl = document.getElementById('photos-current-album-title');
+            if (titleEl) titleEl.textContent = currentPhotoBucket === 'All' ? 'All Photos' : currentPhotoBucket;
+
             const grid = document.getElementById('photos-grid');
             if (grid) {
                 grid.innerHTML = `
-                    <div class="col-span-full py-16 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
-                        <span class="text-2xl animate-spin">⏳</span>
-                        <span>Loading high-res photos from device...</span>
+                    <div class="col-span-full py-20 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
+                        <span class="text-3xl animate-spin">⏳</span>
+                        <span>Loading photos from phone...</span>
                     </div>
                 `;
             }
+
             sendCommand({
                 action: 'FETCH_GALLERY_PHOTOS',
-                bucket: bucket === 'ALL' ? '' : bucket,
-                limit: 150
+                bucket: currentPhotoBucket === 'All' ? '' : currentPhotoBucket,
+                limit: 250
             });
-        }
-
-        function onPhotoBucketChanged(bucket) {
-            fetchGalleryPhotos(bucket);
         }
 
         function handleGalleryPhotosResponse(data) {
@@ -6857,70 +6909,122 @@
             const photos = Array.isArray(result) ? result : (result.photos || []);
             const buckets = result.buckets || [];
             allGalleryPhotos = photos;
+            photoBuckets = buckets;
 
-            // Update Bucket dropdown if buckets provided
-            const bucketSelect = document.getElementById('photos-bucket-select');
-            if (bucketSelect && buckets.length > 0) {
-                const currentVal = bucketSelect.value;
-                bucketSelect.innerHTML = `<option value="ALL">All Photos</option>`;
-                buckets.forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b;
-                    opt.textContent = b;
-                    bucketSelect.appendChild(opt);
-                });
-                if (currentVal && Array.from(bucketSelect.options).some(o => o.value === currentVal)) {
-                    bucketSelect.value = currentVal;
-                }
-            }
+            // Render Left Sidebar Albums
+            renderPhotoAlbumsList(buckets, photos.length);
 
-            const badge = document.getElementById('photos-count-badge');
-            if (badge) badge.textContent = `${photos.length} Photos`;
+            // Update badge counters
+            const countBadge = document.getElementById('photos-count-badge');
+            if (countBadge) countBadge.textContent = `${photos.length} Photos`;
+
+            const totalBadge = document.getElementById('photos-total-badge');
+            const allBucket = buckets.find(b => (b.name || '').toLowerCase() === 'all');
+            if (totalBadge) totalBadge.textContent = allBucket ? allBucket.count : photos.length;
 
             renderGalleryPhotosGrid(photos);
+        }
+
+        function getAlbumIcon(name) {
+            const lower = (name || '').toLowerCase();
+            if (lower === 'all') return '🖼️';
+            if (lower.includes('camera') || lower.includes('dcim')) return '📷';
+            if (lower.includes('screenshot')) return '📱';
+            if (lower.includes('whatsapp')) return '💬';
+            if (lower.includes('download')) return '📥';
+            if (lower.includes('instagram') || lower.includes('facebook') || lower.includes('telegram')) return '🌐';
+            return '📁';
+        }
+
+        function renderPhotoAlbumsList(buckets, currentListCount) {
+            const container = document.getElementById('photos-albums-list');
+            if (!container) return;
+
+            let albumItems = buckets.slice();
+            if (!albumItems.some(b => (b.name || '').toLowerCase() === 'all')) {
+                albumItems.unshift({ name: 'All', count: currentListCount });
+            }
+
+            container.innerHTML = albumItems.map(b => {
+                const bName = b.name || 'Folder';
+                const bCount = b.count !== undefined ? b.count : 0;
+                const isSelected = (currentPhotoBucket.toLowerCase() === bName.toLowerCase());
+                const activeClasses = isSelected
+                    ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-semibold shadow-sm"
+                    : "text-gray-400 hover:text-gray-200 hover:bg-white/5 border-transparent";
+                const icon = getAlbumIcon(bName);
+
+                return `
+                    <button onclick="selectPhotoAlbum('${bName.replace(/'/g, "\'")}')" id="photo-album-btn-${bName}" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs border transition-all text-left cursor-pointer ${activeClasses}">
+                        <div class="flex items-center gap-2 truncate">
+                            <span>${icon}</span><span class="truncate">${bName === 'All' ? 'All Photos' : bName}</span>
+                        </div>
+                        <span class="text-[10px] font-mono opacity-80 ml-1 shrink-0">${bCount}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function selectPhotoAlbum(bucketName) {
+            currentPhotoBucket = bucketName;
+            fetchGalleryPhotos(bucketName);
         }
 
         function renderGalleryPhotosGrid(photos) {
             const grid = document.getElementById('photos-grid');
             if (!grid) return;
             grid.innerHTML = '';
+            pendingPhotoThumbnailQueue = [];
 
             if (!photos || photos.length === 0) {
                 grid.innerHTML = `
-                    <div class="col-span-full py-16 text-center text-gray-400 text-xs">
-                        <div class="text-3xl mb-2">🖼️</div>
-                        <p class="font-medium">No photos found in this album</p>
+                    <div class="col-span-full py-20 text-center text-gray-400 text-xs">
+                        <div class="text-4xl mb-2.5">🖼️</div>
+                        <p class="font-semibold text-gray-300">No photos in this album</p>
+                        <p class="text-gray-500 text-[11px] mt-1">Images saved on your phone will appear here automatically.</p>
                     </div>
                 `;
                 return;
             }
 
+            const fragment = document.createDocumentFragment();
+
             photos.forEach((photo, idx) => {
                 const dateStr = photo.date ? new Date(photo.date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : '';
                 const sizeStr = photo.size ? formatBytes(photo.size) : '';
-                const escapedPath = photo.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const escapedPath = (photo.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const escapedUri = (photo.uri || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const escapedName = (photo.name || 'Photo').replace(/'/g, "\\'");
-                const cardId = `photo-card-${idx}`;
-                const imgId = `photo-thumb-img-${idx}`;
+                const photoId = photo.id || idx;
+                const isSelected = selectedPhotoIds.has(photoId);
 
                 const card = document.createElement('div');
-                card.id = cardId;
-                card.className = "group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-amber-500/60 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-200 flex flex-col cursor-pointer";
-                card.onclick = () => openPhotoLightbox(idx);
+                card.id = `photo-card-${idx}`;
+                card.className = `group relative bg-gray-900 border rounded-xl overflow-hidden hover:border-amber-500/60 hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer photo-grid-item ${isSelected ? 'border-cyan-500 ring-2 ring-cyan-500/30' : 'border-gray-800'}`;
+                card.setAttribute('data-idx', idx);
+                card.setAttribute('data-path', photo.path || '');
+                card.setAttribute('data-uri', photo.uri || '');
+                card.setAttribute('data-id', photoId);
 
                 card.innerHTML = `
-                    <div class="relative w-full h-32 bg-gray-950 flex items-center justify-center overflow-hidden">
-                        <img id="${imgId}" src="" alt="${escapedName}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 hidden" />
-                        <div id="${imgId}-loader" class="flex flex-col items-center justify-center text-gray-600 gap-1">
+                    <div class="relative w-full h-32 bg-gray-950 flex items-center justify-center overflow-hidden" onclick="openPhotoLightbox(${idx})">
+                        <img id="photo-thumb-img-${idx}" src="" alt="${escapedName}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 hidden" />
+                        <div id="photo-thumb-ldr-${idx}" class="flex flex-col items-center justify-center text-gray-600 gap-1 select-none">
                             <span class="text-2xl opacity-60">🖼️</span>
                             <span class="text-[9px] font-mono text-gray-500">Loading...</span>
                         </div>
+                        <!-- Top Selection Checkbox -->
+                        <div class="absolute top-2 left-2 z-20 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity" onclick="event.stopPropagation(); togglePhotoSelection(${photoId})">
+                            <div class="w-5 h-5 rounded-md ${isSelected ? 'bg-cyan-500 text-white' : 'bg-black/60 text-transparent border border-white/40 hover:border-white'} flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all">
+                                ✓
+                            </div>
+                        </div>
                         <!-- Hover Quick Action Overlay -->
-                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10 backdrop-blur-xs">
-                            <button onclick="event.stopPropagation(); openPhotoLightbox(${idx})" class="p-1.5 rounded-lg bg-gray-800/90 hover:bg-gray-700 text-white text-xs border border-white/20 shadow-sm" title="Fullscreen Lightbox">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 z-10 backdrop-blur-xs">
+                            <button onclick="event.stopPropagation(); openPhotoLightbox(${idx})" class="p-1.5 rounded-lg bg-gray-800/90 hover:bg-gray-700 text-white text-xs border border-white/20 shadow-sm" title="View Fullscreen">
                                 🔍
                             </button>
-                            <button onclick="event.stopPropagation(); setPhotoWallpaper('${escapedPath}')" class="p-1.5 rounded-lg bg-amber-600/90 hover:bg-amber-600 text-white text-xs border border-white/20 shadow-sm" title="Set as Device Wallpaper">
+                            <button onclick="event.stopPropagation(); setPhotoWallpaper('${escapedPath}', '${escapedUri}')" class="p-1.5 rounded-lg bg-amber-600/90 hover:bg-amber-600 text-white text-xs border border-white/20 shadow-sm" title="Set as Phone Wallpaper">
                                 📱
                             </button>
                             <button onclick="event.stopPropagation(); triggerFileDownload('${escapedPath}', '${escapedName}')" class="p-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-600 text-white text-xs border border-white/20 shadow-sm" title="Download">
@@ -6928,7 +7032,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="p-2 bg-gray-900/90 border-t border-gray-800/60 text-left">
+                    <div class="p-2 bg-gray-900/90 border-t border-gray-800/60 text-left select-none" onclick="openPhotoLightbox(${idx})">
                         <div class="font-medium text-gray-200 text-[11px] truncate" title="${photo.name}">${photo.name}</div>
                         <div class="text-[9px] text-gray-500 mt-0.5 flex justify-between items-center font-mono">
                             <span>${sizeStr}</span>
@@ -6937,65 +7041,202 @@
                     </div>
                 `;
 
-                grid.appendChild(card);
+                fragment.appendChild(card);
+            });
 
-                // Check thumbnail cache or request thumbnail
-                if (photoThumbnailsCache[photo.path]) {
-                    const img = card.querySelector(`#${imgId}`);
-                    const ldr = card.querySelector(`#${imgId}-loader`);
-                    if (img && ldr) {
-                        img.src = photoThumbnailsCache[photo.path];
-                        img.classList.remove('hidden');
-                        ldr.classList.add('hidden');
+            grid.appendChild(fragment);
+
+            // Initialize Viewport Lazy Loading via IntersectionObserver
+            initPhotoViewportObserver();
+        }
+
+        function initPhotoViewportObserver() {
+            if (photoThumbnailObserver) {
+                photoThumbnailObserver.disconnect();
+            }
+
+            const grid = document.getElementById('photos-grid');
+            if (!grid) return;
+
+            photoThumbnailObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const el = entry.target;
+                        const idx = parseInt(el.getAttribute('data-idx'));
+                        const path = el.getAttribute('data-path');
+                        const uri = el.getAttribute('data-uri');
+                        photoThumbnailObserver.unobserve(el);
+                        enqueuePhotoThumbnail(path, uri, idx);
                     }
-                } else {
-                    requestPhotoThumbnail(photo.path, idx);
-                }
+                });
+            }, {
+                root: grid,
+                rootMargin: '150px 0px'
+            });
+
+            grid.querySelectorAll('.photo-grid-item').forEach(card => {
+                photoThumbnailObserver.observe(card);
             });
         }
 
-        function requestPhotoThumbnail(path, cardIdx) {
-            sendCommand({
-                action: 'GET_PHOTO_THUMBNAIL',
-                path: path,
-                maxDim: 220,
-                tag: cardIdx !== undefined ? String(cardIdx) : ''
-            });
+        function enqueuePhotoThumbnail(path, uri, idx) {
+            const cacheKey = uri || path;
+            if (photoThumbnailsCache[cacheKey] || (path && photoThumbnailsCache[path])) {
+                applyPhotoThumbnailToCard(idx, photoThumbnailsCache[cacheKey] || photoThumbnailsCache[path]);
+                return;
+            }
+
+            pendingPhotoThumbnailQueue.push({ path, uri, idx });
+            dispatchPhotoThumbnailRequests();
+        }
+
+        function dispatchPhotoThumbnailRequests() {
+            while (inFlightPhotoThumbnailRequests < MAX_CONCURRENT_PHOTO_THUMBS && pendingPhotoThumbnailQueue.length > 0) {
+                const item = pendingPhotoThumbnailQueue.shift();
+                inFlightPhotoThumbnailRequests++;
+                sendCommand({
+                    action: 'GET_PHOTO_THUMBNAIL',
+                    path: item.path,
+                    uri: item.uri,
+                    maxDim: 256,
+                    tag: String(item.idx)
+                });
+            }
         }
 
         function handlePhotoThumbnailResponse(data) {
-            if (!data.path || !data.thumbnail) return;
-            const dataUri = 'data:image/jpeg;base64,' + data.thumbnail;
-            photoThumbnailsCache[data.path] = dataUri;
+            inFlightPhotoThumbnailRequests = Math.max(0, inFlightPhotoThumbnailRequests - 1);
+            dispatchPhotoThumbnailRequests();
 
-            // Find matching images in grid
-            const idx = allGalleryPhotos.findIndex(p => p.path === data.path);
-            if (idx !== -1) {
-                const img = document.getElementById(`photo-thumb-img-${idx}`);
-                const ldr = document.getElementById(`photo-thumb-img-${idx}-loader`);
-                if (img) {
-                    img.src = dataUri;
-                    img.classList.remove('hidden');
-                }
-                if (ldr) ldr.classList.add('hidden');
+            if (!data.thumbnail) return;
+            const mime = (data.thumbnail.startsWith('/9j/')) ? 'image/jpeg' : 'image/webp';
+            const dataUri = data.thumbnail.startsWith('data:') ? data.thumbnail : `data:${mime};base64,${data.thumbnail}`;
+
+            const key = data.uri || data.path;
+            if (key) photoThumbnailsCache[key] = dataUri;
+            if (data.path) photoThumbnailsCache[data.path] = dataUri;
+            if (data.uri) photoThumbnailsCache[data.uri] = dataUri;
+
+            // Find matching card index
+            let cardIdx = -1;
+            if (data.tag !== undefined && data.tag !== '') {
+                cardIdx = parseInt(data.tag);
+            }
+            if (cardIdx === -1 || isNaN(cardIdx)) {
+                cardIdx = allGalleryPhotos.findIndex(p => (data.uri && p.uri === data.uri) || (data.path && p.path === data.path));
             }
 
-            // Also update lightbox if currently viewing this photo
-            if (currentLightboxIndex !== -1 && allGalleryPhotos[currentLightboxIndex]?.path === data.path) {
-                const previewImg = document.getElementById('preview-img');
-                const previewLoader = document.getElementById('preview-loader');
-                if (previewImg && (!previewImg.src || previewImg.src.length < 50)) {
-                    previewImg.src = dataUri;
-                    previewImg.classList.remove('hidden');
-                    if (previewLoader) previewLoader.classList.add('hidden');
+            if (cardIdx !== -1) {
+                applyPhotoThumbnailToCard(cardIdx, dataUri);
+            }
+
+            // Lightbox sync
+            if (currentLightboxIndex !== -1) {
+                const cur = allGalleryPhotos[currentLightboxIndex];
+                if (cur && ((data.uri && cur.uri === data.uri) || (data.path && cur.path === data.path))) {
+                    const previewImg = document.getElementById('preview-img');
+                    const previewLoader = document.getElementById('preview-loader');
+                    if (previewImg) {
+                        previewImg.src = dataUri;
+                        previewImg.classList.remove('hidden');
+                        if (previewLoader) previewLoader.classList.add('hidden');
+                    }
                 }
             }
         }
 
+        function applyPhotoThumbnailToCard(cardIdx, dataUri) {
+            const img = document.getElementById(`photo-thumb-img-${cardIdx}`);
+            const ldr = document.getElementById(`photo-thumb-ldr-${cardIdx}`);
+            if (img) {
+                img.src = dataUri;
+                img.classList.remove('hidden');
+            }
+            if (ldr) ldr.classList.add('hidden');
+        }
+
+        // Multi-Selection and Batch Actions
+        function togglePhotoSelection(photoId) {
+            if (selectedPhotoIds.has(photoId)) {
+                selectedPhotoIds.delete(photoId);
+            } else {
+                selectedPhotoIds.add(photoId);
+            }
+            updatePhotoBatchSelectionUI();
+        }
+
+        function toggleSelectAllPhotos() {
+            if (selectedPhotoIds.size === allGalleryPhotos.length) {
+                selectedPhotoIds.clear();
+            } else {
+                allGalleryPhotos.forEach((p, idx) => selectedPhotoIds.add(p.id || idx));
+            }
+            updatePhotoBatchSelectionUI();
+        }
+
+        function updatePhotoBatchSelectionUI() {
+            const count = selectedPhotoIds.size;
+            const batchBtn = document.getElementById('photos-batch-download-btn');
+            const selectAllBtn = document.getElementById('photos-select-all-btn');
+            const selCountSpan = document.getElementById('photos-selected-count');
+
+            if (batchBtn) {
+                if (count > 0) {
+                    batchBtn.classList.remove('hidden');
+                    if (selCountSpan) selCountSpan.textContent = count;
+                } else {
+                    batchBtn.classList.add('hidden');
+                }
+            }
+
+            if (selectAllBtn) {
+                selectAllBtn.innerHTML = (count > 0 && count === allGalleryPhotos.length)
+                    ? '<span>❌</span><span>Deselect All</span>'
+                    : '<span>☑️</span><span>Select All</span>';
+            }
+
+            // Update border states on cards
+            allGalleryPhotos.forEach((p, idx) => {
+                const photoId = p.id || idx;
+                const card = document.getElementById(`photo-card-${idx}`);
+                if (card) {
+                    const isSelected = selectedPhotoIds.has(photoId);
+                    if (isSelected) {
+                        card.classList.add('border-cyan-500', 'ring-2', 'ring-cyan-500/30');
+                        card.classList.remove('border-gray-800');
+                    } else {
+                        card.classList.remove('border-cyan-500', 'ring-2', 'ring-cyan-500/30');
+                        card.classList.add('border-gray-800');
+                    }
+                    const checkMark = card.querySelector('.rounded-md');
+                    if (checkMark) {
+                        if (isSelected) {
+                            checkMark.className = "w-5 h-5 rounded-md bg-cyan-500 text-white flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all";
+                        } else {
+                            checkMark.className = "w-5 h-5 rounded-md bg-black/60 text-transparent border border-white/40 hover:border-white flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all";
+                        }
+                    }
+                }
+            });
+        }
+
+        function downloadSelectedPhotos() {
+            if (selectedPhotoIds.size === 0) return;
+            showToast(`Starting batch download of ${selectedPhotoIds.size} photos... 📥`, 'info');
+            allGalleryPhotos.forEach((p, idx) => {
+                const photoId = p.id || idx;
+                if (selectedPhotoIds.has(photoId)) {
+                    triggerFileDownload(p.path, p.name);
+                }
+            });
+        }
+
+        // Fullscreen Lightbox Studio
         function openPhotoLightbox(index) {
             if (index < 0 || index >= allGalleryPhotos.length) return;
             currentLightboxIndex = index;
             currentPhotoZoom = 1.0;
+            currentPhotoRotation = 0;
             const photo = allGalleryPhotos[index];
 
             const modal = document.getElementById('image-preview-modal');
@@ -7004,20 +7245,30 @@
             const previewTitle = document.getElementById('preview-filename');
 
             if (previewTitle) previewTitle.textContent = `${photo.name} (${formatBytes(photo.size)})`;
+            updateLightboxTransform();
+
+            const cacheKey = photo.uri || photo.path;
+            const cached = photoThumbnailsCache[cacheKey] || (photo.path && photoThumbnailsCache[photo.path]);
+
             if (previewImg) {
-                previewImg.style.transform = 'scale(1)';
-                if (photoThumbnailsCache[photo.path]) {
-                    previewImg.src = photoThumbnailsCache[photo.path];
+                if (cached) {
+                    previewImg.src = cached;
                     previewImg.classList.remove('hidden');
                     if (previewLoader) previewLoader.classList.add('hidden');
                 } else {
                     previewImg.src = '';
                     previewImg.classList.add('hidden');
                     if (previewLoader) {
-                        previewLoader.textContent = "Loading high-res preview from device...";
+                        previewLoader.textContent = "Loading WebP preview from phone...";
                         previewLoader.classList.remove('hidden');
                     }
-                    requestPhotoThumbnail(photo.path, index);
+                    sendCommand({
+                        action: 'GET_PHOTO_THUMBNAIL',
+                        path: photo.path,
+                        uri: photo.uri,
+                        maxDim: 1024,
+                        tag: String(index)
+                    });
                 }
             }
 
@@ -7027,6 +7278,23 @@
             }
 
             if (modal) modal.classList.remove('hidden');
+        }
+
+        function updateLightboxTransform() {
+            const img = document.getElementById('preview-img');
+            if (img) {
+                img.style.transform = `scale(${currentPhotoZoom}) rotate(${currentPhotoRotation}deg)`;
+            }
+        }
+
+        function rotateLightboxPhoto() {
+            currentPhotoRotation = (currentPhotoRotation + 90) % 360;
+            updateLightboxTransform();
+        }
+
+        function zoomLightboxPhoto(delta) {
+            currentPhotoZoom = Math.max(0.4, Math.min(3.0, currentPhotoZoom + delta));
+            updateLightboxTransform();
         }
 
         function prevLightboxPhoto() {
@@ -7043,50 +7311,111 @@
             openPhotoLightbox(nextIdx);
         }
 
-        function zoomLightboxPhoto(delta) {
-            currentPhotoZoom = Math.max(0.4, Math.min(3.0, currentPhotoZoom + delta));
-            const img = document.getElementById('preview-img');
-            if (img) img.style.transform = `scale(${currentPhotoZoom})`;
-        }
-
         function setLightboxPhotoAsWallpaper() {
             if (currentLightboxIndex < 0 || currentLightboxIndex >= allGalleryPhotos.length) return;
             const photo = allGalleryPhotos[currentLightboxIndex];
-            setPhotoWallpaper(photo.path);
+            setPhotoWallpaper(photo.path, photo.uri);
         }
 
-        function setPhotoWallpaper(path) {
+        function setPhotoWallpaper(path, uri = '') {
             showToast('Setting phone wallpaper... 🖼️', 'info');
-            sendCommand({ action: 'SET_WALLPAPER', path: path });
+            sendCommand({ action: 'SET_WALLPAPER', path: path, uri: uri });
         }
 
+        // Global Lightbox Keyboard Navigation
+        window.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('image-preview-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                if (e.key === 'ArrowLeft') prevLightboxPhoto();
+                else if (e.key === 'ArrowRight') nextLightboxPhoto();
+                else if (e.key === 'Escape') closeImagePreview();
+                else if (e.key === 'r' || e.key === 'R') rotateLightboxPhoto();
+            }
+        });
 
-        // --- 2. Remote Videos Engine ---
+
+        // --- 2. Remote Videos Engine (Phase 15.2 Studio) ---
         let allGalleryVideos = [];
+        let currentVideoBucket = 'All';
+        let videoBuckets = [];
         let videoThumbnailsCache = {};
+        let videoThumbnailObserver = null;
+        let pendingVideoThumbnailQueue = [];
+        let inFlightVideoThumbnailRequests = 0;
+        const MAX_CONCURRENT_VIDEO_THUMBS = 4;
 
-        function fetchGalleryVideos() {
+        function fetchGalleryVideos(bucket = 'All') {
+            currentVideoBucket = bucket || 'All';
+            const titleEl = document.getElementById('videos-current-album-title');
+            if (titleEl) titleEl.textContent = currentVideoBucket === 'All' ? 'All Videos' : currentVideoBucket;
+
             const grid = document.getElementById('videos-grid');
             if (grid) {
                 grid.innerHTML = `
-                    <div class="col-span-full py-16 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
-                        <span class="text-2xl animate-spin">⏳</span>
-                        <span>Loading videos from phone...</span>
+                    <div class="col-span-full py-20 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
+                        <span class="text-3xl animate-spin">⏳</span>
+                        <span>Loading video library from phone...</span>
                     </div>
                 `;
             }
-            sendCommand({ action: 'FETCH_GALLERY_VIDEOS', limit: 100 });
+            sendCommand({
+                action: 'FETCH_GALLERY_VIDEOS',
+                bucket: currentVideoBucket === 'All' ? '' : currentVideoBucket,
+                limit: 150
+            });
         }
 
         function handleGalleryVideosResponse(data) {
             const result = data.data || data;
             const videos = Array.isArray(result) ? result : (result.videos || []);
+            const buckets = result.buckets || [];
             allGalleryVideos = videos;
+            videoBuckets = buckets;
+
+            renderVideoAlbumsList(buckets, videos.length);
 
             const badge = document.getElementById('videos-count-badge');
             if (badge) badge.textContent = `${videos.length} Videos`;
 
+            const totalBadge = document.getElementById('videos-total-badge');
+            const allBucket = buckets.find(b => (b.name || '').toLowerCase() === 'all');
+            if (totalBadge) totalBadge.textContent = allBucket ? allBucket.count : videos.length;
+
             renderGalleryVideosGrid(videos);
+        }
+
+        function renderVideoAlbumsList(buckets, currentListCount) {
+            const container = document.getElementById('videos-albums-list');
+            if (!container) return;
+
+            let albumItems = buckets.slice();
+            if (!albumItems.some(b => (b.name || '').toLowerCase() === 'all')) {
+                albumItems.unshift({ name: 'All', count: currentListCount });
+            }
+
+            container.innerHTML = albumItems.map(b => {
+                const bName = b.name || 'Folder';
+                const bCount = b.count !== undefined ? b.count : 0;
+                const isSelected = (currentVideoBucket.toLowerCase() === bName.toLowerCase());
+                const activeClasses = isSelected
+                    ? "bg-rose-500/20 text-rose-300 border-rose-500/40 font-semibold shadow-sm"
+                    : "text-gray-400 hover:text-gray-200 hover:bg-white/5 border-transparent";
+                const icon = getAlbumIcon(bName);
+
+                return `
+                    <button onclick="selectVideoAlbum('${bName.replace(/'/g, "\'")}')" id="video-album-btn-${bName}" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs border transition-all text-left cursor-pointer ${activeClasses}">
+                        <div class="flex items-center gap-2 truncate">
+                            <span>${icon}</span><span class="truncate">${bName === 'All' ? 'All Videos' : bName}</span>
+                        </div>
+                        <span class="text-[10px] font-mono opacity-80 ml-1 shrink-0">${bCount}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function selectVideoAlbum(bucketName) {
+            currentVideoBucket = bucketName;
+            fetchGalleryVideos(bucketName);
         }
 
         function formatDuration(ms) {
@@ -7105,32 +7434,39 @@
             const grid = document.getElementById('videos-grid');
             if (!grid) return;
             grid.innerHTML = '';
+            pendingVideoThumbnailQueue = [];
 
             if (!videos || videos.length === 0) {
                 grid.innerHTML = `
-                    <div class="col-span-full py-16 text-center text-gray-400 text-xs">
-                        <div class="text-3xl mb-2">🎬</div>
-                        <p class="font-medium">No videos found in phone storage</p>
+                    <div class="col-span-full py-20 text-center text-gray-400 text-xs">
+                        <div class="text-4xl mb-2.5">🎬</div>
+                        <p class="font-semibold text-gray-300">No videos in this folder</p>
+                        <p class="text-gray-500 text-[11px] mt-1">Recorded or downloaded videos on your phone will appear here.</p>
                     </div>
                 `;
                 return;
             }
 
+            const fragment = document.createDocumentFragment();
+
             videos.forEach((video, idx) => {
                 const durationStr = formatDuration(video.duration);
                 const sizeStr = video.size ? formatBytes(video.size) : '';
-                const escapedPath = video.path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const escapedPath = (video.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                const escapedUri = (video.uri || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const escapedTitle = (video.title || video.name || 'Video').replace(/'/g, "\\'");
-                const imgId = `video-thumb-img-${idx}`;
 
                 const card = document.createElement('div');
-                card.className = "group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-rose-500/60 hover:shadow-lg hover:shadow-rose-500/10 transition-all duration-200 flex flex-col cursor-pointer";
-                card.onclick = () => playGalleryVideo(idx);
+                card.id = `video-card-${idx}`;
+                card.className = "group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-rose-500/60 hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer video-grid-item";
+                card.setAttribute('data-idx', idx);
+                card.setAttribute('data-path', video.path || '');
+                card.setAttribute('data-uri', video.uri || '');
 
                 card.innerHTML = `
-                    <div class="relative w-full h-36 bg-gray-950 flex items-center justify-center overflow-hidden">
-                        <img id="${imgId}" src="" alt="${escapedTitle}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 hidden" />
-                        <div id="${imgId}-loader" class="flex flex-col items-center justify-center text-gray-600 gap-1">
+                    <div class="relative w-full h-36 bg-gray-950 flex items-center justify-center overflow-hidden" onclick="playGalleryVideo(${idx})">
+                        <img id="video-thumb-img-${idx}" src="" alt="${escapedTitle}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 hidden" />
+                        <div id="video-thumb-ldr-${idx}" class="flex flex-col items-center justify-center text-gray-600 gap-1 select-none">
                             <span class="text-3xl opacity-60">🎬</span>
                         </div>
                         <!-- Play Icon Badge -->
@@ -7144,56 +7480,114 @@
                             ${durationStr}
                         </div>
                     </div>
-                    <div class="p-2.5 bg-gray-900/90 border-t border-gray-800/60 flex items-center justify-between text-left">
-                        <div class="truncate mr-2 flex-1">
+                    <div class="p-2.5 bg-gray-900/90 border-t border-gray-800/60 flex items-center justify-between text-left select-none">
+                        <div class="truncate mr-2 flex-1" onclick="playGalleryVideo(${idx})">
                             <div class="font-medium text-gray-200 text-[11px] truncate" title="${video.title || video.name}">${video.title || video.name}</div>
                             <div class="text-[9px] text-gray-500 mt-0.5 font-mono">${sizeStr}</div>
                         </div>
-                        <button onclick="event.stopPropagation(); triggerFileDownload('${escapedPath}', '${escapedTitle}')" class="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs border border-gray-700/60 transition-all" title="Download">
+                        <button onclick="event.stopPropagation(); triggerFileDownload('${escapedPath}', '${escapedTitle}')" class="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs border border-gray-700/60 transition-all shrink-0" title="Download Video">
                             ⬇
                         </button>
                     </div>
                 `;
 
-                grid.appendChild(card);
+                fragment.appendChild(card);
+            });
 
-                if (videoThumbnailsCache[video.path]) {
-                    const img = card.querySelector(`#${imgId}`);
-                    const ldr = card.querySelector(`#${imgId}-loader`);
-                    if (img && ldr) {
-                        img.src = videoThumbnailsCache[video.path];
-                        img.classList.remove('hidden');
-                        ldr.classList.add('hidden');
+            grid.appendChild(fragment);
+
+            // Initialize Viewport Lazy Loading for Video Thumbnails
+            initVideoViewportObserver();
+        }
+
+        function initVideoViewportObserver() {
+            if (videoThumbnailObserver) {
+                videoThumbnailObserver.disconnect();
+            }
+
+            const grid = document.getElementById('videos-grid');
+            if (!grid) return;
+
+            videoThumbnailObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const el = entry.target;
+                        const idx = parseInt(el.getAttribute('data-idx'));
+                        const path = el.getAttribute('data-path');
+                        const uri = el.getAttribute('data-uri');
+                        videoThumbnailObserver.unobserve(el);
+                        enqueueVideoThumbnail(path, uri, idx);
                     }
-                } else {
-                    requestVideoThumbnail(video.path, idx);
-                }
+                });
+            }, {
+                root: grid,
+                rootMargin: '150px 0px'
+            });
+
+            grid.querySelectorAll('.video-grid-item').forEach(card => {
+                videoThumbnailObserver.observe(card);
             });
         }
 
-        function requestVideoThumbnail(path, cardIdx) {
-            sendCommand({
-                action: 'GET_VIDEO_THUMBNAIL',
-                path: path,
-                tag: cardIdx !== undefined ? String(cardIdx) : ''
-            });
+        function enqueueVideoThumbnail(path, uri, idx) {
+            const cacheKey = uri || path;
+            if (videoThumbnailsCache[cacheKey] || (path && videoThumbnailsCache[path])) {
+                applyVideoThumbnailToCard(idx, videoThumbnailsCache[cacheKey] || videoThumbnailsCache[path]);
+                return;
+            }
+
+            pendingVideoThumbnailQueue.push({ path, uri, idx });
+            dispatchVideoThumbnailRequests();
+        }
+
+        function dispatchVideoThumbnailRequests() {
+            while (inFlightVideoThumbnailRequests < MAX_CONCURRENT_VIDEO_THUMBS && pendingVideoThumbnailQueue.length > 0) {
+                const item = pendingVideoThumbnailQueue.shift();
+                inFlightVideoThumbnailRequests++;
+                sendCommand({
+                    action: 'GET_VIDEO_THUMBNAIL',
+                    path: item.path,
+                    uri: item.uri,
+                    maxDim: 256,
+                    tag: String(item.idx)
+                });
+            }
         }
 
         function handleVideoThumbnailResponse(data) {
-            if (!data.path || !data.thumbnail) return;
-            const dataUri = 'data:image/jpeg;base64,' + data.thumbnail;
-            videoThumbnailsCache[data.path] = dataUri;
+            inFlightVideoThumbnailRequests = Math.max(0, inFlightVideoThumbnailRequests - 1);
+            dispatchVideoThumbnailRequests();
 
-            const idx = allGalleryVideos.findIndex(v => v.path === data.path);
-            if (idx !== -1) {
-                const img = document.getElementById(`video-thumb-img-${idx}`);
-                const ldr = document.getElementById(`video-thumb-img-${idx}-loader`);
-                if (img) {
-                    img.src = dataUri;
-                    img.classList.remove('hidden');
-                }
-                if (ldr) ldr.classList.add('hidden');
+            if (!data.thumbnail) return;
+            const mime = (data.thumbnail.startsWith('/9j/')) ? 'image/jpeg' : 'image/webp';
+            const dataUri = data.thumbnail.startsWith('data:') ? data.thumbnail : `data:${mime};base64,${data.thumbnail}`;
+
+            const key = data.uri || data.path;
+            if (key) videoThumbnailsCache[key] = dataUri;
+            if (data.path) videoThumbnailsCache[data.path] = dataUri;
+            if (data.uri) videoThumbnailsCache[data.uri] = dataUri;
+
+            let cardIdx = -1;
+            if (data.tag !== undefined && data.tag !== '') {
+                cardIdx = parseInt(data.tag);
             }
+            if (cardIdx === -1 || isNaN(cardIdx)) {
+                cardIdx = allGalleryVideos.findIndex(v => (data.uri && v.uri === data.uri) || (data.path && v.path === data.path));
+            }
+
+            if (cardIdx !== -1) {
+                applyVideoThumbnailToCard(cardIdx, dataUri);
+            }
+        }
+
+        function applyVideoThumbnailToCard(cardIdx, dataUri) {
+            const img = document.getElementById(`video-thumb-img-${cardIdx}`);
+            const ldr = document.getElementById(`video-thumb-ldr-${cardIdx}`);
+            if (img) {
+                img.src = dataUri;
+                img.classList.remove('hidden');
+            }
+            if (ldr) ldr.classList.add('hidden');
         }
 
         function playGalleryVideo(index) {
@@ -7217,21 +7611,22 @@
 
             const dev = currentDeviceId ? allDiscoveredDevices[currentDeviceId] : null;
             const lanIp = dev?.ip;
-            const lanPort = dev?.port || 8080;
+            const lanPort = dev?.port || 8888;
 
-            if (lanIp) {
-                const streamUrl = `http://${lanIp}:${lanPort}/api/media/stream?path=${encodeURIComponent(video.path)}`;
-                player.src = streamUrl;
-                player.classList.remove('hidden');
+            if (lanIp && currentGatewayMode === 'LAN') {
                 if (loader) loader.classList.add('hidden');
-                player.play().catch(e => console.log('Autoplay blocked or stream pending:', e));
+                player.src = `http://${lanIp}:${lanPort}/api/media/stream?path=${encodeURIComponent(video.path)}&uri=${encodeURIComponent(video.uri || '')}`;
+                player.play().catch(() => {});
             } else {
-                openVideoPlayer(video.path, title, video.size);
+                if (loader) {
+                    loader.textContent = "LAN connection recommended for direct video streaming. Triggering download...";
+                    loader.classList.remove('hidden');
+                }
+                triggerFileDownload(video.path, title);
             }
 
             if (modal) modal.classList.remove('hidden');
         }
-
 
         // --- 3. Music Player & Jukebox Engine ---
         let allMusicTracks = [];
@@ -11580,6 +11975,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
+
 
 
 

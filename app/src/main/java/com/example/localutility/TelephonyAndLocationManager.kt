@@ -20,6 +20,8 @@ import android.os.Environment
 import android.os.StatFs
 import android.provider.CallLog
 import android.provider.ContactsContract
+import android.content.ContentUris
+import android.util.Size
 import android.provider.MediaStore
 import android.telephony.SmsManager
 import android.util.Base64
@@ -2230,6 +2232,7 @@ fun getStorageStats(): JSONObject {
                 MediaStore.Images.Media.DISPLAY_NAME,
                 MediaStore.Images.Media.DATA,
                 MediaStore.Images.Media.DATE_MODIFIED,
+                MediaStore.Images.Media.DATE_ADDED,
                 MediaStore.Images.Media.SIZE,
                 MediaStore.Images.Media.MIME_TYPE,
                 MediaStore.Images.Media.WIDTH,
@@ -2250,6 +2253,7 @@ fun getStorageStats(): JSONObject {
                 val nameCol = it.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
                 val dataCol = it.getColumnIndex(MediaStore.Images.Media.DATA)
                 val dateCol = it.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
+                val dateAddedCol = it.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
                 val sizeCol = it.getColumnIndex(MediaStore.Images.Media.SIZE)
                 val mimeCol = it.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
                 val widthCol = it.getColumnIndex(MediaStore.Images.Media.WIDTH)
@@ -2259,22 +2263,48 @@ fun getStorageStats(): JSONObject {
                 var matchedIndex = 0
 
                 while (it.moveToNext()) {
-                    val path = if (dataCol >= 0) it.getString(dataCol) else null
-                    if (path == null || !File(path).exists()) continue
+                    val id = if (idCol >= 0) it.getLong(idCol) else 0L
+                    if (id <= 0L) continue
 
-                    val bucket = (if (bucketCol >= 0) it.getString(bucketCol) else null) ?: "Internal"
+                    val path = if (dataCol >= 0) it.getString(dataCol) ?: "" else ""
+                    val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id).toString()
+
+                    val rawBucket = if (bucketCol >= 0) it.getString(bucketCol) else null
+                    val bucket = if (!rawBucket.isNullOrBlank()) {
+                        rawBucket
+                    } else if (path.isNotBlank()) {
+                        File(path).parentFile?.name ?: "Camera"
+                    } else {
+                        "Camera"
+                    }
+
                     bucketsMap[bucket] = (bucketsMap[bucket] ?: 0) + 1
                     bucketsMap["All"] = (bucketsMap["All"] ?: 0) + 1
 
-                    val matchesFilter = bucketName.isNullOrEmpty() || bucketName.equals("All", ignoreCase = true) || bucket.equals(bucketName, ignoreCase = true)
+                    val matchesFilter = bucketName.isNullOrEmpty() ||
+                            bucketName.equals("All", ignoreCase = true) ||
+                            bucket.equals(bucketName, ignoreCase = true)
+
                     if (matchesFilter) {
                         if (matchedIndex >= offset && photosArray.length() < limit) {
+                            val name = if (nameCol >= 0) it.getString(nameCol) else null
+                            val finalName = if (!name.isNullOrBlank()) name else if (path.isNotBlank()) File(path).name else "IMG_$id.jpg"
+
+                            val timestampSec = if (dateCol >= 0 && it.getLong(dateCol) > 0) {
+                                it.getLong(dateCol)
+                            } else if (dateAddedCol >= 0 && it.getLong(dateAddedCol) > 0) {
+                                it.getLong(dateAddedCol)
+                            } else {
+                                System.currentTimeMillis() / 1000L
+                            }
+
                             val obj = JSONObject().apply {
-                                put("id", if (idCol >= 0) it.getLong(idCol) else 0L)
-                                put("name", if (nameCol >= 0) it.getString(nameCol) ?: File(path).name else File(path).name)
-                                put("path", path)
-                                put("date", if (dateCol >= 0) it.getLong(dateCol) * 1000L else File(path).lastModified())
-                                put("size", if (sizeCol >= 0) it.getLong(sizeCol) else File(path).length())
+                                put("id", id)
+                                put("name", finalName)
+                                put("path", if (path.isNotBlank()) path else contentUri)
+                                put("uri", contentUri)
+                                put("date", timestampSec * 1000L)
+                                put("size", if (sizeCol >= 0) it.getLong(sizeCol) else 0L)
                                 put("mime", if (mimeCol >= 0) it.getString(mimeCol) ?: "image/jpeg" else "image/jpeg")
                                 put("width", if (widthCol >= 0) it.getInt(widthCol) else 0)
                                 put("height", if (heightCol >= 0) it.getInt(heightCol) else 0)
@@ -2289,12 +2319,20 @@ fun getStorageStats(): JSONObject {
             }
 
             val bucketsArray = JSONArray()
-            bucketsMap.forEach { (bName, bCount) ->
-                bucketsArray.put(JSONObject().apply {
-                    put("name", bName)
-                    put("count", bCount)
-                })
-            }
+            val allCount = bucketsMap["All"] ?: 0
+            bucketsArray.put(JSONObject().apply {
+                put("name", "All")
+                put("count", allCount)
+            })
+            bucketsMap.filterKeys { !it.equals("All", ignoreCase = true) }
+                .toList()
+                .sortedByDescending { it.second }
+                .forEach { (bName, bCount) ->
+                    bucketsArray.put(JSONObject().apply {
+                        put("name", bName)
+                        put("count", bCount)
+                    })
+                }
 
             result.put("status", "SUCCESS")
             result.put("photos", photosArray)
@@ -2310,33 +2348,17 @@ fun getStorageStats(): JSONObject {
         return result
     }
 
-    fun getPhotoThumbnailBase64(path: String, maxDim: Int = 160): String? {
+    fun getPhotoThumbnailBase64(pathOrUri: String, maxDim: Int = 256): String? {
         return try {
-            val file = File(path)
-            if (!file.exists()) return null
-
-            val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeFile(path, boundsOptions)
-
-            var sampleSize = 1
-            val origWidth = boundsOptions.outWidth
-            val origHeight = boundsOptions.outHeight
-            if (origWidth > maxDim || origHeight > maxDim) {
-                val halfWidth = origWidth / 2
-                val halfHeight = origHeight / 2
-                while ((halfWidth / sampleSize) >= maxDim && (halfHeight / sampleSize) >= maxDim) {
-                    sampleSize *= 2
-                }
-            }
-
-            val decodeOptions = BitmapFactory.Options().apply {
-                inSampleSize = sampleSize
-                inPreferredConfig = Bitmap.Config.RGB_565
-            }
-
-            val bitmap = BitmapFactory.decodeFile(path, decodeOptions) ?: return null
+            val bitmap = resolvePhotoBitmap(pathOrUri, maxDim) ?: return null
             val baos = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 65, baos)
+            val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Bitmap.CompressFormat.WEBP_LOSSY
+            } else {
+                @Suppress("DEPRECATION")
+                Bitmap.CompressFormat.WEBP
+            }
+            bitmap.compress(format, 70, baos)
             bitmap.recycle()
             Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
         } catch (e: Exception) {
@@ -2344,17 +2366,103 @@ fun getStorageStats(): JSONObject {
         }
     }
 
-    fun setPhotoAsWallpaper(path: String): JSONObject {
+    private fun resolvePhotoBitmap(pathOrUri: String, maxDim: Int): Bitmap? {
+        if (pathOrUri.isBlank()) return null
+
+        val parsedUri: Uri? = if (pathOrUri.startsWith("content://")) {
+            Uri.parse(pathOrUri)
+        } else if (pathOrUri.all { it.isDigit() }) {
+            ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, pathOrUri.toLong())
+        } else null
+
+        // 1. Android 10+ (API 29+) loadThumbnail via ContentResolver
+        if (parsedUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                return context.contentResolver.loadThumbnail(parsedUri, Size(maxDim, maxDim), null)
+            } catch (_: Exception) {}
+        }
+
+        // 2. Stream decode via ContentResolver
+        if (parsedUri != null) {
+            try {
+                context.contentResolver.openInputStream(parsedUri)?.use { stream ->
+                    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeStream(stream, null, options)
+                    var sampleSize = 1
+                    val w = options.outWidth
+                    val h = options.outHeight
+                    if (w > maxDim || h > maxDim) {
+                        val halfW = w / 2
+                        val halfH = h / 2
+                        while ((halfW / sampleSize) >= maxDim && (halfH / sampleSize) >= maxDim) {
+                            sampleSize *= 2
+                        }
+                    }
+                    context.contentResolver.openInputStream(parsedUri)?.use { stream2 ->
+                        val decodeOpts = BitmapFactory.Options().apply {
+                            inSampleSize = sampleSize
+                            inPreferredConfig = Bitmap.Config.RGB_565
+                        }
+                        return BitmapFactory.decodeStream(stream2, null, decodeOpts)
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        // 3. Direct filesystem path fallback
+        try {
+            val file = File(pathOrUri)
+            if (file.exists()) {
+                val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(file.absolutePath, boundsOptions)
+
+                var sampleSize = 1
+                val origWidth = boundsOptions.outWidth
+                val origHeight = boundsOptions.outHeight
+                if (origWidth > maxDim || origHeight > maxDim) {
+                    val halfWidth = origWidth / 2
+                    val halfHeight = origHeight / 2
+                    while ((halfWidth / sampleSize) >= maxDim && (halfHeight / sampleSize) >= maxDim) {
+                        sampleSize *= 2
+                    }
+                }
+
+                val decodeOptions = BitmapFactory.Options().apply {
+                    inSampleSize = sampleSize
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                }
+                return BitmapFactory.decodeFile(file.absolutePath, decodeOptions)
+            }
+        } catch (_: Exception) {}
+
+        // 4. Query MediaStore by DATA path to get ContentUri on Scoped Storage
+        try {
+            val proj = arrayOf(MediaStore.Images.Media._ID)
+            val sel = "${MediaStore.Images.Media.DATA} = ?"
+            val args = arrayOf(pathOrUri)
+            context.contentResolver.query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, proj, sel, args, null)?.use { c ->
+                if (c.moveToFirst()) {
+                    val id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+                    val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            return context.contentResolver.loadThumbnail(uri, Size(maxDim, maxDim), null)
+                        } catch (_: Exception) {}
+                    }
+                    context.contentResolver.openInputStream(uri)?.use { s ->
+                        return BitmapFactory.decodeStream(s)
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        return null
+    }
+
+    fun setPhotoAsWallpaper(pathOrUri: String): JSONObject {
         val result = JSONObject()
         try {
-            val file = File(path)
-            if (!file.exists()) {
-                result.put("status", "ERROR")
-                result.put("error", "Image file does not exist")
-                return result
-            }
-
-            val bitmap = BitmapFactory.decodeFile(path)
+            val bitmap = resolvePhotoBitmap(pathOrUri, 1920)
             if (bitmap == null) {
                 result.put("status", "ERROR")
                 result.put("error", "Failed to decode image bitmap")
@@ -2374,9 +2482,10 @@ fun getStorageStats(): JSONObject {
         return result
     }
 
-    fun getGalleryVideos(offset: Int = 0, limit: Int = 50): JSONObject {
+    fun getGalleryVideos(offset: Int = 0, limit: Int = 50, bucketName: String? = null): JSONObject {
         val result = JSONObject()
         val videosArray = JSONArray()
+        val bucketsMap = mutableMapOf<String, Int>()
         var totalCount = 0
 
         try {
@@ -2388,8 +2497,10 @@ fun getStorageStats(): JSONObject {
                 MediaStore.Video.Media.DATA,
                 MediaStore.Video.Media.SIZE,
                 MediaStore.Video.Media.DATE_MODIFIED,
+                MediaStore.Video.Media.DATE_ADDED,
                 MediaStore.Video.Media.WIDTH,
-                MediaStore.Video.Media.HEIGHT
+                MediaStore.Video.Media.HEIGHT,
+                MediaStore.Video.Media.BUCKET_DISPLAY_NAME
             )
 
             val cursor = context.contentResolver.query(
@@ -2408,37 +2519,89 @@ fun getStorageStats(): JSONObject {
                 val dataCol = it.getColumnIndex(MediaStore.Video.Media.DATA)
                 val sizeCol = it.getColumnIndex(MediaStore.Video.Media.SIZE)
                 val dateCol = it.getColumnIndex(MediaStore.Video.Media.DATE_MODIFIED)
+                val dateAddedCol = it.getColumnIndex(MediaStore.Video.Media.DATE_ADDED)
                 val widthCol = it.getColumnIndex(MediaStore.Video.Media.WIDTH)
                 val heightCol = it.getColumnIndex(MediaStore.Video.Media.HEIGHT)
+                val bucketCol = it.getColumnIndex(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
 
-                var idx = 0
+                var matchedIndex = 0
                 while (it.moveToNext()) {
-                    val path = if (dataCol >= 0) it.getString(dataCol) else null
-                    if (path == null || !File(path).exists()) continue
+                    val id = if (idCol >= 0) it.getLong(idCol) else 0L
+                    if (id <= 0L) continue
 
-                    if (idx >= offset && videosArray.length() < limit) {
-                        val durationMs = if (durCol >= 0) it.getLong(durCol) else 0L
-                        val obj = JSONObject().apply {
-                            put("id", if (idCol >= 0) it.getLong(idCol) else 0L)
-                            put("name", if (nameCol >= 0) it.getString(nameCol) ?: File(path).name else File(path).name)
-                            put("title", if (titleCol >= 0) it.getString(titleCol) ?: "" else "")
-                            put("path", path)
-                            put("duration", durationMs)
-                            put("durationFormatted", formatDuration(durationMs))
-                            put("size", if (sizeCol >= 0) it.getLong(sizeCol) else File(path).length())
-                            put("date", if (dateCol >= 0) it.getLong(dateCol) * 1000L else File(path).lastModified())
-                            put("width", if (widthCol >= 0) it.getInt(widthCol) else 0)
-                            put("height", if (heightCol >= 0) it.getInt(heightCol) else 0)
-                        }
-                        videosArray.put(obj)
+                    val path = if (dataCol >= 0) it.getString(dataCol) ?: "" else ""
+                    val contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id).toString()
+
+                    val rawBucket = if (bucketCol >= 0) it.getString(bucketCol) else null
+                    val bucket = if (!rawBucket.isNullOrBlank()) {
+                        rawBucket
+                    } else if (path.isNotBlank()) {
+                        File(path).parentFile?.name ?: "Camera"
+                    } else {
+                        "Camera"
                     }
-                    idx++
+
+                    bucketsMap[bucket] = (bucketsMap[bucket] ?: 0) + 1
+                    bucketsMap["All"] = (bucketsMap["All"] ?: 0) + 1
+
+                    val matchesFilter = bucketName.isNullOrEmpty() ||
+                            bucketName.equals("All", ignoreCase = true) ||
+                            bucket.equals(bucketName, ignoreCase = true)
+
+                    if (matchesFilter) {
+                        if (matchedIndex >= offset && videosArray.length() < limit) {
+                            val durationMs = if (durCol >= 0) it.getLong(durCol) else 0L
+                            val name = if (nameCol >= 0) it.getString(nameCol) else null
+                            val finalName = if (!name.isNullOrBlank()) name else if (path.isNotBlank()) File(path).name else "VID_$id.mp4"
+                            val timestampSec = if (dateCol >= 0 && it.getLong(dateCol) > 0) {
+                                it.getLong(dateCol)
+                            } else if (dateAddedCol >= 0 && it.getLong(dateAddedCol) > 0) {
+                                it.getLong(dateAddedCol)
+                            } else {
+                                System.currentTimeMillis() / 1000L
+                            }
+
+                            val obj = JSONObject().apply {
+                                put("id", id)
+                                put("name", finalName)
+                                put("title", if (titleCol >= 0) it.getString(titleCol) ?: "" else "")
+                                put("path", if (path.isNotBlank()) path else contentUri)
+                                put("uri", contentUri)
+                                put("duration", durationMs)
+                                put("durationFormatted", formatDuration(durationMs))
+                                put("size", if (sizeCol >= 0) it.getLong(sizeCol) else 0L)
+                                put("date", timestampSec * 1000L)
+                                put("width", if (widthCol >= 0) it.getInt(widthCol) else 0)
+                                put("height", if (heightCol >= 0) it.getInt(heightCol) else 0)
+                                put("bucket", bucket)
+                            }
+                            videosArray.put(obj)
+                        }
+                        matchedIndex++
+                    }
                 }
-                totalCount = idx
+                totalCount = matchedIndex
             }
+
+            val bucketsArray = JSONArray()
+            val allCount = bucketsMap["All"] ?: 0
+            bucketsArray.put(JSONObject().apply {
+                put("name", "All")
+                put("count", allCount)
+            })
+            bucketsMap.filterKeys { !it.equals("All", ignoreCase = true) }
+                .toList()
+                .sortedByDescending { it.second }
+                .forEach { (bName, bCount) ->
+                    bucketsArray.put(JSONObject().apply {
+                        put("name", bName)
+                        put("count", bCount)
+                    })
+                }
 
             result.put("status", "SUCCESS")
             result.put("videos", videosArray)
+            result.put("buckets", bucketsArray)
             result.put("offset", offset)
             result.put("limit", limit)
             result.put("total", totalCount)
@@ -2450,27 +2613,99 @@ fun getStorageStats(): JSONObject {
         return result
     }
 
-    fun getVideoThumbnailBase64(path: String): String? {
+    fun getVideoThumbnailBase64(pathOrUri: String, maxDim: Int = 256): String? {
         return try {
-            val file = File(path)
-            if (!file.exists()) return null
-
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(path)
-            val frame = retriever.getFrameAtTime(1000000)
-            retriever.release()
-
-            if (frame == null) return null
-
-            val scaled = Bitmap.createScaledBitmap(frame, 180, 120, true)
+            val bitmap = resolveVideoBitmap(pathOrUri, maxDim) ?: return null
             val baos = ByteArrayOutputStream()
-            scaled.compress(Bitmap.CompressFormat.JPEG, 60, baos)
-            frame.recycle()
-            scaled.recycle()
+            val format = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Bitmap.CompressFormat.WEBP_LOSSY
+            } else {
+                @Suppress("DEPRECATION")
+                Bitmap.CompressFormat.WEBP
+            }
+            bitmap.compress(format, 70, baos)
+            bitmap.recycle()
             Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
         } catch (e: Exception) {
             null
         }
+    }
+
+    private fun resolveVideoBitmap(pathOrUri: String, maxDim: Int): Bitmap? {
+        if (pathOrUri.isBlank()) return null
+
+        val parsedUri: Uri? = if (pathOrUri.startsWith("content://")) {
+            Uri.parse(pathOrUri)
+        } else if (pathOrUri.all { it.isDigit() }) {
+            ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, pathOrUri.toLong())
+        } else null
+
+        // 1. Android 10+ (API 29+) loadThumbnail via ContentResolver
+        if (parsedUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                return context.contentResolver.loadThumbnail(parsedUri, Size(maxDim, maxDim * 9 / 16), null)
+            } catch (_: Exception) {}
+        }
+
+        // 2. MediaMetadataRetriever via URI
+        if (parsedUri != null) {
+            try {
+                val retriever = MediaMetadataRetriever()
+                retriever.setDataSource(context, parsedUri)
+                val frame = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC) ?: retriever.frameAtTime
+                retriever.release()
+                if (frame != null) {
+                    val scaled = Bitmap.createScaledBitmap(frame, maxDim, maxDim * 9 / 16, true)
+                    frame.recycle()
+                    return scaled
+                }
+            } catch (_: Exception) {}
+        }
+
+        // 3. MediaMetadataRetriever via direct path
+        try {
+            val file = File(pathOrUri)
+            if (file.exists()) {
+                val retriever = MediaMetadataRetriever()
+                retriever.setDataSource(file.absolutePath)
+                val frame = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC) ?: retriever.frameAtTime
+                retriever.release()
+                if (frame != null) {
+                    val scaled = Bitmap.createScaledBitmap(frame, maxDim, maxDim * 9 / 16, true)
+                    frame.recycle()
+                    return scaled
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 4. Query MediaStore by DATA path to get ID on Scoped Storage
+        try {
+            val proj = arrayOf(MediaStore.Video.Media._ID)
+            val sel = "${MediaStore.Video.Media.DATA} = ?"
+            val args = arrayOf(pathOrUri)
+            context.contentResolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, proj, sel, args, null)?.use { c ->
+                if (c.moveToFirst()) {
+                    val id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Video.Media._ID))
+                    val uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try {
+                            return context.contentResolver.loadThumbnail(uri, Size(maxDim, maxDim * 9 / 16), null)
+                        } catch (_: Exception) {}
+                    }
+                    val retriever = MediaMetadataRetriever()
+                    retriever.setDataSource(context, uri)
+                    val frame = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC) ?: retriever.frameAtTime
+                    retriever.release()
+                    if (frame != null) {
+                        val scaled = Bitmap.createScaledBitmap(frame, maxDim, maxDim * 9 / 16, true)
+                        frame.recycle()
+                        return scaled
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        return null
     }
 
     fun getMusicTracksDetailed(offset: Int = 0, limit: Int = 100): JSONObject {
@@ -2662,4 +2897,5 @@ fun getStorageStats(): JSONObject {
     }
 
 }
+
 
