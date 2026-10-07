@@ -2106,34 +2106,26 @@
             <!-- Right Content Area -->
             <div class="flex-1 flex flex-col overflow-hidden bg-gray-950">
                 <!-- Top Action Toolbar (OpenDroid Style & Advanced Studio) -->
-                <div class="p-2.5 bg-gray-900/80 border-b border-gray-800/80 flex items-center justify-between gap-3 text-xs select-none">
-                    <div class="flex items-center gap-2.5 shrink-0">
+                <div class="px-3 py-2 bg-gray-900/90 border-b border-gray-800 flex items-center justify-between gap-1.5 text-xs select-none">
+                    <div class="flex items-center gap-1.5 shrink-0">
                         <span id="photos-current-album-title" class="font-bold text-gray-100 text-sm">All Photos</span>
                         <span id="photos-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-800 text-gray-300 border border-gray-700">0 Photos</span>
                     </div>
-                    <!-- Middle: Live Search Filter -->
-                    <div class="flex-1 max-w-xs relative">
-                        <input type="text" id="photos-search-input" oninput="filterPhotosBySearch(this.value)" placeholder="Search in album..." class="w-full bg-gray-950/80 border border-gray-800 rounded-lg pl-7 pr-3 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-500/60 transition-all font-sans">
-                        <span class="absolute left-2 top-1 text-gray-500 text-xs">🔍</span>
+                    <!-- Middle: Compact Live Search Filter -->
+                    <div class="relative shrink">
+                        <input type="text" id="photos-search-input" oninput="filterPhotosBySearch(this.value)" placeholder="Search..." class="w-24 sm:w-32 focus:w-40 bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition-all font-sans">
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
+                    <!-- Right: Compact Action Buttons (No Emojis, No Overflow) -->
+                    <div class="flex items-center gap-1.5 shrink-0">
                         <!-- View Mode Switcher -->
                         <div class="flex items-center bg-gray-950 rounded-lg border border-gray-800 p-0.5 text-gray-400">
                             <button id="photos-view-grid-btn" onclick="setPhotosViewMode('grid')" class="px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-300 transition-all" title="Grid View">▦</button>
                             <button id="photos-view-list-btn" onclick="setPhotosViewMode('list')" class="px-2 py-0.5 rounded text-xs font-bold hover:text-white transition-all" title="Detailed List View">☰</button>
                         </div>
-                        <button onclick="toggleSelectAllPhotos()" id="btn-select-all-photos" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1 cursor-pointer transition-all">
-                            <span>☑️</span><span>Select All</span>
-                        </button>
-                        <button onclick="downloadSelectedPhotos()" id="btn-download-selected-photos" class="hidden px-2.5 py-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
-                            <span>⬇</span><span>Download (<span id="photos-selected-count">0</span>)</span>
-                        </button>
-                        <button onclick="deleteSelectedPhotos()" id="btn-delete-selected-photos" class="hidden px-2.5 py-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
-                            <span>🗑️</span><span>Delete (<span id="photos-delete-selected-count">0</span>)</span>
-                        </button>
-                        <button onclick="fetchGalleryPhotos(currentPhotoBucket)" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1 border border-gray-700 cursor-pointer transition-all">
-                            <span>🔄</span><span>Refresh</span>
-                        </button>
+                        <button onclick="toggleSelectAllPhotos()" id="btn-select-all-photos" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-[11px] font-medium border border-gray-700 cursor-pointer transition-all">Select All</button>
+                        <button onclick="downloadSelectedPhotos()" id="btn-download-selected-photos" class="hidden px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-semibold cursor-pointer shadow transition-all">Download (<span id="photos-selected-count">0</span>)</button>
+                        <button onclick="deleteSelectedPhotos()" id="btn-delete-selected-photos" class="hidden px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[11px] font-semibold cursor-pointer shadow transition-all">Delete (<span id="photos-delete-selected-count">0</span>)</button>
+                        <button onclick="fetchGalleryPhotos(currentPhotoBucket)" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-[11px] font-semibold border border-gray-700 cursor-pointer transition-all">Refresh</button>
                     </div>
                 </div>
 
@@ -2143,6 +2135,22 @@
                         <span class="text-3xl animate-spin">⏳</span>
                         <span>Loading photo library from phone...</span>
                     </div>
+                <!-- Photos List Table View -->
+                <div id="photos-list-view" class="flex-1 overflow-y-auto hidden select-none">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-gray-900/95 text-gray-400 sticky top-0 border-b border-gray-800 font-mono text-[11px] z-10 backdrop-blur-sm">
+                            <tr>
+                                <th class="p-2.5 w-10 text-center"></th>
+                                <th class="p-2.5 w-16">Preview</th>
+                                <th class="p-2.5">Name</th>
+                                <th class="p-2.5 w-24">Size</th>
+                                <th class="p-2.5 w-36">Date</th>
+                                <th class="p-2.5 w-28 text-right pr-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="photos-list-tbody" class="divide-y divide-gray-800/60 font-sans text-gray-200"></tbody>
+                    </table>
+                </div>
                 </div>
             </div>
         </div>
@@ -2266,43 +2274,51 @@
             <!-- Right Content Area -->
             <div class="flex-1 flex flex-col overflow-hidden bg-gray-950">
                 <!-- Top Action Toolbar (OpenDroid Style & Advanced Video Studio) -->
-                <div class="p-2.5 bg-gray-900/80 border-b border-gray-800/80 flex items-center justify-between gap-3 text-xs select-none">
-                    <div class="flex items-center gap-2.5 shrink-0">
+                <div class="px-3 py-2 bg-gray-900/90 border-b border-gray-800 flex items-center justify-between gap-1.5 text-xs select-none">
+                    <div class="flex items-center gap-1.5 shrink-0">
                         <span id="videos-current-album-title" class="font-bold text-gray-100 text-sm">All Videos</span>
                         <span id="videos-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-800 text-gray-300 border border-gray-700">0 Videos</span>
                     </div>
-                    <!-- Middle: Live Search Filter -->
-                    <div class="flex-1 max-w-xs relative">
-                        <input type="text" id="videos-search-input" oninput="filterVideosBySearch(this.value)" placeholder="Search in folder..." class="w-full bg-gray-950/80 border border-gray-800 rounded-lg pl-7 pr-3 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-rose-500/60 transition-all font-sans">
-                        <span class="absolute left-2 top-1 text-gray-500 text-xs">🔍</span>
+                    <!-- Middle: Compact Live Search Filter -->
+                    <div class="relative shrink">
+                        <input type="text" id="videos-search-input" oninput="filterVideosBySearch(this.value)" placeholder="Search..." class="w-24 sm:w-32 focus:w-40 bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-rose-500 transition-all font-sans">
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
+                    <!-- Right: Compact Action Buttons (No Emojis, No Overflow) -->
+                    <div class="flex items-center gap-1.5 shrink-0">
                         <!-- View Mode Switcher -->
                         <div class="flex items-center bg-gray-950 rounded-lg border border-gray-800 p-0.5 text-gray-400">
                             <button id="videos-view-grid-btn" onclick="setVideosViewMode('grid')" class="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-300 transition-all" title="Grid View">▦</button>
                             <button id="videos-view-list-btn" onclick="setVideosViewMode('list')" class="px-2 py-0.5 rounded text-xs font-bold hover:text-white transition-all" title="Detailed List View">☰</button>
                         </div>
-                        <button onclick="toggleSelectAllVideos()" id="btn-select-all-videos" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1 cursor-pointer transition-all">
-                            <span>☑️</span><span>Select All</span>
-                        </button>
-                        <button onclick="downloadSelectedVideos()" id="btn-download-selected-videos" class="hidden px-2.5 py-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
-                            <span>⬇</span><span>Download (<span id="videos-selected-count">0</span>)</span>
-                        </button>
-                        <button onclick="deleteSelectedVideos()" id="btn-delete-selected-videos" class="hidden px-2.5 py-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
-                            <span>🗑️</span><span>Delete (<span id="videos-delete-selected-count">0</span>)</span>
-                        </button>
-                        <button onclick="fetchGalleryVideos(currentVideoBucket)" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1 border border-gray-700 cursor-pointer transition-all">
-                            <span>🔄</span><span>Refresh</span>
-                        </button>
+                        <button onclick="toggleSelectAllVideos()" id="btn-select-all-videos" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-[11px] font-medium border border-gray-700 cursor-pointer transition-all">Select All</button>
+                        <button onclick="downloadSelectedVideos()" id="btn-download-selected-videos" class="hidden px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-semibold cursor-pointer shadow transition-all">Download (<span id="videos-selected-count">0</span>)</button>
+                        <button onclick="deleteSelectedVideos()" id="btn-delete-selected-videos" class="hidden px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[11px] font-semibold cursor-pointer shadow transition-all">Delete (<span id="videos-delete-selected-count">0</span>)</button>
+                        <button onclick="fetchGalleryVideos(currentVideoBucket)" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-[11px] font-semibold border border-gray-700 cursor-pointer transition-all">Refresh</button>
                     </div>
                 </div>
 
                 <!-- Video Grid Container -->
-                <div id="videos-grid" class="flex-1 overflow-y-auto p-3.5 select-none" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); grid-auto-rows: 120px; gap: 14px; align-content: start;">
+                <div id="videos-grid" class="flex-1 overflow-y-auto p-3.5 select-none" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); grid-auto-rows: 140px; gap: 12px; align-content: start;">
                     <div class="col-span-full py-20 text-center text-gray-500 text-xs flex flex-col items-center justify-center gap-2">
                         <span class="text-3xl animate-spin">⏳</span>
                         <span>Loading videos from phone...</span>
                     </div>
+                <!-- Videos List Table View -->
+                <div id="videos-list-view" class="flex-1 overflow-y-auto hidden select-none">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-gray-900/95 text-gray-400 sticky top-0 border-b border-gray-800 font-mono text-[11px] z-10 backdrop-blur-sm">
+                            <tr>
+                                <th class="p-2.5 w-10 text-center"></th>
+                                <th class="p-2.5 w-16">Preview</th>
+                                <th class="p-2.5">Title</th>
+                                <th class="p-2.5 w-24">Size</th>
+                                <th class="p-2.5 w-24">Duration</th>
+                                <th class="p-2.5 w-28 text-right pr-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="videos-list-tbody" class="divide-y divide-gray-800/60 font-sans text-gray-200"></tbody>
+                    </table>
+                </div>
                 </div>
             </div>
         </div>
@@ -7132,13 +7148,19 @@
             if (delCountEl) delCountEl.textContent = count;
 
             if (count > 0) {
-                if (batchDownloadBtn) batchDownloadBtn.classList.remove('hidden');
-                if (batchDeleteBtn) batchDeleteBtn.classList.remove('hidden');
-                if (btn) btn.innerHTML = '<span>✕</span><span>Deselect All</span>';
+                if (batchDownloadBtn) {
+                    batchDownloadBtn.classList.remove('hidden');
+                    batchDownloadBtn.textContent = `Download (${count})`;
+                }
+                if (batchDeleteBtn) {
+                    batchDeleteBtn.classList.remove('hidden');
+                    batchDeleteBtn.textContent = `Delete (${count})`;
+                }
+                if (btn) btn.textContent = 'Deselect All';
             } else {
                 if (batchDownloadBtn) batchDownloadBtn.classList.add('hidden');
                 if (batchDeleteBtn) batchDeleteBtn.classList.add('hidden');
-                if (btn) btn.innerHTML = '<span>☑️</span><span>Select All</span>';
+                if (btn) btn.textContent = 'Select All';
             }
         }
 
@@ -7571,7 +7593,7 @@
                 const card = document.createElement('div');
                 card.id = `video-card-${videoId}`;
                 card.className = `group relative bg-gray-900 border rounded-xl overflow-hidden hover:border-rose-500/60 hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer select-none video-grid-item ${isSelected ? 'border-rose-500 ring-2 ring-rose-500/40' : 'border-gray-800'}`;
-                card.style.cssText = "height: 120px; width: 100%; position: relative; overflow: hidden; display: block;";
+                card.style.cssText = "height: 140px; width: 100%; position: relative; overflow: hidden; display: block;";
                 card.setAttribute('data-id', videoId);
                 card.setAttribute('data-path', video.path || '');
                 card.setAttribute('data-uri', video.uri || '');
@@ -7812,13 +7834,19 @@
             if (delCountEl) delCountEl.textContent = count;
 
             if (count > 0) {
-                if (batchDownloadBtn) batchDownloadBtn.classList.remove('hidden');
-                if (batchDeleteBtn) batchDeleteBtn.classList.remove('hidden');
-                if (btn) btn.innerHTML = '<span>✕</span><span>Deselect All</span>';
+                if (batchDownloadBtn) {
+                    batchDownloadBtn.classList.remove('hidden');
+                    batchDownloadBtn.textContent = `Download (${count})`;
+                }
+                if (batchDeleteBtn) {
+                    batchDeleteBtn.classList.remove('hidden');
+                    batchDeleteBtn.textContent = `Delete (${count})`;
+                }
+                if (btn) btn.textContent = 'Deselect All';
             } else {
                 if (batchDownloadBtn) batchDownloadBtn.classList.add('hidden');
                 if (batchDeleteBtn) batchDeleteBtn.classList.add('hidden');
-                if (btn) btn.innerHTML = '<span>☑️</span><span>Select All</span>';
+                if (btn) btn.textContent = 'Select All';
             }
         }
 
