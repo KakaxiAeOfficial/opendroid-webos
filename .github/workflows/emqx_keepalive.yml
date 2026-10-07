@@ -22,64 +22,30 @@ jobs:
           pip install --upgrade paho-mqtt
 
       - name: Ping All 7 EMQX Deployments
+        env:
+          EMQX_USER: ${{ secrets.EMQX_USER }}
+          EMQX_PASS: ${{ secrets.EMQX_PASS }}
         run: |
           python3 - << 'PYEOF'
           import ssl
           import time
           import json
+          import os
           import paho.mqtt.client as mqtt
+
+          # Secrets se username aur password fetch karein
+          MQTT_USER = os.environ.get("EMQX_USER")
+          MQTT_PASS = os.environ.get("EMQX_PASS")
 
           # --- 7 Active EMQX Serverless Deployments ---
           BROKERS = [
-              {
-                  "name": "Server 1 (deployment-ceee508c)",
-                  "host": "ceee508c.ala.asia-southeast1.emqxsl.com",
-                  "port": 8883,
-                  "username": "OpenDroid-v1",
-                  "password": "OpenDroid-v1@kakaxi69"
-              },
-              {
-                  "name": "Server 2 (deployment-mfca5de2)",
-                  "host": "mfca5de2.ala.asia-southeast1.emqxsl.com",
-                  "port": 8883,
-                  "username": "OpenDroid-v1",
-                  "password": "OpenDroid-v1@kakaxi69"
-              },
-              {
-                  "name": "Server 3 (deployment-f9a916bf)",
-                  "host": "f9a916bf.ala.asia-southeast1.emqxsl.com",
-                  "port": 8883,
-                  "username": "OpenDroid-v1",
-                  "password": "OpenDroid-v1@kakaxi69"
-              },
-              {
-                  "name": "Server 4 (deployment-zf2cebac)",
-                  "host": "zf2cebac.ala.asia-southeast1.emqxsl.com",
-                  "port": 8883,
-                  "username": "OpenDroid-v1",
-                  "password": "OpenDroid-v1@kakaxi69"
-              },
-              {
-                  "name": "Server 5 (deployment-w21b112c)",
-                  "host": "w21b112c.ala.asia-southeast1.emqxsl.com",
-                  "port": 8883,
-                  "username": "OpenDroid-v1",
-                  "password": "OpenDroid-v1@kakaxi69"
-              },
-              {
-                  "name": "Server 6 (deployment-e62c118f)",
-                  "host": "e62c118f.ala.asia-southeast1.emqxsl.com",
-                  "port": 8883,
-                  "username": "OpenDroid-v1",
-                  "password": "OpenDroid-v1@kakaxi69"
-              },
-              {
-                  "name": "Server 7 (deployment-w501fd1f)",
-                  "host": "w501fd1f.ala.asia-southeast1.emqxsl.com",
-                  "port": 8883,
-                  "username": "OpenDroid-v1",
-                  "password": "OpenDroid-v1@kakaxi69"
-              }
+              {"name": "Server 1 (deployment-ceee508c)", "host": "ceee508c.ala.asia-southeast1.emqxsl.com", "port": 8883},
+              {"name": "Server 2 (deployment-mfca5de2)", "host": "mfca5de2.ala.asia-southeast1.emqxsl.com", "port": 8883},
+              {"name": "Server 3 (deployment-f9a916bf)", "host": "f9a916bf.ala.asia-southeast1.emqxsl.com", "port": 8883},
+              {"name": "Server 4 (deployment-zf2cebac)", "host": "zf2cebac.ala.asia-southeast1.emqxsl.com", "port": 8883},
+              {"name": "Server 5 (deployment-w21b112c)", "host": "w21b112c.ala.asia-southeast1.emqxsl.com", "port": 8883},
+              {"name": "Server 6 (deployment-e62c118f)", "host": "e62c118f.ala.asia-southeast1.emqxsl.com", "port": 8883},
+              {"name": "Server 7 (deployment-w501fd1f)", "host": "w501fd1f.ala.asia-southeast1.emqxsl.com", "port": 8883}
           ]
 
           def ping_broker(broker):
@@ -106,7 +72,7 @@ jobs:
               except Exception:
                   client = mqtt.Client(client_id=f"GHKeepAlive_{int(time.time())}")
 
-              client.username_pw_set(broker["username"], broker["password"])
+              client.username_pw_set(MQTT_USER, MQTT_PASS)
               client.tls_set(cert_reqs=ssl.CERT_NONE)
               client.tls_insecure_set(True)
 
@@ -123,14 +89,13 @@ jobs:
                       time.sleep(0.5)
 
                   if connected:
-                      # ~50 KB diagnostic telemetry payload to register real traffic
                       payload_data = {
                           "type": "KEEP_ALIVE_DIAGNOSTIC",
                           "server": broker["name"],
                           "source": "GitHub_Actions_Cloud_Runner",
                           "timestamp": int(time.time() * 1000),
                           "status": "HEALTHY_ACTIVE",
-                          "traffic_buffer": "A" * 2048 # Optimized 2KB heartbeat to preserve 1GB free monthly quota
+                          "traffic_buffer": "A" * 2048
                       }
                       payload_str = json.dumps(payload_data)
                       info = client.publish("opendroid/health/keepalive", payload_str, qos=1)
@@ -151,4 +116,3 @@ jobs:
 
           print("\n🎉 All 7 active brokers pinged successfully!")
           PYEOF
-
