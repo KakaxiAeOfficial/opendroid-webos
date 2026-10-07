@@ -299,6 +299,8 @@ class LocalFileServerService : Service() {
     )
     @Volatile
     private var activeBrokerIndex = 0
+    @Volatile
+    private var brokerRetryCount = 0
 
     private fun initCloudBridge(brokerIdx: Int = 0) {
         serviceScope.launch {
@@ -331,8 +333,8 @@ class LocalFileServerService : Service() {
                     }
                     socketFactory = SSLSocketFactory.getDefault()
                     isCleanSession = true
-                    connectionTimeout = 10
-                    keepAliveInterval = 30
+                    connectionTimeout = 15
+                    keepAliveInterval = 25
                     isAutomaticReconnect = false
                 }
                 if (accountTag.isNotEmpty() && openDroidDeviceId.isNotEmpty()) {
@@ -355,6 +357,7 @@ class LocalFileServerService : Service() {
                     override fun connectComplete(reconnect: Boolean, serverURI: String?) {
                         Log.d("CloudBridge", "Connected to Broker [$activeBrokerIndex]: $serverURI")
                         isCloudConnected = true
+                        brokerRetryCount = 0
                         try {
                             val prefs = getSharedPreferences("opendroid_prefs", Context.MODE_PRIVATE)
                             prefs.edit().putInt("active_broker_index", activeBrokerIndex).apply()
@@ -368,14 +371,22 @@ class LocalFileServerService : Service() {
                     }
 
                     override fun connectionLost(cause: Throwable?) {
-                        Log.w("CloudBridge", "Connection lost on [$activeBrokerIndex] $brokerUrl. Auto-cascading to next server...", cause)
+                        Log.w("CloudBridge", "Connection lost on [$activeBrokerIndex] $brokerUrl. Reason: " + (cause?.message ?: "unknown"))
                         isCloudConnected = false
                         serviceScope.launch(Dispatchers.Main) {
                             onCloudStatusChanged?.invoke(false)
                         }
                         serviceScope.launch {
-                            kotlinx.coroutines.delay(2000)
-                            initCloudBridge(activeBrokerIndex + 1)
+                            kotlinx.coroutines.delay(1500)
+                            if (brokerRetryCount < 3) {
+                                brokerRetryCount++
+                                Log.d("CloudBridge", "Retrying active broker [$activeBrokerIndex] (Attempt $brokerRetryCount/3)...")
+                                initCloudBridge(activeBrokerIndex)
+                            } else {
+                                brokerRetryCount = 0
+                                Log.w("CloudBridge", "Broker [$activeBrokerIndex] quota or connection failed after 3 retries. Cascading to next broker...")
+                                initCloudBridge(activeBrokerIndex + 1)
+                            }
                         }
                     }
 
@@ -412,14 +423,20 @@ class LocalFileServerService : Service() {
                     Log.d("CloudBridge", "Successfully connected and active on Broker [$activeBrokerIndex]: $brokerUrl")
                 }
             } catch (e: Exception) {
-                Log.e("CloudBridge", "Failed to connect to Broker [$safeIdx]: $brokerUrl. Cascading...", e)
+                Log.e("CloudBridge", "Failed to connect to Broker [$safeIdx]: $brokerUrl. Reason: " + (e.message ?: "unknown"), e)
                 isCloudConnected = false
                 serviceScope.launch(Dispatchers.Main) {
                     onCloudStatusChanged?.invoke(false)
                 }
                 serviceScope.launch {
                     kotlinx.coroutines.delay(2000)
-                    initCloudBridge(safeIdx + 1)
+                    if (brokerRetryCount < 3) {
+                        brokerRetryCount++
+                        initCloudBridge(safeIdx)
+                    } else {
+                        brokerRetryCount = 0
+                        initCloudBridge(safeIdx + 1)
+                    }
                 }
             }
         }
@@ -442,6 +459,12 @@ class LocalFileServerService : Service() {
         publishDevicePresence(true)
         if (mqttClient?.isConnected != true) {
             initCloudBridge(0)
+        } else {
+            // Also ensure active broker is reset to primary Server 0 on explicit bind
+            serviceScope.launch {
+                delay(200)
+                publishDevicePresence(true)
+            }
         }
     }
 
@@ -495,7 +518,7 @@ class LocalFileServerService : Service() {
                 if (isCloudConnected && accountTag.isNotEmpty() && openDroidDeviceId.isNotEmpty()) {
                     publishDevicePresence(true)
                 }
-                delay(30000L) // 30-second heartbeat
+                delay(25000L) // 25-second mobile 5G NAT heartbeat
             }
         }
     }
@@ -579,6 +602,7 @@ class LocalFileServerService : Service() {
                 put("networkType", netType)
                 put("wifiSsid", wifiSsid)
                 put("ipAddress", ipAddress)
+                put("activeServerIndex", activeBrokerIndex)
                 put("timestamp", System.currentTimeMillis())
             }
 
@@ -2306,5 +2330,6 @@ class LocalFileServerService : Service() {
         }
     }
 }
+
 
 
