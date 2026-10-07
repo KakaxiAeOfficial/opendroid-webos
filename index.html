@@ -2135,12 +2135,16 @@
                         <span class="text-3xl animate-spin">⏳</span>
                         <span>Loading photo library from phone...</span>
                     </div>
+                </div>
+
                 <!-- Photos List Table View -->
                 <div id="photos-list-view" class="flex-1 overflow-y-auto hidden select-none">
                     <table class="w-full text-left text-xs border-collapse">
                         <thead class="bg-gray-900/95 text-gray-400 sticky top-0 border-b border-gray-800 font-mono text-[11px] z-10 backdrop-blur-sm">
                             <tr>
-                                <th class="p-2.5 w-10 text-center"></th>
+                                <th class="p-2.5 w-10 text-center">
+                                    <input type="checkbox" onchange="toggleSelectAllPhotos()" id="photos-list-select-all-cb" class="rounded border-gray-700 text-cyan-500 cursor-pointer">
+                                </th>
                                 <th class="p-2.5 w-16">Preview</th>
                                 <th class="p-2.5">Name</th>
                                 <th class="p-2.5 w-24">Size</th>
@@ -2150,7 +2154,6 @@
                         </thead>
                         <tbody id="photos-list-tbody" class="divide-y divide-gray-800/60 font-sans text-gray-200"></tbody>
                     </table>
-                </div>
                 </div>
             </div>
         </div>
@@ -2303,12 +2306,16 @@
                         <span class="text-3xl animate-spin">⏳</span>
                         <span>Loading videos from phone...</span>
                     </div>
+                </div>
+
                 <!-- Videos List Table View -->
                 <div id="videos-list-view" class="flex-1 overflow-y-auto hidden select-none">
                     <table class="w-full text-left text-xs border-collapse">
                         <thead class="bg-gray-900/95 text-gray-400 sticky top-0 border-b border-gray-800 font-mono text-[11px] z-10 backdrop-blur-sm">
                             <tr>
-                                <th class="p-2.5 w-10 text-center"></th>
+                                <th class="p-2.5 w-10 text-center">
+                                    <input type="checkbox" onchange="toggleSelectAllVideos()" id="videos-list-select-all-cb" class="rounded border-gray-700 text-rose-500 cursor-pointer">
+                                </th>
                                 <th class="p-2.5 w-16">Preview</th>
                                 <th class="p-2.5">Title</th>
                                 <th class="p-2.5 w-24">Size</th>
@@ -2318,7 +2325,6 @@
                         </thead>
                         <tbody id="videos-list-tbody" class="divide-y divide-gray-800/60 font-sans text-gray-200"></tbody>
                     </table>
-                </div>
                 </div>
             </div>
         </div>
@@ -6814,15 +6820,27 @@
 
         function setupPhotosInfiniteScroll() {
             const grid = document.getElementById('photos-grid');
-            if (!grid || grid.hasInfiniteScrollBound) return;
-            grid.hasInfiniteScrollBound = true;
-            grid.addEventListener('scroll', () => {
-                if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 120) {
-                    if (hasMorePhotos && !isLoadingPhotosChunk) {
-                        loadMorePhotosChunk();
+            if (grid && !grid.hasInfiniteScrollBound) {
+                grid.hasInfiniteScrollBound = true;
+                grid.addEventListener('scroll', () => {
+                    if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 120) {
+                        if (hasMorePhotos && !isLoadingPhotosChunk) {
+                            loadMorePhotosChunk();
+                        }
                     }
-                }
-            });
+                });
+            }
+            const list = document.getElementById('photos-list-view');
+            if (list && !list.hasInfiniteScrollBound) {
+                list.hasInfiniteScrollBound = true;
+                list.addEventListener('scroll', () => {
+                    if (list.scrollTop + list.clientHeight >= list.scrollHeight - 120) {
+                        if (hasMorePhotos && !isLoadingPhotosChunk) {
+                            loadMorePhotosChunk();
+                        }
+                    }
+                });
+            }
         }
 
         function setPhotosViewMode(mode) {
@@ -6858,7 +6876,7 @@
 
         function renderGalleryPhotosView(photos, isReset = true) {
             if (currentPhotosViewMode === 'list') {
-                renderPhotosListView(photos);
+                renderPhotosListView(filteredGalleryPhotos);
             } else {
                 renderGalleryPhotosGrid(photos, isReset);
             }
@@ -6998,19 +7016,25 @@
                 const escapedPath = (photo.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\'");
                 const escapedName = (photo.name || 'Photo').replace(/'/g, "\'");
 
+                const cachedThumb = photoThumbnailsCache[photoId] || (photo.path ? photoThumbnailsCache[photo.path] : null) || (photo.uri ? photoThumbnailsCache[photo.uri] : null);
+                if (!cachedThumb && idx < 50) {
+                    pendingPhotoThumbnailQueue.push({ id: photoId, path: photo.path || '', uri: photo.uri || '', idx: idx });
+                }
+
                 const tr = document.createElement('tr');
+                tr.id = `photo-list-row-${photoId}`;
                 tr.className = `hover:bg-white/5 transition-colors cursor-pointer ${isSelected ? 'bg-cyan-950/30' : ''}`;
                 tr.onclick = () => togglePhotoSelection(photoId);
                 tr.ondblclick = () => openPhotoLightbox(idx);
 
                 tr.innerHTML = `
                     <td class="p-2.5 text-center" onclick="event.stopPropagation(); togglePhotoSelection(${photoId})">
-                        <input type="checkbox" ${isSelected ? 'checked' : ''} class="rounded border-gray-700 text-cyan-500 cursor-pointer">
+                        <input type="checkbox" data-id="${photoId}" ${isSelected ? 'checked' : ''} class="rounded border-gray-700 text-cyan-500 cursor-pointer">
                     </td>
                     <td class="p-2.5">
-                        <div class="w-9 h-9 rounded-lg bg-gray-900 border border-gray-800 overflow-hidden flex items-center justify-center">
-                            <img id="photo-list-thumb-${photoId}" src="${photoThumbnailsCache[photoId] || ''}" class="w-full h-full object-cover ${photoThumbnailsCache[photoId] ? '' : 'hidden'}" />
-                            <span class="text-xs opacity-50 ${photoThumbnailsCache[photoId] ? 'hidden' : ''}">🖼️</span>
+                        <div class="w-9 h-9 rounded-lg bg-gray-900 border border-gray-800 overflow-hidden flex items-center justify-center relative">
+                            <img id="photo-list-thumb-${photoId}" src="${cachedThumb || ''}" class="w-full h-full object-cover ${cachedThumb ? '' : 'hidden'}" />
+                            <span class="text-xs opacity-50 ${cachedThumb ? 'hidden' : ''}">🖼️</span>
                         </div>
                     </td>
                     <td class="p-2.5 font-medium text-gray-100 truncate max-w-xs" title="${escapedName}">${escapedName}</td>
@@ -7024,6 +7048,8 @@
                 `;
                 tbody.appendChild(tr);
             });
+            dispatchPhotoThumbnailRequests();
+            setupPhotosInfiniteScroll();
         }
 
         function dispatchPhotoThumbnailRequests() {
@@ -7063,10 +7089,12 @@
             }
             if (ldr) ldr.classList.add('hidden');
 
-            const listImg = data.id ? document.getElementById('photo-list-thumb-' + data.id) : null;
+            const listImg = (data.id ? document.getElementById('photo-list-thumb-' + data.id) : null) ||
+                            (data.tag !== undefined ? document.getElementById('photo-list-thumb-' + data.tag) : null);
             if (listImg) {
                 listImg.src = dataUri;
                 listImg.classList.remove('hidden');
+                if (listImg.nextElementSibling) listImg.nextElementSibling.classList.add('hidden');
             }
 
             // Lightbox sync
@@ -7108,6 +7136,13 @@
                 }
             }
 
+            const listRow = document.getElementById(`photo-list-row-${photoId}`);
+            if (listRow) {
+                const cb = listRow.querySelector('input[type="checkbox"]');
+                if (cb) cb.checked = selectedPhotoIds.has(photoId);
+                listRow.classList.toggle('bg-cyan-950/30', selectedPhotoIds.has(photoId));
+            }
+
             updatePhotoBatchSelectionUI();
         }
 
@@ -7131,6 +7166,14 @@
                         checkEl.className = `w-5 h-5 rounded-md ${isSelected ? 'bg-cyan-500 text-white' : 'bg-black/60 text-transparent border border-white/50 hover:border-white'} flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all`;
                     }
                 }
+            });
+
+            document.querySelectorAll('#photos-list-tbody tr').forEach(row => {
+                const id = row.id.replace('photo-list-row-', '');
+                const cb = row.querySelector('input[type="checkbox"]');
+                const isSelected = selectedPhotoIds.has(id) || selectedPhotoIds.has(Number(id));
+                if (cb) cb.checked = isSelected;
+                row.classList.toggle('bg-cyan-950/30', isSelected);
             });
 
             updatePhotoBatchSelectionUI();
@@ -7162,6 +7205,9 @@
                 if (batchDeleteBtn) batchDeleteBtn.classList.add('hidden');
                 if (btn) btn.textContent = 'Select All';
             }
+
+            const hdrCb = document.getElementById('photos-list-select-all-cb');
+            if (hdrCb) hdrCb.checked = (selectedPhotoIds.size === filteredGalleryPhotos.length && filteredGalleryPhotos.length > 0);
         }
 
         function downloadSelectedPhotos() {
@@ -7507,15 +7553,27 @@
 
         function setupVideosInfiniteScroll() {
             const grid = document.getElementById('videos-grid');
-            if (!grid || grid.hasInfiniteScrollBound) return;
-            grid.hasInfiniteScrollBound = true;
-            grid.addEventListener('scroll', () => {
-                if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 120) {
-                    if (hasMoreVideos && !isLoadingVideosChunk) {
-                        loadMoreVideosChunk();
+            if (grid && !grid.hasInfiniteScrollBound) {
+                grid.hasInfiniteScrollBound = true;
+                grid.addEventListener('scroll', () => {
+                    if (grid.scrollTop + grid.clientHeight >= grid.scrollHeight - 120) {
+                        if (hasMoreVideos && !isLoadingVideosChunk) {
+                            loadMoreVideosChunk();
+                        }
                     }
-                }
-            });
+                });
+            }
+            const list = document.getElementById('videos-list-view');
+            if (list && !list.hasInfiniteScrollBound) {
+                list.hasInfiniteScrollBound = true;
+                list.addEventListener('scroll', () => {
+                    if (list.scrollTop + list.clientHeight >= list.scrollHeight - 120) {
+                        if (hasMoreVideos && !isLoadingVideosChunk) {
+                            loadMoreVideosChunk();
+                        }
+                    }
+                });
+            }
         }
 
         function setVideosViewMode(mode) {
@@ -7551,7 +7609,7 @@
 
         function renderGalleryVideosView(videos, isReset = true) {
             if (currentVideosViewMode === 'list') {
-                renderVideosListView(videos);
+                renderVideosListView(filteredGalleryVideos);
             } else {
                 renderGalleryVideosGrid(videos, isReset);
             }
@@ -7697,19 +7755,25 @@
                 const escapedPath = (video.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\'");
                 const escapedTitle = (video.title || video.name || 'Video').replace(/'/g, "\'");
 
+                const cachedThumb = videoThumbnailsCache[videoId] || (video.path ? videoThumbnailsCache[video.path] : null) || (video.uri ? videoThumbnailsCache[video.uri] : null);
+                if (!cachedThumb && idx < 50) {
+                    pendingVideoThumbnailQueue.push({ id: videoId, path: video.path || '', uri: video.uri || '', idx: idx });
+                }
+
                 const tr = document.createElement('tr');
+                tr.id = `video-list-row-${videoId}`;
                 tr.className = `hover:bg-white/5 transition-colors cursor-pointer ${isSelected ? 'bg-rose-950/30' : ''}`;
                 tr.onclick = () => toggleVideoSelection(videoId);
                 tr.ondblclick = () => playGalleryVideo(idx);
 
                 tr.innerHTML = `
                     <td class="p-2.5 text-center" onclick="event.stopPropagation(); toggleVideoSelection(${videoId})">
-                        <input type="checkbox" ${isSelected ? 'checked' : ''} class="rounded border-gray-700 text-rose-500 cursor-pointer">
+                        <input type="checkbox" data-id="${videoId}" ${isSelected ? 'checked' : ''} class="rounded border-gray-700 text-rose-500 cursor-pointer">
                     </td>
                     <td class="p-2.5">
                         <div class="w-12 h-8 rounded-lg bg-gray-900 border border-gray-800 overflow-hidden flex items-center justify-center relative">
-                            <img id="video-list-thumb-${videoId}" src="${videoThumbnailsCache[videoId] || ''}" class="w-full h-full object-cover ${videoThumbnailsCache[videoId] ? '' : 'hidden'}" />
-                            <span class="text-xs opacity-50 ${videoThumbnailsCache[videoId] ? 'hidden' : ''}">🎬</span>
+                            <img id="video-list-thumb-${videoId}" src="${cachedThumb || ''}" class="w-full h-full object-cover ${cachedThumb ? '' : 'hidden'}" />
+                            <span class="text-xs opacity-50 ${cachedThumb ? 'hidden' : ''}">🎬</span>
                             <span class="absolute inset-0 flex items-center justify-center text-[10px] text-white/80">▶</span>
                         </div>
                     </td>
@@ -7724,6 +7788,8 @@
                 `;
                 tbody.appendChild(tr);
             });
+            dispatchVideoThumbnailRequests();
+            setupVideosInfiniteScroll();
         }
 
         function dispatchVideoThumbnailRequests() {
@@ -7763,10 +7829,12 @@
             }
             if (ldr) ldr.classList.add('hidden');
 
-            const listImg = data.id ? document.getElementById('video-list-thumb-' + data.id) : null;
+            const listImg = (data.id ? document.getElementById('video-list-thumb-' + data.id) : null) ||
+                            (data.tag !== undefined ? document.getElementById('video-list-thumb-' + data.tag) : null);
             if (listImg) {
                 listImg.src = dataUri;
                 listImg.classList.remove('hidden');
+                if (listImg.nextElementSibling) listImg.nextElementSibling.classList.add('hidden');
             }
         }
 
@@ -7794,6 +7862,13 @@
                 }
             }
 
+            const listRow = document.getElementById(`video-list-row-${videoId}`);
+            if (listRow) {
+                const cb = listRow.querySelector('input[type="checkbox"]');
+                if (cb) cb.checked = selectedVideoIds.has(videoId);
+                listRow.classList.toggle('bg-rose-950/30', selectedVideoIds.has(videoId));
+            }
+
             updateVideoBatchSelectionUI();
         }
 
@@ -7817,6 +7892,14 @@
                         checkEl.className = `w-5 h-5 rounded-md ${isSelected ? 'bg-rose-500 text-white' : 'bg-black/60 text-transparent border border-white/50 hover:border-white'} flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all`;
                     }
                 }
+            });
+
+            document.querySelectorAll('#videos-list-tbody tr').forEach(row => {
+                const id = row.id.replace('video-list-row-', '');
+                const cb = row.querySelector('input[type="checkbox"]');
+                const isSelected = selectedVideoIds.has(id) || selectedVideoIds.has(Number(id));
+                if (cb) cb.checked = isSelected;
+                row.classList.toggle('bg-rose-950/30', isSelected);
             });
 
             updateVideoBatchSelectionUI();
@@ -7848,6 +7931,9 @@
                 if (batchDeleteBtn) batchDeleteBtn.classList.add('hidden');
                 if (btn) btn.textContent = 'Select All';
             }
+
+            const hdrCb = document.getElementById('videos-list-select-all-cb');
+            if (hdrCb) hdrCb.checked = (selectedVideoIds.size === filteredGalleryVideos.length && filteredGalleryVideos.length > 0);
         }
 
         function downloadSelectedVideos() {
