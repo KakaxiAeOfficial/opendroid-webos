@@ -1,4 +1,4 @@
-﻿<html lang="en">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -53,7 +53,7 @@
 <body class="h-screen w-screen text-gray-800 font-sans relative">
 
     <!-- Connect / Pairing Modal (Dual-Mode: 6-Digit Guest or Central Account) -->
-            <!-- Window: Settings & Account Preferences (AirDroid Style Revamped) -->
+            <!-- Window: Settings & Account Preferences (OpenDroid Style Revamped) -->
     <div id="settings-window" class="window hidden" style="display: none; width: 780px; height: 580px; top: 60px; left: 240px; min-width: 650px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55); border-radius: 1rem; border: 1px solid rgba(75, 85, 99, 0.4); background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(20px);">
         <!-- Title Bar -->
         <div class="title-bar bg-gray-900/90 text-white px-4 py-2.5 flex justify-between items-center select-none border-b border-gray-800">
@@ -68,7 +68,7 @@
             </div>
         </div>
 
-        <!-- Settings Top Tab Navigation (AirDroid Style) -->
+        <!-- Settings Top Tab Navigation (OpenDroid Style) -->
         <div class="bg-gray-900/60 border-b border-gray-800/80 px-4 py-2 flex items-center gap-2 text-xs select-none">
             <button id="btn-tab-setting-account" onclick="switchSettingsTab('account')" class="px-3.5 py-1.5 rounded-lg font-semibold transition-all bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer">
                 <span>👤</span> Account
@@ -180,7 +180,7 @@
                 </div>
             </div>
 
-            <!-- TAB 3: CONNECTED DEVICES (AirDroid Style) -->
+            <!-- TAB 3: CONNECTED DEVICES (OpenDroid Style) -->
             <div id="settings-tab-devices" class="hidden space-y-4">
                 <div class="flex items-center justify-between px-1">
                     <span id="st-device-count" class="font-bold text-xs text-gray-300">Connected Devices: 1 Active</span>
@@ -422,7 +422,7 @@
         </div>
     </div>
 
-    <!-- Modal: Image Preview & AirDroid-Grade Lightbox (Phase 15.2) -->
+    <!-- Modal: Image Preview & OpenDroid-Grade Lightbox (Phase 15.2) -->
     <div id="image-preview-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-lg flex flex-col justify-between overflow-hidden select-none" style="z-index: 99999 !important;">
         <!-- Top Toolbar -->
         <div class="p-3.5 bg-gray-900/80 border-b border-white/10 flex justify-between items-center text-xs text-white z-30">
@@ -449,7 +449,7 @@
             </div>
         </div>
 
-        <!-- Bottom Floating Controls Toolbar (AirDroid Studio Style) -->
+        <!-- Bottom Floating Controls Toolbar (OpenDroid Studio Style) -->
         <div class="p-3 bg-gray-900/90 border-t border-white/10 flex items-center justify-center gap-3 text-xs select-none z-30">
             <button onclick="zoomLightboxPhoto(-0.2)" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl font-bold border border-gray-700 transition-all cursor-pointer flex items-center gap-1 shadow-sm" title="Zoom Out">
                 <span>🔍−</span>
@@ -487,6 +487,29 @@
         </div>
     </div>
 
+    <!-- OpenDroid-Style Media Hover Details Floating Tooltip -->
+    <div id="media-hover-tooltip" class="pointer-events-none fixed z-[999999] hidden max-w-sm rounded-xl border border-gray-700 bg-gray-900/95 p-3 text-xs text-gray-200 shadow-2xl backdrop-blur-md transition-opacity duration-150">
+        <div id="tooltip-content" class="space-y-1 font-mono text-[11px]"></div>
+    </div>
+
+    <!-- Media Delete Confirmation Dialog Modal (OpenDroid Style) -->
+    <div id="media-delete-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" style="z-index: 999999 !important;">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-5 flex flex-col gap-4 text-white">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center text-xl shrink-0">🗑️</div>
+                <div>
+                    <h3 class="font-bold text-sm text-gray-100" id="media-delete-title">Delete Media</h3>
+                    <p class="text-xs text-gray-400 mt-0.5" id="media-delete-subtitle">Are you sure you want to permanently delete this item from your phone?</p>
+                </div>
+            </div>
+            <div id="media-delete-items-list" class="bg-gray-950 p-2.5 rounded-xl text-[11px] font-mono text-gray-300 max-h-32 overflow-y-auto border border-gray-800/80"></div>
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-gray-800">
+                <button onclick="closeMediaDeleteModal()" class="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium text-xs cursor-pointer transition-all">Cancel</button>
+                <button id="media-delete-confirm-btn" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md shadow-rose-600/30 cursor-pointer transition-all">Delete Permanently</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Top Dock Bar -->
     <!-- Top Navigation Header (OpenDroid Cybernetic Glassmorphic Bar) -->
     <header id="webos-header" class="fixed top-2.5 left-1/2 -translate-x-1/2 h-11 w-auto max-w-[94vw] bg-gray-950/80 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.65)] z-40 flex items-center justify-between px-3.5 text-xs select-none gap-3">
@@ -510,7 +533,7 @@
             </div>
         </div>
 
-        <!-- Center: AirDroid-Style Global Quick Search Input -->
+        <!-- Center: OpenDroid-Style Global Quick Search Input -->
         <div class="relative flex items-center w-64 md:w-80">
             <input type="text" id="top-search" oninput="handleGlobalSearch(this.value)" placeholder="Search apps, files, contacts..." class="w-full bg-gray-900/80 border border-gray-700/70 rounded-full pl-8 pr-7 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/40 transition-all shadow-inner">
             <span class="absolute left-2.5 text-gray-400 text-xs">🔍</span>
@@ -642,7 +665,7 @@
             <span class="text-xs font-medium text-center mt-1">Device Hub</span>
         </div>
 
-        <!-- AirDroid-Style Settings & Account Preferences Icon -->
+        <!-- OpenDroid-Style Settings & Account Preferences Icon -->
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('settings-window')">
             <div class="app-tile bg-gradient-to-tr from-slate-700 to-gray-900 border border-gray-600/40">⚙️</div>
             <span class="text-xs font-medium text-center mt-1">Settings</span>
@@ -718,7 +741,7 @@
     </div>
 
     <!-- OpenDroid Right-Side Device & Quick Toolbox Widget -->
-    <div id="airdroid-widget" class="fixed top-14 right-6 w-80 bg-gray-900/85 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-4 text-white z-20 transition-all duration-300 select-none">
+    <div id="opendroid-toolbox-widget" class="fixed top-14 right-6 w-80 bg-gray-900/85 backdrop-blur-xl border border-white/15 rounded-2xl shadow-2xl p-4 text-white z-20 transition-all duration-300 select-none">
 
         <!-- Header: Phone Model & Status -->
         <div class="flex items-center justify-between pb-3 border-b border-white/10">
@@ -2050,7 +2073,7 @@
         </div>
     </div>
 
-    <!-- Window: Photos Gallery (Phase 15.2 AirDroid-Grade Two-Pane Studio) -->
+    <!-- Window: Photos Gallery (Phase 15.2 OpenDroid-Grade Two-Pane Studio) -->
     <div id="photos-window" class="window hidden" style="display: none; width: 940px; height: 620px; top: 65px; left: 230px; min-width: 680px; min-height: 460px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
@@ -2064,7 +2087,7 @@
             </div>
         </div>
         <div class="flex-1 bg-gray-950 overflow-hidden flex text-gray-200">
-            <!-- Left Sidebar: Albums Navigation (AirDroid Style) -->
+            <!-- Left Sidebar: Albums Navigation (OpenDroid Style) -->
             <div class="w-56 bg-gray-900/90 border-r border-gray-800/90 flex flex-col select-none shrink-0">
                 <div class="p-3 border-b border-gray-800/80 flex items-center justify-between">
                     <span class="text-[11px] font-bold tracking-wider text-gray-400 uppercase">Albums</span>
@@ -2082,18 +2105,31 @@
 
             <!-- Right Content Area -->
             <div class="flex-1 flex flex-col overflow-hidden bg-gray-950">
-                <!-- Top Action Toolbar -->
-                <div class="p-2.5 bg-gray-900/70 border-b border-gray-800/80 flex items-center justify-between gap-3 text-xs select-none">
-                    <div class="flex items-center gap-2.5">
+                <!-- Top Action Toolbar (OpenDroid Style & Advanced Studio) -->
+                <div class="p-2.5 bg-gray-900/80 border-b border-gray-800/80 flex items-center justify-between gap-3 text-xs select-none">
+                    <div class="flex items-center gap-2.5 shrink-0">
                         <span id="photos-current-album-title" class="font-bold text-gray-100 text-sm">All Photos</span>
                         <span id="photos-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-800 text-gray-300 border border-gray-700">0 Photos</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="toggleSelectAllPhotos()" id="photos-select-all-btn" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1 cursor-pointer transition-all">
+                    <!-- Middle: Live Search Filter -->
+                    <div class="flex-1 max-w-xs relative">
+                        <input type="text" id="photos-search-input" oninput="filterPhotosBySearch(this.value)" placeholder="Search in album..." class="w-full bg-gray-950/80 border border-gray-800 rounded-lg pl-7 pr-3 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-500/60 transition-all font-sans">
+                        <span class="absolute left-2 top-1 text-gray-500 text-xs">🔍</span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <!-- View Mode Switcher -->
+                        <div class="flex items-center bg-gray-950 rounded-lg border border-gray-800 p-0.5 text-gray-400">
+                            <button id="photos-view-grid-btn" onclick="setPhotosViewMode('grid')" class="px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-300 transition-all" title="Grid View">▦</button>
+                            <button id="photos-view-list-btn" onclick="setPhotosViewMode('list')" class="px-2 py-0.5 rounded text-xs font-bold hover:text-white transition-all" title="Detailed List View">☰</button>
+                        </div>
+                        <button onclick="toggleSelectAllPhotos()" id="btn-select-all-photos" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1 cursor-pointer transition-all">
                             <span>☑️</span><span>Select All</span>
                         </button>
-                        <button onclick="downloadSelectedPhotos()" id="photos-batch-download-btn" class="hidden px-2.5 py-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
+                        <button onclick="downloadSelectedPhotos()" id="btn-download-selected-photos" class="hidden px-2.5 py-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
                             <span>⬇</span><span>Download (<span id="photos-selected-count">0</span>)</span>
+                        </button>
+                        <button onclick="deleteSelectedPhotos()" id="btn-delete-selected-photos" class="hidden px-2.5 py-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
+                            <span>🗑️</span><span>Delete (<span id="photos-delete-selected-count">0</span>)</span>
                         </button>
                         <button onclick="fetchGalleryPhotos(currentPhotoBucket)" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1 border border-gray-700 cursor-pointer transition-all">
                             <span>🔄</span><span>Refresh</span>
@@ -2197,7 +2233,7 @@
         </div>
     </div>
 
-    <!-- Window: Videos Manager (Phase 15.2 AirDroid-Grade Two-Pane Studio) -->
+    <!-- Window: Videos Manager (Phase 15.2 OpenDroid-Grade Two-Pane Studio) -->
     <div id="videos-window" class="window hidden" style="display: none; width: 940px; height: 620px; top: 75px; left: 240px; min-width: 680px; min-height: 460px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
@@ -2229,13 +2265,32 @@
 
             <!-- Right Content Area -->
             <div class="flex-1 flex flex-col overflow-hidden bg-gray-950">
-                <!-- Top Action Toolbar -->
-                <div class="p-2.5 bg-gray-900/70 border-b border-gray-800/80 flex items-center justify-between gap-3 text-xs select-none">
-                    <div class="flex items-center gap-2.5">
+                <!-- Top Action Toolbar (OpenDroid Style & Advanced Video Studio) -->
+                <div class="p-2.5 bg-gray-900/80 border-b border-gray-800/80 flex items-center justify-between gap-3 text-xs select-none">
+                    <div class="flex items-center gap-2.5 shrink-0">
                         <span id="videos-current-album-title" class="font-bold text-gray-100 text-sm">All Videos</span>
                         <span id="videos-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-gray-800 text-gray-300 border border-gray-700">0 Videos</span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <!-- Middle: Live Search Filter -->
+                    <div class="flex-1 max-w-xs relative">
+                        <input type="text" id="videos-search-input" oninput="filterVideosBySearch(this.value)" placeholder="Search in folder..." class="w-full bg-gray-950/80 border border-gray-800 rounded-lg pl-7 pr-3 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-rose-500/60 transition-all font-sans">
+                        <span class="absolute left-2 top-1 text-gray-500 text-xs">🔍</span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <!-- View Mode Switcher -->
+                        <div class="flex items-center bg-gray-950 rounded-lg border border-gray-800 p-0.5 text-gray-400">
+                            <button id="videos-view-grid-btn" onclick="setVideosViewMode('grid')" class="px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-300 transition-all" title="Grid View">▦</button>
+                            <button id="videos-view-list-btn" onclick="setVideosViewMode('list')" class="px-2 py-0.5 rounded text-xs font-bold hover:text-white transition-all" title="Detailed List View">☰</button>
+                        </div>
+                        <button onclick="toggleSelectAllVideos()" id="btn-select-all-videos" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs font-medium border border-gray-700 flex items-center gap-1 cursor-pointer transition-all">
+                            <span>☑️</span><span>Select All</span>
+                        </button>
+                        <button onclick="downloadSelectedVideos()" id="btn-download-selected-videos" class="hidden px-2.5 py-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
+                            <span>⬇</span><span>Download (<span id="videos-selected-count">0</span>)</span>
+                        </button>
+                        <button onclick="deleteSelectedVideos()" id="btn-delete-selected-videos" class="hidden px-2.5 py-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow transition-all">
+                            <span>🗑️</span><span>Delete (<span id="videos-delete-selected-count">0</span>)</span>
+                        </button>
                         <button onclick="fetchGalleryVideos(currentVideoBucket)" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1 border border-gray-700 cursor-pointer transition-all">
                             <span>🔄</span><span>Refresh</span>
                         </button>
@@ -6244,6 +6299,19 @@
             }
         }
 
+        function formatDuration(ms) {
+            if (!ms || isNaN(ms)) return '00:00';
+            const totalSecs = Math.floor(ms / 1000);
+            const hrs = Math.floor(totalSecs / 3600);
+            const mins = Math.floor((totalSecs % 3600) / 60);
+            const secs = totalSecs % 60;
+            const pad = (n) => String(n).padStart(2, '0');
+            if (hrs > 0) {
+                return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+            }
+            return `${pad(mins)}:${pad(secs)}`;
+        }
+    
         function formatBytes(bytes) {
             if (!bytes || bytes === 0) return '0 B';
             const k = 1024;
@@ -6439,8 +6507,9 @@
         // --- PHASE 15: HIGH-SPEED REMOTE MEDIA GALLERY & STREAMER SUITE ---
         // =========================================================================
 
-        // --- 1. Photos Gallery & Lightbox Engine (Phase 15.2 AirDroid Chunk-Wise Studio) ---
+        // --- 1. Photos Gallery & Lightbox Engine (Phase 15.2 OpenDroid-Grade Studio) ---
         let allGalleryPhotos = [];
+        let filteredGalleryPhotos = [];
         let currentPhotoBucket = 'All';
         let photoBuckets = [];
         let selectedPhotoIds = new Set();
@@ -6457,6 +6526,83 @@
         let hasMorePhotos = true;
         let isLoadingPhotosChunk = false;
         let photoIntersectionObserver = null;
+        let currentPhotosViewMode = 'grid'; // 'grid' | 'list'
+
+        // Global Media Hover Tooltip Controller (OpenDroid Style)
+        function showMediaHoverTooltip(e, data) {
+            const tip = document.getElementById('media-hover-tooltip');
+            const content = document.getElementById('tooltip-content');
+            if (!tip || !content) return;
+
+            let html = `<div><span class="text-gray-400">Name:</span> <span class="font-bold text-white break-all">${data.name || 'Media'}</span></div>`;
+            if (data.size) html += `<div><span class="text-gray-400">Size:</span> <span class="text-cyan-400 font-semibold">${formatBytes(data.size)}</span></div>`;
+            if (data.duration) html += `<div><span class="text-gray-400">Time:</span> <span class="text-amber-400 font-bold">${formatDuration(data.duration)}</span></div>`;
+            if (data.date) {
+                const dateObj = new Date(data.date);
+                const dateStr = dateObj.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
+                const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                html += `<div><span class="text-gray-400">Date Modified:</span> <span class="text-gray-300">${dateStr} ${timeStr}</span></div>`;
+            }
+            if (data.width && data.height) {
+                html += `<div><span class="text-gray-400">Resolution:</span> <span class="text-emerald-400 font-medium">${data.width} × ${data.height}</span></div>`;
+            }
+            if (data.path) {
+                html += `<div class="truncate text-[10px] pt-1 mt-1 text-gray-400 border-t border-gray-800"><span class="text-gray-500">Location:</span> <span class="text-gray-300" title="${data.path}">${data.path}</span></div>`;
+            }
+
+            content.innerHTML = html;
+            tip.classList.remove('hidden');
+            positionMediaHoverTooltip(e);
+        }
+
+        function positionMediaHoverTooltip(e) {
+            const tip = document.getElementById('media-hover-tooltip');
+            if (!tip || tip.classList.contains('hidden')) return;
+            const x = e.clientX + 14;
+            const y = e.clientY + 14;
+            const maxX = window.innerWidth - 320;
+            const maxY = window.innerHeight - 170;
+            tip.style.left = `${Math.min(maxX, x)}px`;
+            tip.style.top = `${Math.min(maxY, y)}px`;
+        }
+
+        function hideMediaHoverTooltip() {
+            const tip = document.getElementById('media-hover-tooltip');
+            if (tip) tip.classList.add('hidden');
+        }
+
+        // Global Media Delete Confirmation Modal Controller
+        let currentMediaDeleteAction = null;
+
+        function openMediaDeleteModal(title, subtitle, items, onConfirm) {
+            const modal = document.getElementById('media-delete-modal');
+            const titleEl = document.getElementById('media-delete-title');
+            const subEl = document.getElementById('media-delete-subtitle');
+            const listEl = document.getElementById('media-delete-items-list');
+            const confirmBtn = document.getElementById('media-delete-confirm-btn');
+
+            if (titleEl) titleEl.textContent = title;
+            if (subEl) subEl.textContent = subtitle;
+            if (listEl) {
+                listEl.innerHTML = items.map(it => `<div class="truncate py-0.5">• ${it}</div>`).join('');
+            }
+
+            currentMediaDeleteAction = onConfirm;
+            if (confirmBtn) {
+                confirmBtn.onclick = () => {
+                    if (currentMediaDeleteAction) currentMediaDeleteAction();
+                    closeMediaDeleteModal();
+                };
+            }
+
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeMediaDeleteModal() {
+            const modal = document.getElementById('media-delete-modal');
+            if (modal) modal.classList.add('hidden');
+            currentMediaDeleteAction = null;
+        }
 
         // Lazy load observer: Requests thumbnail only when the card scrolls into view!
         function getPhotoIntersectionObserver() {
@@ -6495,8 +6641,12 @@
                 photosOffset = 0;
                 hasMorePhotos = true;
                 allGalleryPhotos = [];
+                filteredGalleryPhotos = [];
                 selectedPhotoIds.clear();
                 updatePhotoBatchSelectionUI();
+
+                const searchInput = document.getElementById('photos-search-input');
+                if (searchInput) searchInput.value = '';
 
                 if (photoIntersectionObserver) {
                     photoIntersectionObserver.disconnect();
@@ -6560,6 +6710,7 @@
 
             if (photosOffset === 0) {
                 allGalleryPhotos = photos;
+                filteredGalleryPhotos = photos;
                 photoBuckets = buckets;
                 renderPhotoAlbumsList(buckets, totalCount);
 
@@ -6570,10 +6721,11 @@
                 const allBucket = buckets.find(b => (b.name || '').toLowerCase() === 'all');
                 if (totalBadge) totalBadge.textContent = allBucket ? allBucket.count : totalCount;
 
-                renderGalleryPhotosGrid(photos, true);
+                renderGalleryPhotosView(photos, true);
             } else {
                 allGalleryPhotos.push(...photos);
-                renderGalleryPhotosGrid(photos, false);
+                filteredGalleryPhotos = allGalleryPhotos;
+                renderGalleryPhotosView(photos, false);
             }
 
             photosOffset += photos.length;
@@ -6623,16 +6775,16 @@
                 <div class="pt-2 mt-2 border-t border-gray-800/80">
                     <button onclick="wm.openWindow('videos-window'); fetchGalleryVideos('All');" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs border border-transparent text-gray-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all text-left cursor-pointer">
                         <div class="flex items-center gap-2 truncate">
-                            <span>🎬</span><span class="truncate">All Videos (197)</span>
+                            <span>🎬</span><span class="truncate">All Videos (200)</span>
                         </div>
-                        <span class="text-[10px] font-mono opacity-80 ml-1 shrink-0">197</span>
+                        <span class="text-[10px] font-mono opacity-80 ml-1 shrink-0">200</span>
                     </button>
                 </div>
                 <div class="p-2.5 mt-3 border border-gray-800/70 text-[10px] text-gray-400 bg-gray-900/40 rounded-lg">
                     <div class="font-bold text-gray-300 flex items-center gap-1">
-                        <span>📊</span> Total Media: 1,521
+                        <span>📊</span> Total Media: 1,527
                     </div>
-                    <div class="mt-0.5 text-gray-400 font-mono">1,324 Photos + 197 Videos</div>
+                    <div class="mt-0.5 text-gray-400 font-mono">1,327 Photos + 200 Videos</div>
                 </div>
             `;
 
@@ -6655,6 +6807,45 @@
                     }
                 }
             });
+        }
+
+        function setPhotosViewMode(mode) {
+            currentPhotosViewMode = mode;
+            const gridBtn = document.getElementById('photos-view-grid-btn');
+            const listBtn = document.getElementById('photos-view-list-btn');
+            const gridEl = document.getElementById('photos-grid');
+            const listEl = document.getElementById('photos-list-view');
+
+            if (mode === 'grid') {
+                if (gridBtn) { gridBtn.className = "px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-300 transition-all"; }
+                if (listBtn) { listBtn.className = "px-2 py-0.5 rounded text-xs font-bold hover:text-white transition-all"; }
+                if (gridEl) gridEl.classList.remove('hidden');
+                if (listEl) listEl.classList.add('hidden');
+            } else {
+                if (gridBtn) { gridBtn.className = "px-2 py-0.5 rounded text-xs font-bold hover:text-white transition-all"; }
+                if (listBtn) { listBtn.className = "px-2 py-0.5 rounded text-xs font-bold bg-cyan-500/20 text-cyan-300 transition-all"; }
+                if (gridEl) gridEl.classList.add('hidden');
+                if (listEl) listEl.classList.remove('hidden');
+            }
+            renderGalleryPhotosView(filteredGalleryPhotos, true);
+        }
+
+        function filterPhotosBySearch(query) {
+            query = (query || '').toLowerCase().trim();
+            if (!query) {
+                filteredGalleryPhotos = allGalleryPhotos;
+            } else {
+                filteredGalleryPhotos = allGalleryPhotos.filter(p => (p.name || '').toLowerCase().includes(query) || (p.path || '').toLowerCase().includes(query));
+            }
+            renderGalleryPhotosView(filteredGalleryPhotos, true);
+        }
+
+        function renderGalleryPhotosView(photos, isReset = true) {
+            if (currentPhotosViewMode === 'list') {
+                renderPhotosListView(photos);
+            } else {
+                renderGalleryPhotosGrid(photos, isReset);
+            }
         }
 
         function renderGalleryPhotosGrid(photos, isReset = true) {
@@ -6693,14 +6884,25 @@
                 const card = document.createElement('div');
                 card.id = `photo-card-${photoId}`;
                 card.className = `group relative bg-gray-900 border rounded-xl overflow-hidden hover:border-cyan-400 hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer select-none photo-grid-item ${isSelected ? 'border-cyan-500 ring-2 ring-cyan-500/40' : 'border-gray-800'}`;
-                // Fixed row height guarantees no collapsing or overlapping!
                 card.style.cssText = "height: 140px; width: 100%; position: relative; overflow: hidden; display: block;";
                 card.setAttribute('data-id', photoId);
                 card.setAttribute('data-path', photo.path || '');
                 card.setAttribute('data-uri', photo.uri || '');
                 card.setAttribute('data-idx', globalIdx);
 
-                // AirDroid Behavior: Single click = select, Double click = Fullscreen Lightbox
+                // Mouse events for OpenDroid Rich Hover Tooltip
+                card.onmouseenter = (e) => showMediaHoverTooltip(e, {
+                    name: photo.name,
+                    size: photo.size,
+                    date: photo.date,
+                    width: photo.width,
+                    height: photo.height,
+                    path: photo.path
+                });
+                card.onmousemove = (e) => positionMediaHoverTooltip(e);
+                card.onmouseleave = () => hideMediaHoverTooltip();
+
+                // OpenDroid Behavior: Single click = select, Double click = Fullscreen Lightbox
                 card.onclick = (e) => {
                     if (e.detail === 1) {
                         togglePhotoSelection(photoId);
@@ -6714,30 +6916,33 @@
                 card.innerHTML = `
                     <div class="relative w-full h-full bg-gray-950 flex items-center justify-center overflow-hidden">
                         <img id="photo-thumb-img-${photoId}" src="" alt="${escapedName}" class="w-full h-full object-cover transition-opacity duration-300 opacity-0 group-hover:scale-105 pointer-events-none" onload="this.classList.remove('opacity-0'); document.getElementById('photo-thumb-ldr-${photoId}')?.classList.add('hidden');" onerror="document.getElementById('photo-thumb-ldr-${photoId}')?.classList.remove('hidden');" />
-                        <!-- AirDroid Mountain Placeholder Icon & Loading Spinner -->
+                        <!-- OpenDroid Mountain Placeholder Icon & Loading Spinner -->
                         <div id="photo-thumb-ldr-${photoId}" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-gray-500 gap-1.5 transition-opacity duration-300">
                             <svg class="w-8 h-8 opacity-40 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
                             <div class="w-4 h-4 border-2 border-cyan-500/30 border-t-cyan-400 rounded-full animate-spin"></div>
                         </div>
-                        <!-- Top-Left AirDroid Selection Checkbox -->
+                        <!-- Top-Left OpenDroid Selection Checkbox -->
                         <div class="absolute top-2 left-2 z-20 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity" onclick="event.stopPropagation(); togglePhotoSelection(${photoId})">
                             <div class="w-5 h-5 rounded-md ${isSelected ? 'bg-cyan-500 text-white' : 'bg-black/60 text-transparent border border-white/50 hover:border-white'} flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all">
                                 ✓
                             </div>
                         </div>
-                        <!-- Hover Overlay with Details & Quick Actions (AirDroid Style) -->
+                        <!-- Hover Overlay with Details & Quick Actions (OpenDroid Style) -->
                         <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2 z-10 pointer-events-none">
                             <div class="flex justify-end gap-1 pointer-events-auto">
-                                <button onclick="event.stopPropagation(); openPhotoLightbox(${globalIdx})" class="p-1 rounded-md bg-gray-900/80 hover:bg-gray-800 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Double click or click to expand (WebP Preview)">
+                                <button onclick="event.stopPropagation(); openPhotoLightbox(${globalIdx})" class="p-1 rounded-md bg-gray-900/80 hover:bg-gray-800 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Expand Lightbox (WebP Preview)">
                                     🔍
                                 </button>
-                                <button onclick="event.stopPropagation(); setPhotoWallpaper('${escapedPath}', '${escapedUri}')" class="p-1 rounded-md bg-amber-600/80 hover:bg-amber-600 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Set as Wallpaper">
+                                <button onclick="event.stopPropagation(); setPhotoWallpaper('${escapedPath}', '${escapedUri}')" class="p-1 rounded-md bg-amber-600/80 hover:bg-amber-600 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Set as Phone Wallpaper">
                                     📱
                                 </button>
                                 <button onclick="event.stopPropagation(); triggerFileDownload('${escapedPath}', '${escapedName}')" class="p-1 rounded-md bg-blue-600/80 hover:bg-blue-600 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Download Original File">
                                     ⬇
+                                </button>
+                                <button onclick="event.stopPropagation(); deleteSinglePhoto(${globalIdx})" class="p-1 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Delete from Phone">
+                                    🗑️
                                 </button>
                             </div>
                             <div class="truncate text-left pointer-events-auto">
@@ -6752,15 +6957,57 @@
                 `;
 
                 fragment.appendChild(card);
-
-                // Observe card: Requests thumbnail ONLY when card scrolls into view!
                 observer.observe(card);
             });
 
             grid.appendChild(fragment);
-
-            // Bind bottom scroll listener for chunk-wise pagination
             setupPhotosInfiniteScroll();
+        }
+
+        function renderPhotosListView(photos) {
+            const tbody = document.getElementById('photos-list-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (!photos || photos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">No photos in this album</td></tr>';
+                return;
+            }
+
+            photos.forEach((photo, idx) => {
+                const photoId = photo.id || idx;
+                const isSelected = selectedPhotoIds.has(photoId);
+                const dateStr = photo.date ? new Date(photo.date).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '--';
+                const sizeStr = photo.size ? formatBytes(photo.size) : '--';
+                const escapedPath = (photo.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\'");
+                const escapedName = (photo.name || 'Photo').replace(/'/g, "\'");
+
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-white/5 transition-colors cursor-pointer ${isSelected ? 'bg-cyan-950/30' : ''}`;
+                tr.onclick = () => togglePhotoSelection(photoId);
+                tr.ondblclick = () => openPhotoLightbox(idx);
+
+                tr.innerHTML = `
+                    <td class="p-2.5 text-center" onclick="event.stopPropagation(); togglePhotoSelection(${photoId})">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} class="rounded border-gray-700 text-cyan-500 cursor-pointer">
+                    </td>
+                    <td class="p-2.5">
+                        <div class="w-9 h-9 rounded-lg bg-gray-900 border border-gray-800 overflow-hidden flex items-center justify-center">
+                            <img id="photo-list-thumb-${photoId}" src="${photoThumbnailsCache[photoId] || ''}" class="w-full h-full object-cover ${photoThumbnailsCache[photoId] ? '' : 'hidden'}" />
+                            <span class="text-xs opacity-50 ${photoThumbnailsCache[photoId] ? 'hidden' : ''}">🖼️</span>
+                        </div>
+                    </td>
+                    <td class="p-2.5 font-medium text-gray-100 truncate max-w-xs" title="${escapedName}">${escapedName}</td>
+                    <td class="p-2.5 font-mono text-gray-400">${sizeStr}</td>
+                    <td class="p-2.5 font-mono text-gray-400 text-[11px]">${dateStr}</td>
+                    <td class="p-2.5 text-right space-x-1.5" onclick="event.stopPropagation()">
+                        <button onclick="openPhotoLightbox(${idx})" class="p-1 hover:text-cyan-400 text-gray-400" title="Preview">🔍</button>
+                        <button onclick="triggerFileDownload('${escapedPath}', '${escapedName}')" class="p-1 hover:text-blue-400 text-gray-400" title="Download">⬇</button>
+                        <button onclick="deleteSinglePhoto(${idx})" class="p-1 hover:text-rose-400 text-gray-400" title="Delete">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         function dispatchPhotoThumbnailRequests() {
@@ -6790,7 +7037,6 @@
             if (data.path) photoThumbnailsCache[data.path] = dataUri;
             if (data.uri) photoThumbnailsCache[data.uri] = dataUri;
 
-            // Direct ID lookup: O(1) Instantaneous DOM binding!
             const img = (data.id ? document.getElementById('photo-thumb-img-' + data.id) : null) ||
                         (data.tag !== undefined ? document.getElementById('photo-thumb-img-' + data.tag) : null);
             const ldr = (data.id ? document.getElementById('photo-thumb-ldr-' + data.id) : null) ||
@@ -6800,6 +7046,12 @@
                 img.src = dataUri;
             }
             if (ldr) ldr.classList.add('hidden');
+
+            const listImg = data.id ? document.getElementById('photo-list-thumb-' + data.id) : null;
+            if (listImg) {
+                listImg.src = dataUri;
+                listImg.classList.remove('hidden');
+            }
 
             // Lightbox sync
             if (currentLightboxIndex !== -1) {
@@ -6845,15 +7097,15 @@
 
         function toggleSelectAllPhotos() {
             const btn = document.getElementById('btn-select-all-photos');
-            const isAllSelected = selectedPhotoIds.size === allGalleryPhotos.length && allGalleryPhotos.length > 0;
+            const isAllSelected = selectedPhotoIds.size === filteredGalleryPhotos.length && filteredGalleryPhotos.length > 0;
 
             if (isAllSelected) {
                 selectedPhotoIds.clear();
             } else {
-                allGalleryPhotos.forEach(p => selectedPhotoIds.add(p.id));
+                filteredGalleryPhotos.forEach(p => selectedPhotoIds.add(p.id));
             }
 
-            allGalleryPhotos.forEach(p => {
+            filteredGalleryPhotos.forEach(p => {
                 const card = document.getElementById(`photo-card-${p.id}`);
                 if (card) {
                     const isSelected = selectedPhotoIds.has(p.id);
@@ -6871,16 +7123,21 @@
         function updatePhotoBatchSelectionUI() {
             const btn = document.getElementById('btn-select-all-photos');
             const countEl = document.getElementById('photos-selected-count');
+            const delCountEl = document.getElementById('photos-delete-selected-count');
             const batchDownloadBtn = document.getElementById('btn-download-selected-photos');
+            const batchDeleteBtn = document.getElementById('btn-delete-selected-photos');
 
             const count = selectedPhotoIds.size;
             if (countEl) countEl.textContent = count;
+            if (delCountEl) delCountEl.textContent = count;
 
             if (count > 0) {
                 if (batchDownloadBtn) batchDownloadBtn.classList.remove('hidden');
+                if (batchDeleteBtn) batchDeleteBtn.classList.remove('hidden');
                 if (btn) btn.innerHTML = '<span>✕</span><span>Deselect All</span>';
             } else {
                 if (batchDownloadBtn) batchDownloadBtn.classList.add('hidden');
+                if (batchDeleteBtn) batchDeleteBtn.classList.add('hidden');
                 if (btn) btn.innerHTML = '<span>☑️</span><span>Select All</span>';
             }
         }
@@ -6894,6 +7151,51 @@
             showNotificationToast(`Starting download of ${selected.length} photos...`, 'success');
         }
 
+        function deleteSinglePhoto(idx) {
+            const photo = allGalleryPhotos[idx];
+            if (!photo) return;
+            openMediaDeleteModal(
+                "Delete Photo",
+                "Are you sure you want to permanently delete this photo from your phone?",
+                [photo.name || 'Photo'],
+                () => {
+                    sendCommand({ action: 'DELETE_FILE', path: photo.path });
+                    allGalleryPhotos.splice(idx, 1);
+                    filteredGalleryPhotos = filteredGalleryPhotos.filter(p => p.id !== photo.id);
+                    selectedPhotoIds.delete(photo.id);
+                    renderGalleryPhotosView(filteredGalleryPhotos, true);
+                    updatePhotoBatchSelectionUI();
+
+                    const countBadge = document.getElementById('photos-count-badge');
+                    if (countBadge) countBadge.textContent = `${allGalleryPhotos.length} Photos`;
+                    showNotificationToast(`Deleted ${photo.name} from phone`, 'info');
+                }
+            );
+        }
+
+        function deleteSelectedPhotos() {
+            if (selectedPhotoIds.size === 0) return;
+            const selected = allGalleryPhotos.filter(p => selectedPhotoIds.has(p.id));
+            const paths = selected.map(p => p.path).filter(Boolean);
+            openMediaDeleteModal(
+                "Delete Selected Photos",
+                `Are you sure you want to permanently delete ${selected.length} selected photos from your phone?`,
+                selected.slice(0, 5).map(p => p.name).concat(selected.length > 5 ? [`...and ${selected.length - 5} more`] : []),
+                () => {
+                    sendCommand({ action: 'BATCH_DELETE', paths: paths });
+                    allGalleryPhotos = allGalleryPhotos.filter(p => !selectedPhotoIds.has(p.id));
+                    filteredGalleryPhotos = filteredGalleryPhotos.filter(p => !selectedPhotoIds.has(p.id));
+                    selectedPhotoIds.clear();
+                    renderGalleryPhotosView(filteredGalleryPhotos, true);
+                    updatePhotoBatchSelectionUI();
+
+                    const countBadge = document.getElementById('photos-count-badge');
+                    if (countBadge) countBadge.textContent = `${allGalleryPhotos.length} Photos`;
+                    showNotificationToast(`Deleted ${selected.length} photos from phone`, 'info');
+                }
+            );
+        }
+
         function setPhotoWallpaper(path, uri) {
             sendCommand({
                 action: 'SET_WALLPAPER',
@@ -6903,7 +7205,7 @@
             showNotificationToast('Setting as phone wallpaper...', 'info');
         }
 
-        // AirDroid-Grade Fullscreen Lightbox Studio
+        // OpenDroid-Grade Fullscreen Lightbox Studio
         function openPhotoLightbox(index) {
             if (index < 0 || index >= allGalleryPhotos.length) return;
             currentLightboxIndex = index;
@@ -7004,10 +7306,12 @@
             if (e.key === '-') zoomLightboxPhoto(-0.2);
         });
 
-        // --- 2. Videos Gallery & High-Speed Streamer Engine (Phase 15.2 AirDroid Chunk-Wise Studio) ---
+        // --- 2. Videos Gallery & High-Speed Streamer Engine (Phase 15.2 OpenDroid-Grade Studio) ---
         let allGalleryVideos = [];
+        let filteredGalleryVideos = [];
         let currentVideoBucket = 'All';
         let videoBuckets = [];
+        let selectedVideoIds = new Set();
         let videoThumbnailsCache = {};
         let pendingVideoThumbnailQueue = [];
         let inFlightVideoThumbnailRequests = 0;
@@ -7018,6 +7322,7 @@
         let hasMoreVideos = true;
         let isLoadingVideosChunk = false;
         let videoIntersectionObserver = null;
+        let currentVideosViewMode = 'grid'; // 'grid' | 'list'
 
         // Lazy load observer: Requests video thumbnail only when card scrolls into view!
         function getVideoIntersectionObserver() {
@@ -7056,6 +7361,12 @@
                 videosOffset = 0;
                 hasMoreVideos = true;
                 allGalleryVideos = [];
+                filteredGalleryVideos = [];
+                selectedVideoIds.clear();
+                updateVideoBatchSelectionUI();
+
+                const searchInput = document.getElementById('videos-search-input');
+                if (searchInput) searchInput.value = '';
 
                 if (videoIntersectionObserver) {
                     videoIntersectionObserver.disconnect();
@@ -7119,6 +7430,7 @@
 
             if (videosOffset === 0) {
                 allGalleryVideos = videos;
+                filteredGalleryVideos = videos;
                 videoBuckets = buckets;
                 renderVideoAlbumsList(buckets, totalCount);
 
@@ -7128,10 +7440,11 @@
                 const totalBadge = document.getElementById('videos-total-badge');
                 if (totalBadge) totalBadge.textContent = totalCount;
 
-                renderGalleryVideosGrid(videos, true);
+                renderGalleryVideosView(videos, true);
             } else {
                 allGalleryVideos.push(...videos);
-                renderGalleryVideosGrid(videos, false);
+                filteredGalleryVideos = allGalleryVideos;
+                renderGalleryVideosView(videos, false);
             }
 
             videosOffset += videos.length;
@@ -7183,6 +7496,45 @@
             });
         }
 
+        function setVideosViewMode(mode) {
+            currentVideosViewMode = mode;
+            const gridBtn = document.getElementById('videos-view-grid-btn');
+            const listBtn = document.getElementById('videos-view-list-btn');
+            const gridEl = document.getElementById('videos-grid');
+            const listEl = document.getElementById('videos-list-view');
+
+            if (mode === 'grid') {
+                if (gridBtn) { gridBtn.className = "px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-300 transition-all"; }
+                if (listBtn) { listBtn.className = "px-2 py-0.5 rounded text-xs font-bold hover:text-white transition-all"; }
+                if (gridEl) gridEl.classList.remove('hidden');
+                if (listEl) listEl.classList.add('hidden');
+            } else {
+                if (gridBtn) { gridBtn.className = "px-2 py-0.5 rounded text-xs font-bold hover:text-white transition-all"; }
+                if (listBtn) { listBtn.className = "px-2 py-0.5 rounded text-xs font-bold bg-rose-500/20 text-rose-300 transition-all"; }
+                if (gridEl) gridEl.classList.add('hidden');
+                if (listEl) listEl.classList.remove('hidden');
+            }
+            renderGalleryVideosView(filteredGalleryVideos, true);
+        }
+
+        function filterVideosBySearch(query) {
+            query = (query || '').toLowerCase().trim();
+            if (!query) {
+                filteredGalleryVideos = allGalleryVideos;
+            } else {
+                filteredGalleryVideos = allGalleryVideos.filter(v => (v.title || v.name || '').toLowerCase().includes(query) || (v.path || '').toLowerCase().includes(query));
+            }
+            renderGalleryVideosView(filteredGalleryVideos, true);
+        }
+
+        function renderGalleryVideosView(videos, isReset = true) {
+            if (currentVideosViewMode === 'list') {
+                renderVideosListView(videos);
+            } else {
+                renderGalleryVideosGrid(videos, isReset);
+            }
+        }
+
         function renderGalleryVideosGrid(videos, isReset = true) {
             const grid = document.getElementById('videos-grid');
             if (!grid) return;
@@ -7214,17 +7566,36 @@
                 const escapedUri = (video.uri || '').replace(/\\/g, '\\\\').replace(/'/g, "\'");
                 const escapedTitle = (video.title || video.name || 'Video').replace(/'/g, "\'");
                 const videoId = video.id || globalIdx;
+                const isSelected = selectedVideoIds.has(videoId);
 
                 const card = document.createElement('div');
                 card.id = `video-card-${videoId}`;
-                card.className = "group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-rose-500/60 hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer select-none video-grid-item";
-                // Fixed row height guarantees no collapsing or overlapping!
+                card.className = `group relative bg-gray-900 border rounded-xl overflow-hidden hover:border-rose-500/60 hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer select-none video-grid-item ${isSelected ? 'border-rose-500 ring-2 ring-rose-500/40' : 'border-gray-800'}`;
                 card.style.cssText = "height: 120px; width: 100%; position: relative; overflow: hidden; display: block;";
                 card.setAttribute('data-id', videoId);
                 card.setAttribute('data-path', video.path || '');
                 card.setAttribute('data-uri', video.uri || '');
                 card.setAttribute('data-idx', globalIdx);
 
+                // Mouse events for OpenDroid Rich Hover Tooltip
+                card.onmouseenter = (e) => showMediaHoverTooltip(e, {
+                    name: video.title || video.name,
+                    size: video.size,
+                    duration: video.duration,
+                    date: video.date || video.dateModified,
+                    width: video.width,
+                    height: video.height,
+                    path: video.path
+                });
+                card.onmousemove = (e) => positionMediaHoverTooltip(e);
+                card.onmouseleave = () => hideMediaHoverTooltip();
+
+                // OpenDroid Behavior: Single click = select, Double click = Play video
+                card.onclick = (e) => {
+                    if (e.detail === 1) {
+                        toggleVideoSelection(videoId);
+                    }
+                };
                 card.ondblclick = (e) => {
                     e.stopPropagation();
                     playGalleryVideo(globalIdx);
@@ -7233,10 +7604,16 @@
                 card.innerHTML = `
                     <div class="relative w-full h-full bg-gray-950 flex items-center justify-center overflow-hidden">
                         <img id="video-thumb-img-${videoId}" src="" alt="${escapedTitle}" class="w-full h-full object-cover transition-opacity duration-300 opacity-0 group-hover:scale-105 pointer-events-none" onload="this.classList.remove('opacity-0'); document.getElementById('video-thumb-ldr-${videoId}')?.classList.add('hidden');" onerror="document.getElementById('video-thumb-ldr-${videoId}')?.classList.remove('hidden');" />
-                        <!-- AirDroid Film Placeholder Icon & Loading Spinner -->
+                        <!-- OpenDroid Film Placeholder Icon & Loading Spinner -->
                         <div id="video-thumb-ldr-${videoId}" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/90 text-gray-500 gap-1.5 transition-opacity duration-300">
                             <span class="text-2xl opacity-40">🎬</span>
                             <div class="w-4 h-4 border-2 border-rose-500/30 border-t-rose-400 rounded-full animate-spin"></div>
+                        </div>
+                        <!-- Top-Left OpenDroid Selection Checkbox -->
+                        <div class="absolute top-2 left-2 z-20 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity" onclick="event.stopPropagation(); toggleVideoSelection(${videoId})">
+                            <div class="w-5 h-5 rounded-md ${isSelected ? 'bg-rose-500 text-white' : 'bg-black/60 text-transparent border border-white/50 hover:border-white'} flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all">
+                                ✓
+                            </div>
                         </div>
                         <!-- Duration Badge -->
                         <div class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-white font-mono text-[9px] shadow z-10">
@@ -7257,6 +7634,9 @@
                                 <button onclick="event.stopPropagation(); triggerFileDownload('${escapedPath}', '${escapedTitle}')" class="p-1 rounded-md bg-blue-600/80 hover:bg-blue-600 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Download Original File">
                                     ⬇
                                 </button>
+                                <button onclick="event.stopPropagation(); deleteSingleVideo(${globalIdx})" class="p-1 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Delete from Phone">
+                                    🗑️
+                                </button>
                             </div>
                             <div class="truncate text-left pointer-events-auto">
                                 <div class="font-bold text-gray-100 text-[11px] truncate" title="${escapedTitle}">${escapedTitle}</div>
@@ -7270,15 +7650,58 @@
                 `;
 
                 fragment.appendChild(card);
-
-                // Observe video card: Requests thumbnail ONLY when scrolled into view!
                 observer.observe(card);
             });
 
             grid.appendChild(fragment);
-
-            // Bind bottom scroll listener for chunk-wise pagination
             setupVideosInfiniteScroll();
+        }
+
+        function renderVideosListView(videos) {
+            const tbody = document.getElementById('videos-list-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (!videos || videos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">No videos in this folder</td></tr>';
+                return;
+            }
+
+            videos.forEach((video, idx) => {
+                const videoId = video.id || idx;
+                const isSelected = selectedVideoIds.has(videoId);
+                const durationStr = formatDuration(video.duration);
+                const sizeStr = video.size ? formatBytes(video.size) : '--';
+                const escapedPath = (video.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\'");
+                const escapedTitle = (video.title || video.name || 'Video').replace(/'/g, "\'");
+
+                const tr = document.createElement('tr');
+                tr.className = `hover:bg-white/5 transition-colors cursor-pointer ${isSelected ? 'bg-rose-950/30' : ''}`;
+                tr.onclick = () => toggleVideoSelection(videoId);
+                tr.ondblclick = () => playGalleryVideo(idx);
+
+                tr.innerHTML = `
+                    <td class="p-2.5 text-center" onclick="event.stopPropagation(); toggleVideoSelection(${videoId})">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} class="rounded border-gray-700 text-rose-500 cursor-pointer">
+                    </td>
+                    <td class="p-2.5">
+                        <div class="w-12 h-8 rounded-lg bg-gray-900 border border-gray-800 overflow-hidden flex items-center justify-center relative">
+                            <img id="video-list-thumb-${videoId}" src="${videoThumbnailsCache[videoId] || ''}" class="w-full h-full object-cover ${videoThumbnailsCache[videoId] ? '' : 'hidden'}" />
+                            <span class="text-xs opacity-50 ${videoThumbnailsCache[videoId] ? 'hidden' : ''}">🎬</span>
+                            <span class="absolute inset-0 flex items-center justify-center text-[10px] text-white/80">▶</span>
+                        </div>
+                    </td>
+                    <td class="p-2.5 font-medium text-gray-100 truncate max-w-xs" title="${escapedTitle}">${escapedTitle}</td>
+                    <td class="p-2.5 font-mono text-gray-400">${sizeStr}</td>
+                    <td class="p-2.5 font-mono text-rose-400 text-[11px]">${durationStr}</td>
+                    <td class="p-2.5 text-right space-x-1.5" onclick="event.stopPropagation()">
+                        <button onclick="playGalleryVideo(${idx})" class="p-1 hover:text-rose-400 text-gray-400" title="Play">▶</button>
+                        <button onclick="triggerFileDownload('${escapedPath}', '${escapedTitle}')" class="p-1 hover:text-blue-400 text-gray-400" title="Download">⬇</button>
+                        <button onclick="deleteSingleVideo(${idx})" class="p-1 hover:text-rose-400 text-gray-400" title="Delete">🗑️</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
         }
 
         function dispatchVideoThumbnailRequests() {
@@ -7317,6 +7740,12 @@
                 img.src = dataUri;
             }
             if (ldr) ldr.classList.add('hidden');
+
+            const listImg = data.id ? document.getElementById('video-list-thumb-' + data.id) : null;
+            if (listImg) {
+                listImg.src = dataUri;
+                listImg.classList.remove('hidden');
+            }
         }
 
         setInterval(() => {
@@ -7325,6 +7754,127 @@
                 dispatchVideoThumbnailRequests();
             }
         }, 3500);
+
+        function toggleVideoSelection(videoId) {
+            if (selectedVideoIds.has(videoId)) {
+                selectedVideoIds.delete(videoId);
+            } else {
+                selectedVideoIds.add(videoId);
+            }
+
+            const card = document.getElementById(`video-card-${videoId}`);
+            if (card) {
+                const isSelected = selectedVideoIds.has(videoId);
+                card.className = `group relative bg-gray-900 border rounded-xl overflow-hidden hover:border-rose-500/60 hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer select-none video-grid-item ${isSelected ? 'border-rose-500 ring-2 ring-rose-500/40' : 'border-gray-800'}`;
+                const checkEl = card.querySelector('.absolute.top-2.left-2 > div');
+                if (checkEl) {
+                    checkEl.className = `w-5 h-5 rounded-md ${isSelected ? 'bg-rose-500 text-white' : 'bg-black/60 text-transparent border border-white/50 hover:border-white'} flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all`;
+                }
+            }
+
+            updateVideoBatchSelectionUI();
+        }
+
+        function toggleSelectAllVideos() {
+            const btn = document.getElementById('btn-select-all-videos');
+            const isAllSelected = selectedVideoIds.size === filteredGalleryVideos.length && filteredGalleryVideos.length > 0;
+
+            if (isAllSelected) {
+                selectedVideoIds.clear();
+            } else {
+                filteredGalleryVideos.forEach(v => selectedVideoIds.add(v.id));
+            }
+
+            filteredGalleryVideos.forEach(v => {
+                const card = document.getElementById(`video-card-${v.id}`);
+                if (card) {
+                    const isSelected = selectedVideoIds.has(v.id);
+                    card.className = `group relative bg-gray-900 border rounded-xl overflow-hidden hover:border-rose-500/60 hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer select-none video-grid-item ${isSelected ? 'border-rose-500 ring-2 ring-rose-500/40' : 'border-gray-800'}`;
+                    const checkEl = card.querySelector('.absolute.top-2.left-2 > div');
+                    if (checkEl) {
+                        checkEl.className = `w-5 h-5 rounded-md ${isSelected ? 'bg-rose-500 text-white' : 'bg-black/60 text-transparent border border-white/50 hover:border-white'} flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all`;
+                    }
+                }
+            });
+
+            updateVideoBatchSelectionUI();
+        }
+
+        function updateVideoBatchSelectionUI() {
+            const btn = document.getElementById('btn-select-all-videos');
+            const countEl = document.getElementById('videos-selected-count');
+            const delCountEl = document.getElementById('videos-delete-selected-count');
+            const batchDownloadBtn = document.getElementById('btn-download-selected-videos');
+            const batchDeleteBtn = document.getElementById('btn-delete-selected-videos');
+
+            const count = selectedVideoIds.size;
+            if (countEl) countEl.textContent = count;
+            if (delCountEl) delCountEl.textContent = count;
+
+            if (count > 0) {
+                if (batchDownloadBtn) batchDownloadBtn.classList.remove('hidden');
+                if (batchDeleteBtn) batchDeleteBtn.classList.remove('hidden');
+                if (btn) btn.innerHTML = '<span>✕</span><span>Deselect All</span>';
+            } else {
+                if (batchDownloadBtn) batchDownloadBtn.classList.add('hidden');
+                if (batchDeleteBtn) batchDeleteBtn.classList.add('hidden');
+                if (btn) btn.innerHTML = '<span>☑️</span><span>Select All</span>';
+            }
+        }
+
+        function downloadSelectedVideos() {
+            if (selectedVideoIds.size === 0) return;
+            const selected = allGalleryVideos.filter(v => selectedVideoIds.has(v.id));
+            selected.forEach(v => {
+                triggerFileDownload(v.path, v.title || v.name);
+            });
+            showNotificationToast(`Starting download of ${selected.length} videos...`, 'success');
+        }
+
+        function deleteSingleVideo(idx) {
+            const video = allGalleryVideos[idx];
+            if (!video) return;
+            openMediaDeleteModal(
+                "Delete Video",
+                "Are you sure you want to permanently delete this video from your phone?",
+                [video.title || video.name || 'Video'],
+                () => {
+                    sendCommand({ action: 'DELETE_FILE', path: video.path });
+                    allGalleryVideos.splice(idx, 1);
+                    filteredGalleryVideos = filteredGalleryVideos.filter(v => v.id !== video.id);
+                    selectedVideoIds.delete(video.id);
+                    renderGalleryVideosView(filteredGalleryVideos, true);
+                    updateVideoBatchSelectionUI();
+
+                    const countBadge = document.getElementById('videos-count-badge');
+                    if (countBadge) countBadge.textContent = `${allGalleryVideos.length} Videos`;
+                    showNotificationToast(`Deleted ${video.title || video.name} from phone`, 'info');
+                }
+            );
+        }
+
+        function deleteSelectedVideos() {
+            if (selectedVideoIds.size === 0) return;
+            const selected = allGalleryVideos.filter(v => selectedVideoIds.has(v.id));
+            const paths = selected.map(v => v.path).filter(Boolean);
+            openMediaDeleteModal(
+                "Delete Selected Videos",
+                `Are you sure you want to permanently delete ${selected.length} selected videos from your phone?`,
+                selected.slice(0, 5).map(v => v.title || v.name).concat(selected.length > 5 ? [`...and ${selected.length - 5} more`] : []),
+                () => {
+                    sendCommand({ action: 'BATCH_DELETE', paths: paths });
+                    allGalleryVideos = allGalleryVideos.filter(v => !selectedVideoIds.has(v.id));
+                    filteredGalleryVideos = filteredGalleryVideos.filter(v => !selectedVideoIds.has(v.id));
+                    selectedVideoIds.clear();
+                    renderGalleryVideosView(filteredGalleryVideos, true);
+                    updateVideoBatchSelectionUI();
+
+                    const countBadge = document.getElementById('videos-count-badge');
+                    if (countBadge) countBadge.textContent = `${allGalleryVideos.length} Videos`;
+                    showNotificationToast(`Deleted ${selected.length} videos from phone`, 'info');
+                }
+            );
+        }
 
         function playGalleryVideo(index) {
             if (index < 0 || index >= allGalleryVideos.length) return;
@@ -7376,7 +7926,7 @@
                 player.src = '';
             }
         }
-
+        
         // --- 3. Music Player & Jukebox Engine ---
         let allMusicTracks = [];
         let filteredMusicTracks = [];

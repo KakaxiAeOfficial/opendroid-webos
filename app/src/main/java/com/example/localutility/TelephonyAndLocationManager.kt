@@ -1975,7 +1975,7 @@ fun bulkDeleteContacts(ids: List<Long>): Int {
     return deletedCount
 }
 
-// Phase 13: AirDroid-Grade VCF (vCard 3.0) Export Engine
+// Phase 13: OpenDroid-Grade VCF (vCard 3.0) Export Engine
 fun exportContactsToVcf(): String {
     val sb = StringBuilder()
     try {
@@ -2046,7 +2046,7 @@ fun exportContactsToVcf(): String {
     return sb.toString()
 }
 
-// Phase 13: AirDroid-Grade VCF (vCard 3.0) Bulk Import Engine
+// Phase 13: OpenDroid-Grade VCF (vCard 3.0) Bulk Import Engine
 fun importContactsFromVcf(vcfText: String): Int {
     var importedCount = 0
     try {
@@ -2907,5 +2907,6 @@ fun getStorageStats(): JSONObject {
     }
 
 }
+
 
 
