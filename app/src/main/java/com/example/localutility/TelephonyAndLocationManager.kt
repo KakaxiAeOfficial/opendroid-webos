@@ -2348,6 +2348,11 @@ fun getStorageStats(): JSONObject {
         return result
     }
 
+    fun getPhotoThumbnailById(id: Long, maxDim: Int = 256): String? {
+        if (id <= 0L) return null
+        return getPhotoThumbnailBase64(id.toString(), maxDim)
+    }
+
     fun getPhotoThumbnailBase64(pathOrUri: String, maxDim: Int = 256): String? {
         return try {
             val bitmap = resolvePhotoBitmap(pathOrUri, maxDim) ?: return null
@@ -2611,6 +2616,11 @@ fun getStorageStats(): JSONObject {
             result.put("error", e.message ?: "Failed to query videos")
         }
         return result
+    }
+
+    fun getVideoThumbnailById(id: Long, maxDim: Int = 256): String? {
+        if (id <= 0L) return null
+        return getVideoThumbnailBase64(id.toString(), maxDim)
     }
 
     fun getVideoThumbnailBase64(pathOrUri: String, maxDim: Int = 256): String? {

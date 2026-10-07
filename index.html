@@ -426,51 +426,70 @@
         </div>
     </div>
 
-    <!-- Modal: Image Preview & Lightbox (Phase 15 High-Speed Remote Photo Viewer) -->
-    <div id="image-preview-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-        <div class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] flex flex-col overflow-hidden">
-            <div class="p-3 bg-gray-800 text-white flex justify-between items-center text-xs">
-                <span id="preview-filename" class="font-semibold truncate max-w-md">Image Preview</span>
-                <div class="flex items-center gap-2">
-                    <button id="preview-zoom-out" onclick="zoomLightboxPhoto(-0.2)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold" title="Zoom Out">🔍−</button>
-                    <button id="preview-zoom-in" onclick="zoomLightboxPhoto(0.2)" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold" title="Zoom In">🔍+</button>
-                    <button id="preview-rotate-btn" onclick="rotateLightboxPhoto()" class="px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs font-bold text-white flex items-center gap-1" title="Rotate 90°">🔄 Rotate</button>
-                    <button id="preview-wallpaper-btn" onclick="setLightboxPhotoAsWallpaper()" class="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-bold flex items-center gap-1 shadow-sm">
-                        <span>🖼️</span><span>Set as Wallpaper</span>
-                    </button>
-                    <button id="preview-download-btn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[11px] font-bold">⬇ Download</button>
-                    <button onclick="closeImagePreview()" class="text-gray-400 hover:text-red-400 text-base font-bold px-1.5">✕</button>
-                </div>
+    <!-- Modal: Image Preview & AirDroid-Grade Lightbox (Phase 15.2) -->
+    <div id="image-preview-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-lg flex flex-col justify-between overflow-hidden select-none" style="z-index: 99999 !important;">
+        <!-- Top Toolbar -->
+        <div class="p-3.5 bg-gray-900/80 border-b border-white/10 flex justify-between items-center text-xs text-white z-30">
+            <div class="flex items-center gap-3">
+                <span id="preview-index" class="px-2.5 py-0.5 rounded-full text-xs font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-800/40">1 / 1</span>
+                <span id="preview-filename" class="font-semibold text-sm text-gray-100 truncate max-w-lg">Image Preview</span>
+                <span id="preview-filesize" class="text-xs text-gray-400 font-mono">--</span>
             </div>
-            <div class="flex-1 p-3 flex items-center justify-center bg-black/70 overflow-hidden relative select-none">
-                <!-- Prev / Next Navigation Buttons -->
-                <button onclick="prevLightboxPhoto()" class="absolute left-4 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-black/90 text-white text-lg font-bold flex items-center justify-center transition-all cursor-pointer border border-white/10">❮</button>
-                <button onclick="nextLightboxPhoto()" class="absolute right-4 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-black/90 text-white text-lg font-bold flex items-center justify-center transition-all cursor-pointer border border-white/10">❯</button>
-                
-                <img id="preview-img" class="max-w-full max-h-[75vh] object-contain rounded shadow transition-transform duration-200" src="" alt="Preview" style="transform: scale(1);" />
-                <div id="preview-loader" class="text-cyan-400 font-mono text-xs text-center absolute">Loading image preview...</div>
+            <div class="flex items-center gap-2">
+                <button onclick="closeImagePreview()" class="text-gray-400 hover:text-rose-400 text-lg font-bold px-2 py-0.5 rounded-lg hover:bg-white/10 transition-all cursor-pointer" title="Close (Esc)">✕</button>
             </div>
+        </div>
+
+        <!-- Center Image Viewport -->
+        <div class="flex-1 flex items-center justify-center relative overflow-hidden p-4">
+            <!-- Left / Right Navigation Arrows -->
+            <button onclick="prevLightboxPhoto()" class="absolute left-6 z-30 w-12 h-12 rounded-full bg-black/60 hover:bg-black/90 text-white text-xl font-bold flex items-center justify-center transition-all cursor-pointer border border-white/20 hover:scale-105 shadow-xl" title="Previous (Left Arrow)">❮</button>
+            <button onclick="nextLightboxPhoto()" class="absolute right-6 z-30 w-12 h-12 rounded-full bg-black/60 hover:bg-black/90 text-white text-xl font-bold flex items-center justify-center transition-all cursor-pointer border border-white/20 hover:scale-105 shadow-xl" title="Next (Right Arrow)">❯</button>
+            
+            <img id="preview-img" class="max-w-[92vw] max-h-[78vh] object-contain rounded-lg shadow-2xl transition-transform duration-200" src="" alt="Preview" style="transform: scale(1) rotate(0deg);" />
+            <div id="preview-loader" class="text-cyan-400 font-mono text-xs text-center absolute bg-gray-900/90 px-4 py-2.5 rounded-xl border border-cyan-500/30 flex items-center gap-2 shadow-2xl">
+                <span class="animate-spin text-base">⏳</span>
+                <span>Loading compressed WebP preview...</span>
+            </div>
+        </div>
+
+        <!-- Bottom Floating Controls Toolbar (AirDroid Studio Style) -->
+        <div class="p-3 bg-gray-900/90 border-t border-white/10 flex items-center justify-center gap-3 text-xs select-none z-30">
+            <button onclick="zoomLightboxPhoto(-0.2)" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl font-bold border border-gray-700 transition-all cursor-pointer flex items-center gap-1 shadow-sm" title="Zoom Out">
+                <span>🔍−</span>
+            </button>
+            <button onclick="zoomLightboxPhoto(0.2)" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl font-bold border border-gray-700 transition-all cursor-pointer flex items-center gap-1 shadow-sm" title="Zoom In">
+                <span>🔍+</span>
+            </button>
+            <button onclick="rotateLightboxPhoto()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-xl font-bold border border-gray-700 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm" title="Rotate 90° (R)">
+                <span>🔄</span><span>Rotate</span>
+            </button>
+            <div class="h-5 w-px bg-gray-700/80 mx-1"></div>
+            <button id="preview-wallpaper-btn" onclick="setLightboxPhotoAsWallpaper()" class="px-3.5 py-1.5 bg-amber-600/90 hover:bg-amber-600 text-white rounded-xl font-semibold border border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5 shadow-md" title="Set as Phone Wallpaper">
+                <span>📱</span><span>Set as Wallpaper</span>
+            </button>
+            <button id="preview-download-btn" class="px-4 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-lg shadow-blue-600/30" title="Download Original High-Res Image">
+                <span>⬇</span><span>Download Original</span>
+            </button>
         </div>
     </div>
 
-
-    <!-- On-Demand Video Player Modal -->
-    <div id="video-player-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-[110] flex items-center justify-center p-4">
-        <div class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col overflow-hidden">
+    <!-- On-Demand Video Player Modal (Phase 15.2) -->
+    <div id="video-player-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4" style="z-index: 99999 !important;">
+        <div class="bg-gray-900 border border-white/10 rounded-2xl shadow-2xl max-w-3xl w-full flex flex-col overflow-hidden">
             <div class="p-3 bg-gray-800 text-white flex justify-between items-center text-xs">
                 <span id="video-modal-title" class="font-semibold truncate max-w-md">Video Player</span>
                 <div class="flex items-center gap-3">
-                    <button id="video-modal-download-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 rounded text-[11px] font-bold">⬇ Download</button>
-                    <button onclick="closeVideoPlayerModal()" class="text-gray-400 hover:text-red-400 text-base font-bold">✕</button>
+                    <button id="video-modal-download-btn" class="px-3 py-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg text-xs font-bold shadow">⬇ Download Original</button>
+                    <button onclick="closeVideoPlayerModal()" class="text-gray-400 hover:text-red-400 text-base font-bold px-1.5">✕</button>
                 </div>
             </div>
-            <div class="p-3 bg-black flex flex-col items-center justify-center min-h-[300px]">
+            <div class="p-3 bg-black flex flex-col items-center justify-center min-h-[360px] relative">
                 <div id="video-modal-loader" class="text-cyan-400 font-mono text-xs text-center mb-2">Buffering video from phone...</div>
-                <video id="video-modal-player" class="w-full max-h-[60vh] object-contain rounded hidden" controls autoplay playsinline></video>
+                <video id="video-modal-player" class="w-full max-h-[70vh] object-contain rounded hidden" controls autoplay playsinline></video>
             </div>
         </div>
     </div>
-
 
     <!-- Top Dock Bar -->
     <!-- Top Navigation Header (OpenDroid Cybernetic Glassmorphic Bar) -->
@@ -6865,7 +6884,7 @@
         // --- PHASE 15: HIGH-SPEED REMOTE MEDIA GALLERY & STREAMER SUITE ---
         // =========================================================================
 
-        // --- 1. Photos Gallery & Lightbox Engine (Phase 15.2 Studio) ---
+        // --- 1. Photos Gallery & Lightbox Engine (Phase 15.2 AirDroid Studio) ---
         let allGalleryPhotos = [];
         let currentPhotoBucket = 'All';
         let photoBuckets = [];
@@ -6874,7 +6893,6 @@
         let currentPhotoZoom = 1.0;
         let currentPhotoRotation = 0;
         let photoThumbnailsCache = {};
-        let photoThumbnailObserver = null;
         let pendingPhotoThumbnailQueue = [];
         let inFlightPhotoThumbnailRequests = 0;
         const MAX_CONCURRENT_PHOTO_THUMBS = 6;
@@ -6911,10 +6929,8 @@
             allGalleryPhotos = photos;
             photoBuckets = buckets;
 
-            // Render Left Sidebar Albums
             renderPhotoAlbumsList(buckets, photos.length);
 
-            // Update badge counters
             const countBadge = document.getElementById('photos-count-badge');
             if (countBadge) countBadge.textContent = `${photos.length} Photos`;
 
@@ -6981,7 +6997,7 @@
                     <div class="col-span-full py-20 text-center text-gray-400 text-xs">
                         <div class="text-4xl mb-2.5">🖼️</div>
                         <p class="font-semibold text-gray-300">No photos in this album</p>
-                        <p class="text-gray-500 text-[11px] mt-1">Images saved on your phone will appear here automatically.</p>
+                        <p class="text-gray-500 text-[11px] mt-1">Photos saved on your phone will appear here automatically.</p>
                     </div>
                 `;
                 return;
@@ -6999,94 +7015,79 @@
                 const isSelected = selectedPhotoIds.has(photoId);
 
                 const card = document.createElement('div');
-                card.id = `photo-card-${idx}`;
-                card.className = `group relative bg-gray-900 border rounded-xl overflow-hidden hover:border-amber-500/60 hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer photo-grid-item ${isSelected ? 'border-cyan-500 ring-2 ring-cyan-500/30' : 'border-gray-800'}`;
-                card.setAttribute('data-idx', idx);
-                card.setAttribute('data-path', photo.path || '');
-                card.setAttribute('data-uri', photo.uri || '');
+                card.id = `photo-card-${photoId}`;
+                card.className = `group relative bg-gray-900 border rounded-xl overflow-hidden hover:border-cyan-400/80 hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer aspect-square select-none photo-grid-item ${isSelected ? 'border-cyan-500 ring-2 ring-cyan-500/40' : 'border-gray-800'}`;
                 card.setAttribute('data-id', photoId);
+                card.setAttribute('data-idx', idx);
+
+                // AirDroid Behavior: Single click = select, Double click = Fullscreen Lightbox
+                card.onclick = (e) => {
+                    if (e.detail === 1) {
+                        togglePhotoSelection(photoId);
+                    }
+                };
+                card.ondblclick = (e) => {
+                    e.stopPropagation();
+                    openPhotoLightbox(idx);
+                };
 
                 card.innerHTML = `
-                    <div class="relative w-full h-32 bg-gray-950 flex items-center justify-center overflow-hidden" onclick="openPhotoLightbox(${idx})">
-                        <img id="photo-thumb-img-${idx}" src="" alt="${escapedName}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 hidden" />
-                        <div id="photo-thumb-ldr-${idx}" class="flex flex-col items-center justify-center text-gray-600 gap-1 select-none">
-                            <span class="text-2xl opacity-60">🖼️</span>
+                    <div class="relative w-full h-full bg-gray-950 flex items-center justify-center overflow-hidden">
+                        <img id="photo-thumb-img-${photoId}" src="" alt="${escapedName}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 hidden pointer-events-none" />
+                        <div id="photo-thumb-ldr-${photoId}" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-950 text-gray-600 gap-1">
+                            <span class="text-2xl animate-pulse">🖼️</span>
                             <span class="text-[9px] font-mono text-gray-500">Loading...</span>
                         </div>
-                        <!-- Top Selection Checkbox -->
+                        <!-- Top-Left Selection Checkbox -->
                         <div class="absolute top-2 left-2 z-20 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity" onclick="event.stopPropagation(); togglePhotoSelection(${photoId})">
-                            <div class="w-5 h-5 rounded-md ${isSelected ? 'bg-cyan-500 text-white' : 'bg-black/60 text-transparent border border-white/40 hover:border-white'} flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all">
+                            <div class="w-5 h-5 rounded-md ${isSelected ? 'bg-cyan-500 text-white' : 'bg-black/60 text-transparent border border-white/50 hover:border-white'} flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all">
                                 ✓
                             </div>
                         </div>
-                        <!-- Hover Quick Action Overlay -->
-                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 z-10 backdrop-blur-xs">
-                            <button onclick="event.stopPropagation(); openPhotoLightbox(${idx})" class="p-1.5 rounded-lg bg-gray-800/90 hover:bg-gray-700 text-white text-xs border border-white/20 shadow-sm" title="View Fullscreen">
-                                🔍
-                            </button>
-                            <button onclick="event.stopPropagation(); setPhotoWallpaper('${escapedPath}', '${escapedUri}')" class="p-1.5 rounded-lg bg-amber-600/90 hover:bg-amber-600 text-white text-xs border border-white/20 shadow-sm" title="Set as Phone Wallpaper">
-                                📱
-                            </button>
-                            <button onclick="event.stopPropagation(); triggerFileDownload('${escapedPath}', '${escapedName}')" class="p-1.5 rounded-lg bg-blue-600/90 hover:bg-blue-600 text-white text-xs border border-white/20 shadow-sm" title="Download">
-                                ⬇
-                            </button>
-                        </div>
-                    </div>
-                    <div class="p-2 bg-gray-900/90 border-t border-gray-800/60 text-left select-none" onclick="openPhotoLightbox(${idx})">
-                        <div class="font-medium text-gray-200 text-[11px] truncate" title="${photo.name}">${photo.name}</div>
-                        <div class="text-[9px] text-gray-500 mt-0.5 flex justify-between items-center font-mono">
-                            <span>${sizeStr}</span>
-                            <span>${dateStr}</span>
+                        <!-- Hover Overlay with Details & Quick Actions (AirDroid Style) -->
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2 z-10">
+                            <div class="flex justify-end gap-1">
+                                <button onclick="event.stopPropagation(); openPhotoLightbox(${idx})" class="p-1 rounded-md bg-gray-900/80 hover:bg-gray-800 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Double click or click to expand (WebP Preview)">
+                                    🔍
+                                </button>
+                                <button onclick="event.stopPropagation(); setPhotoWallpaper('${escapedPath}', '${escapedUri}')" class="p-1 rounded-md bg-amber-600/80 hover:bg-amber-600 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Set as Wallpaper">
+                                    📱
+                                </button>
+                                <button onclick="event.stopPropagation(); triggerFileDownload('${escapedPath}', '${escapedName}')" class="p-1 rounded-md bg-blue-600/80 hover:bg-blue-600 text-white text-xs border border-white/20 shadow-sm cursor-pointer" title="Download Original File">
+                                    ⬇
+                                </button>
+                            </div>
+                            <div class="truncate text-left">
+                                <div class="font-bold text-gray-100 text-[11px] truncate" title="${photo.name}">${photo.name}</div>
+                                <div class="text-[9px] text-gray-300 font-mono mt-0.5 flex justify-between">
+                                    <span>${sizeStr}</span>
+                                    <span>${dateStr}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
 
                 fragment.appendChild(card);
+
+                // Check cache or queue thumbnail request
+                const cached = photoThumbnailsCache[photoId] || photoThumbnailsCache[photo.path] || photoThumbnailsCache[photo.uri];
+                if (cached) {
+                    const img = card.querySelector(`#photo-thumb-img-${photoId}`);
+                    const ldr = card.querySelector(`#photo-thumb-ldr-${photoId}`);
+                    if (img) {
+                        img.src = cached;
+                        img.classList.remove('hidden');
+                    }
+                    if (ldr) ldr.classList.add('hidden');
+                } else {
+                    pendingPhotoThumbnailQueue.push({ id: photo.id, path: photo.path, uri: photo.uri, idx: idx });
+                }
             });
 
             grid.appendChild(fragment);
 
-            // Initialize Viewport Lazy Loading via IntersectionObserver
-            initPhotoViewportObserver();
-        }
-
-        function initPhotoViewportObserver() {
-            if (photoThumbnailObserver) {
-                photoThumbnailObserver.disconnect();
-            }
-
-            const grid = document.getElementById('photos-grid');
-            if (!grid) return;
-
-            photoThumbnailObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const el = entry.target;
-                        const idx = parseInt(el.getAttribute('data-idx'));
-                        const path = el.getAttribute('data-path');
-                        const uri = el.getAttribute('data-uri');
-                        photoThumbnailObserver.unobserve(el);
-                        enqueuePhotoThumbnail(path, uri, idx);
-                    }
-                });
-            }, {
-                root: grid,
-                rootMargin: '150px 0px'
-            });
-
-            grid.querySelectorAll('.photo-grid-item').forEach(card => {
-                photoThumbnailObserver.observe(card);
-            });
-        }
-
-        function enqueuePhotoThumbnail(path, uri, idx) {
-            const cacheKey = uri || path;
-            if (photoThumbnailsCache[cacheKey] || (path && photoThumbnailsCache[path])) {
-                applyPhotoThumbnailToCard(idx, photoThumbnailsCache[cacheKey] || photoThumbnailsCache[path]);
-                return;
-            }
-
-            pendingPhotoThumbnailQueue.push({ path, uri, idx });
+            // Automatically dispatch thumbnail requests in controlled parallel batches
             dispatchPhotoThumbnailRequests();
         }
 
@@ -7096,6 +7097,7 @@
                 inFlightPhotoThumbnailRequests++;
                 sendCommand({
                     action: 'GET_PHOTO_THUMBNAIL',
+                    id: item.id,
                     path: item.path,
                     uri: item.uri,
                     maxDim: 256,
@@ -7112,28 +7114,26 @@
             const mime = (data.thumbnail.startsWith('/9j/')) ? 'image/jpeg' : 'image/webp';
             const dataUri = data.thumbnail.startsWith('data:') ? data.thumbnail : `data:${mime};base64,${data.thumbnail}`;
 
-            const key = data.uri || data.path;
-            if (key) photoThumbnailsCache[key] = dataUri;
+            if (data.id) photoThumbnailsCache[data.id] = dataUri;
             if (data.path) photoThumbnailsCache[data.path] = dataUri;
             if (data.uri) photoThumbnailsCache[data.uri] = dataUri;
 
-            // Find matching card index
-            let cardIdx = -1;
-            if (data.tag !== undefined && data.tag !== '') {
-                cardIdx = parseInt(data.tag);
-            }
-            if (cardIdx === -1 || isNaN(cardIdx)) {
-                cardIdx = allGalleryPhotos.findIndex(p => (data.uri && p.uri === data.uri) || (data.path && p.path === data.path));
-            }
+            // Direct ID lookup: O(1) Instantaneous DOM binding!
+            const img = (data.id ? document.getElementById('photo-thumb-img-' + data.id) : null) ||
+                        (data.tag !== undefined ? document.getElementById('photo-thumb-img-' + data.tag) : null);
+            const ldr = (data.id ? document.getElementById('photo-thumb-ldr-' + data.id) : null) ||
+                        (data.tag !== undefined ? document.getElementById('photo-thumb-ldr-' + data.tag) : null);
 
-            if (cardIdx !== -1) {
-                applyPhotoThumbnailToCard(cardIdx, dataUri);
+            if (img) {
+                img.src = dataUri;
+                img.classList.remove('hidden');
             }
+            if (ldr) ldr.classList.add('hidden');
 
             // Lightbox sync
             if (currentLightboxIndex !== -1) {
                 const cur = allGalleryPhotos[currentLightboxIndex];
-                if (cur && ((data.uri && cur.uri === data.uri) || (data.path && cur.path === data.path))) {
+                if (cur && (cur.id === data.id || cur.path === data.path || cur.uri === data.uri)) {
                     const previewImg = document.getElementById('preview-img');
                     const previewLoader = document.getElementById('preview-loader');
                     if (previewImg) {
@@ -7145,15 +7145,13 @@
             }
         }
 
-        function applyPhotoThumbnailToCard(cardIdx, dataUri) {
-            const img = document.getElementById(`photo-thumb-img-${cardIdx}`);
-            const ldr = document.getElementById(`photo-thumb-ldr-${cardIdx}`);
-            if (img) {
-                img.src = dataUri;
-                img.classList.remove('hidden');
+        // Thumbnail Watchdog: Prevents queue stalls if network drops any packet
+        setInterval(() => {
+            if (pendingPhotoThumbnailQueue.length > 0 && inFlightPhotoThumbnailRequests > 0) {
+                inFlightPhotoThumbnailRequests = 0;
+                dispatchPhotoThumbnailRequests();
             }
-            if (ldr) ldr.classList.add('hidden');
-        }
+        }, 4000);
 
         // Multi-Selection and Batch Actions
         function togglePhotoSelection(photoId) {
@@ -7195,17 +7193,16 @@
                     : '<span>☑️</span><span>Select All</span>';
             }
 
-            // Update border states on cards
             allGalleryPhotos.forEach((p, idx) => {
                 const photoId = p.id || idx;
-                const card = document.getElementById(`photo-card-${idx}`);
+                const card = document.getElementById(`photo-card-${photoId}`);
                 if (card) {
                     const isSelected = selectedPhotoIds.has(photoId);
                     if (isSelected) {
-                        card.classList.add('border-cyan-500', 'ring-2', 'ring-cyan-500/30');
+                        card.classList.add('border-cyan-500', 'ring-2', 'ring-cyan-500/40');
                         card.classList.remove('border-gray-800');
                     } else {
-                        card.classList.remove('border-cyan-500', 'ring-2', 'ring-cyan-500/30');
+                        card.classList.remove('border-cyan-500', 'ring-2', 'ring-cyan-500/40');
                         card.classList.add('border-gray-800');
                     }
                     const checkMark = card.querySelector('.rounded-md');
@@ -7213,7 +7210,7 @@
                         if (isSelected) {
                             checkMark.className = "w-5 h-5 rounded-md bg-cyan-500 text-white flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all";
                         } else {
-                            checkMark.className = "w-5 h-5 rounded-md bg-black/60 text-transparent border border-white/40 hover:border-white flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all";
+                            checkMark.className = "w-5 h-5 rounded-md bg-black/60 text-transparent border border-white/50 hover:border-white flex items-center justify-center text-xs font-bold shadow-md cursor-pointer transition-all";
                         }
                     }
                 }
@@ -7231,7 +7228,7 @@
             });
         }
 
-        // Fullscreen Lightbox Studio
+        // AirDroid-Grade Fullscreen Lightbox Studio
         function openPhotoLightbox(index) {
             if (index < 0 || index >= allGalleryPhotos.length) return;
             currentLightboxIndex = index;
@@ -7243,12 +7240,16 @@
             const previewImg = document.getElementById('preview-img');
             const previewLoader = document.getElementById('preview-loader');
             const previewTitle = document.getElementById('preview-filename');
+            const previewIndex = document.getElementById('preview-index');
+            const previewSize = document.getElementById('preview-filesize');
 
-            if (previewTitle) previewTitle.textContent = `${photo.name} (${formatBytes(photo.size)})`;
+            if (previewIndex) previewIndex.textContent = `${index + 1} / ${allGalleryPhotos.length}`;
+            if (previewTitle) previewTitle.textContent = photo.name || 'Photo';
+            if (previewSize) previewSize.textContent = formatBytes(photo.size || 0);
+
             updateLightboxTransform();
 
-            const cacheKey = photo.uri || photo.path;
-            const cached = photoThumbnailsCache[cacheKey] || (photo.path && photoThumbnailsCache[photo.path]);
+            const cached = photoThumbnailsCache[photo.id] || photoThumbnailsCache[photo.path] || photoThumbnailsCache[photo.uri];
 
             if (previewImg) {
                 if (cached) {
@@ -7264,9 +7265,10 @@
                     }
                     sendCommand({
                         action: 'GET_PHOTO_THUMBNAIL',
+                        id: photo.id,
                         path: photo.path,
                         uri: photo.uri,
-                        maxDim: 1024,
+                        maxDim: 1280,
                         tag: String(index)
                     });
                 }
@@ -7277,7 +7279,10 @@
                 downloadBtn.onclick = () => triggerFileDownload(photo.path, photo.name);
             }
 
-            if (modal) modal.classList.remove('hidden');
+            if (modal) {
+                modal.style.zIndex = '99999';
+                modal.classList.remove('hidden');
+            }
         }
 
         function updateLightboxTransform() {
@@ -7322,6 +7327,14 @@
             sendCommand({ action: 'SET_WALLPAPER', path: path, uri: uri });
         }
 
+        function closeImagePreview() {
+            const modal = document.getElementById('image-preview-modal');
+            if (modal) modal.classList.add('hidden');
+            const previewImg = document.getElementById('preview-img');
+            if (previewImg) previewImg.src = '';
+            currentLightboxIndex = -1;
+        }
+
         // Global Lightbox Keyboard Navigation
         window.addEventListener('keydown', (e) => {
             const modal = document.getElementById('image-preview-modal');
@@ -7334,12 +7347,11 @@
         });
 
 
-        // --- 2. Remote Videos Engine (Phase 15.2 Studio) ---
+        // --- 2. Remote Videos Engine (Phase 15.2 AirDroid Studio) ---
         let allGalleryVideos = [];
         let currentVideoBucket = 'All';
         let videoBuckets = [];
         let videoThumbnailsCache = {};
-        let videoThumbnailObserver = null;
         let pendingVideoThumbnailQueue = [];
         let inFlightVideoThumbnailRequests = 0;
         const MAX_CONCURRENT_VIDEO_THUMBS = 4;
@@ -7455,18 +7467,23 @@
                 const escapedPath = (video.path || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const escapedUri = (video.uri || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 const escapedTitle = (video.title || video.name || 'Video').replace(/'/g, "\\'");
+                const videoId = video.id || idx;
 
                 const card = document.createElement('div');
-                card.id = `video-card-${idx}`;
-                card.className = "group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-rose-500/60 hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer video-grid-item";
+                card.id = `video-card-${videoId}`;
+                card.className = "group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-rose-500/60 hover:shadow-xl transition-all duration-200 flex flex-col cursor-pointer select-none video-grid-item";
+                card.setAttribute('data-id', videoId);
                 card.setAttribute('data-idx', idx);
-                card.setAttribute('data-path', video.path || '');
-                card.setAttribute('data-uri', video.uri || '');
+
+                card.ondblclick = (e) => {
+                    e.stopPropagation();
+                    playGalleryVideo(idx);
+                };
 
                 card.innerHTML = `
                     <div class="relative w-full h-36 bg-gray-950 flex items-center justify-center overflow-hidden" onclick="playGalleryVideo(${idx})">
-                        <img id="video-thumb-img-${idx}" src="" alt="${escapedTitle}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 hidden" />
-                        <div id="video-thumb-ldr-${idx}" class="flex flex-col items-center justify-center text-gray-600 gap-1 select-none">
+                        <img id="video-thumb-img-${videoId}" src="" alt="${escapedTitle}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 hidden pointer-events-none" />
+                        <div id="video-thumb-ldr-${videoId}" class="flex flex-col items-center justify-center text-gray-600 gap-1 select-none">
                             <span class="text-3xl opacity-60">🎬</span>
                         </div>
                         <!-- Play Icon Badge -->
@@ -7485,58 +7502,30 @@
                             <div class="font-medium text-gray-200 text-[11px] truncate" title="${video.title || video.name}">${video.title || video.name}</div>
                             <div class="text-[9px] text-gray-500 mt-0.5 font-mono">${sizeStr}</div>
                         </div>
-                        <button onclick="event.stopPropagation(); triggerFileDownload('${escapedPath}', '${escapedTitle}')" class="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs border border-gray-700/60 transition-all shrink-0" title="Download Video">
+                        <button onclick="event.stopPropagation(); triggerFileDownload('${escapedPath}', '${escapedTitle}')" class="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-xs border border-gray-700/60 transition-all shrink-0 cursor-pointer" title="Download Original Video">
                             ⬇
                         </button>
                     </div>
                 `;
 
                 fragment.appendChild(card);
+
+                const cached = videoThumbnailsCache[videoId] || videoThumbnailsCache[video.path] || videoThumbnailsCache[video.uri];
+                if (cached) {
+                    const img = card.querySelector(`#video-thumb-img-${videoId}`);
+                    const ldr = card.querySelector(`#video-thumb-ldr-${videoId}`);
+                    if (img) {
+                        img.src = cached;
+                        img.classList.remove('hidden');
+                    }
+                    if (ldr) ldr.classList.add('hidden');
+                } else {
+                    pendingVideoThumbnailQueue.push({ id: video.id, path: video.path, uri: video.uri, idx: idx });
+                }
             });
 
             grid.appendChild(fragment);
 
-            // Initialize Viewport Lazy Loading for Video Thumbnails
-            initVideoViewportObserver();
-        }
-
-        function initVideoViewportObserver() {
-            if (videoThumbnailObserver) {
-                videoThumbnailObserver.disconnect();
-            }
-
-            const grid = document.getElementById('videos-grid');
-            if (!grid) return;
-
-            videoThumbnailObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const el = entry.target;
-                        const idx = parseInt(el.getAttribute('data-idx'));
-                        const path = el.getAttribute('data-path');
-                        const uri = el.getAttribute('data-uri');
-                        videoThumbnailObserver.unobserve(el);
-                        enqueueVideoThumbnail(path, uri, idx);
-                    }
-                });
-            }, {
-                root: grid,
-                rootMargin: '150px 0px'
-            });
-
-            grid.querySelectorAll('.video-grid-item').forEach(card => {
-                videoThumbnailObserver.observe(card);
-            });
-        }
-
-        function enqueueVideoThumbnail(path, uri, idx) {
-            const cacheKey = uri || path;
-            if (videoThumbnailsCache[cacheKey] || (path && videoThumbnailsCache[path])) {
-                applyVideoThumbnailToCard(idx, videoThumbnailsCache[cacheKey] || videoThumbnailsCache[path]);
-                return;
-            }
-
-            pendingVideoThumbnailQueue.push({ path, uri, idx });
             dispatchVideoThumbnailRequests();
         }
 
@@ -7546,6 +7535,7 @@
                 inFlightVideoThumbnailRequests++;
                 sendCommand({
                     action: 'GET_VIDEO_THUMBNAIL',
+                    id: item.id,
                     path: item.path,
                     uri: item.uri,
                     maxDim: 256,
@@ -7562,33 +7552,28 @@
             const mime = (data.thumbnail.startsWith('/9j/')) ? 'image/jpeg' : 'image/webp';
             const dataUri = data.thumbnail.startsWith('data:') ? data.thumbnail : `data:${mime};base64,${data.thumbnail}`;
 
-            const key = data.uri || data.path;
-            if (key) videoThumbnailsCache[key] = dataUri;
+            if (data.id) videoThumbnailsCache[data.id] = dataUri;
             if (data.path) videoThumbnailsCache[data.path] = dataUri;
             if (data.uri) videoThumbnailsCache[data.uri] = dataUri;
 
-            let cardIdx = -1;
-            if (data.tag !== undefined && data.tag !== '') {
-                cardIdx = parseInt(data.tag);
-            }
-            if (cardIdx === -1 || isNaN(cardIdx)) {
-                cardIdx = allGalleryVideos.findIndex(v => (data.uri && v.uri === data.uri) || (data.path && v.path === data.path));
-            }
+            const img = (data.id ? document.getElementById('video-thumb-img-' + data.id) : null) ||
+                        (data.tag !== undefined ? document.getElementById('video-thumb-img-' + data.tag) : null);
+            const ldr = (data.id ? document.getElementById('video-thumb-ldr-' + data.id) : null) ||
+                        (data.tag !== undefined ? document.getElementById('video-thumb-ldr-' + data.tag) : null);
 
-            if (cardIdx !== -1) {
-                applyVideoThumbnailToCard(cardIdx, dataUri);
-            }
-        }
-
-        function applyVideoThumbnailToCard(cardIdx, dataUri) {
-            const img = document.getElementById(`video-thumb-img-${cardIdx}`);
-            const ldr = document.getElementById(`video-thumb-ldr-${cardIdx}`);
             if (img) {
                 img.src = dataUri;
                 img.classList.remove('hidden');
             }
             if (ldr) ldr.classList.add('hidden');
         }
+
+        setInterval(() => {
+            if (pendingVideoThumbnailQueue.length > 0 && inFlightVideoThumbnailRequests > 0) {
+                inFlightVideoThumbnailRequests = 0;
+                dispatchVideoThumbnailRequests();
+            }
+        }, 4000);
 
         function playGalleryVideo(index) {
             if (index < 0 || index >= allGalleryVideos.length) return;
@@ -7625,7 +7610,20 @@
                 triggerFileDownload(video.path, title);
             }
 
-            if (modal) modal.classList.remove('hidden');
+            if (modal) {
+                modal.style.zIndex = '99999';
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeVideoPlayerModal() {
+            const modal = document.getElementById('video-player-modal');
+            if (modal) modal.classList.add('hidden');
+            const player = document.getElementById('video-modal-player');
+            if (player) {
+                player.pause();
+                player.src = '';
+            }
         }
 
         // --- 3. Music Player & Jukebox Engine ---

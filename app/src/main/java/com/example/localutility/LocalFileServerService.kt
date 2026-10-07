@@ -1496,16 +1496,24 @@ class LocalFileServerService : Service() {
             }
 
             "GET_PHOTO_THUMBNAIL" -> {
+                val id = json.optLong("id", 0L)
                 val path = json.optString("path", "")
                 val uri = json.optString("uri", "")
+                val tag = json.optString("tag", "")
                 val maxDim = json.optInt("maxDim", 256)
-                val target = if (uri.isNotEmpty()) uri else path
                 serviceScope.launch(Dispatchers.IO) {
-                    val thumb = teleManager.getPhotoThumbnailBase64(target, maxDim)
+                    val thumb = if (id > 0L) {
+                        teleManager.getPhotoThumbnailById(id, maxDim)
+                    } else {
+                        val target = if (uri.isNotEmpty()) uri else path
+                        teleManager.getPhotoThumbnailBase64(target, maxDim)
+                    }
                     broadcastMessage(JSONObject().apply {
                         put("type", "PHOTO_THUMBNAIL_RESULT")
+                        put("id", id)
                         put("path", path)
                         put("uri", uri)
+                        put("tag", tag)
                         put("thumbnail", thumb ?: "")
                     }.toString())
                 }
@@ -1538,16 +1546,24 @@ class LocalFileServerService : Service() {
             }
 
             "GET_VIDEO_THUMBNAIL" -> {
+                val id = json.optLong("id", 0L)
                 val path = json.optString("path", "")
                 val uri = json.optString("uri", "")
+                val tag = json.optString("tag", "")
                 val maxDim = json.optInt("maxDim", 256)
-                val target = if (uri.isNotEmpty()) uri else path
                 serviceScope.launch(Dispatchers.IO) {
-                    val thumb = teleManager.getVideoThumbnailBase64(target, maxDim)
+                    val thumb = if (id > 0L) {
+                        teleManager.getVideoThumbnailById(id, maxDim)
+                    } else {
+                        val target = if (uri.isNotEmpty()) uri else path
+                        teleManager.getVideoThumbnailBase64(target, maxDim)
+                    }
                     broadcastMessage(JSONObject().apply {
                         put("type", "VIDEO_THUMBNAIL_RESULT")
+                        put("id", id)
                         put("path", path)
                         put("uri", uri)
+                        put("tag", tag)
                         put("thumbnail", thumb ?: "")
                     }.toString())
                 }
