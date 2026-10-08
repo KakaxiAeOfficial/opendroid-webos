@@ -3890,6 +3890,40 @@ fun getStorageStats(): JSONObject {
         }
     }
 
+    fun getBedtimeConfig(): JSONObject {
+        val raw = wellbeingPrefs.getString("bedtime_config", null)
+        return if (raw != null) {
+            try {
+                val obj = JSONObject(raw)
+                obj.put("isCurrentlyActive", isBedtimeActiveNow())
+                obj
+            } catch (_: Exception) {
+                defaultBedtimeConfig()
+            }
+        } else {
+            defaultBedtimeConfig()
+        }
+    }
+
+    private fun defaultBedtimeConfig(): JSONObject {
+        val defaultDays = JSONArray()
+        for (i in 1..7) defaultDays.put(i)
+        return JSONObject().apply {
+            put("enabled", false)
+            put("startHour", 23)
+            put("startMinute", 0)
+            put("endHour", 7)
+            put("endMinute", 0)
+            put("daysOfWeek", defaultDays)
+            put("manualActive", false)
+            put("grayscale", true)
+            put("dndEnabled", true)
+            put("isCurrentlyActive", false)
+        }
+    }
+
+
+
     fun setFocusModeConfig(
         enabled: Boolean,
         blockedPackages: List<String>,
