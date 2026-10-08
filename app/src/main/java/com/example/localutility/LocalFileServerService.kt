@@ -510,6 +510,35 @@ class LocalFileServerService : Service() {
         }
     }
 
+
+    // --- Phase 16: Live Hardware Telemetry Streaming Engine ---
+    private var telemetryStreamJob: kotlinx.coroutines.Job? = null
+
+    private fun startHardwareTelemetryStream() {
+        telemetryStreamJob?.cancel()
+        telemetryStreamJob = serviceScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                try {
+                    val telemetryData = teleManager.getHardwareTelemetry()
+                    val response = JSONObject().apply {
+                        put("type", "HARDWARE_TELEMETRY_RESULT")
+                        put("data", telemetryData)
+                        put("timestamp", System.currentTimeMillis())
+                    }
+                    broadcastMessage(response.toString())
+                } catch (e: Exception) {
+                    Log.e("OpenDroid", "Telemetry streaming error", e)
+                }
+                kotlinx.coroutines.delay(3000L) // 3-second live refresh interval
+            }
+        }
+    }
+
+    private fun stopHardwareTelemetryStream() {
+        telemetryStreamJob?.cancel()
+        telemetryStreamJob = null
+    }
+
     private var heartbeatJob: kotlinx.coroutines.Job? = null
 
     private fun startPresenceHeartbeat() {
@@ -858,6 +887,62 @@ class LocalFileServerService : Service() {
         when (json.optString("action")) {
             "PING_FLEET", "GET_DEVICE_TELEMETRY" -> {
                 publishDevicePresence(true)
+            }
+
+            // --- Phase 16: Remote Power Control & Hardware Telemetry Handlers ---
+            "FETCH_HARDWARE_TELEMETRY" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val telemetryData = teleManager.getHardwareTelemetry()
+                        val response = JSONObject().apply {
+                            put("type", "HARDWARE_TELEMETRY_RESULT")
+                            put("data", telemetryData)
+                            put("timestamp", System.currentTimeMillis())
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error fetching hardware telemetry", e)
+                        val errResponse = JSONObject().apply {
+                            put("type", "HARDWARE_TELEMETRY_RESULT")
+                            put("status", "ERROR")
+                            put("error", e.message ?: "Failed to read telemetry")
+                        }
+                        broadcastMessage(errResponse.toString())
+                    }
+                }
+            }
+
+            "TRIGGER_POWER_ACTION" -> {
+                val powerAction = json.optString("powerAction", "")
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val actionResult = teleManager.executeRemotePowerAction(powerAction)
+                        val response = JSONObject().apply {
+                            put("type", "POWER_ACTION_RESULT")
+                            put("action", powerAction)
+                            put("data", actionResult)
+                            put("success", actionResult.optString("status") == "SUCCESS")
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error executing remote power action: $powerAction", e)
+                        val errResponse = JSONObject().apply {
+                            put("type", "POWER_ACTION_RESULT")
+                            put("action", powerAction)
+                            put("success", false)
+                            put("error", e.message ?: "Execution failed")
+                        }
+                        broadcastMessage(errResponse.toString())
+                    }
+                }
+            }
+
+            "START_TELEMETRY_STREAM" -> {
+                startHardwareTelemetryStream()
+            }
+
+            "STOP_TELEMETRY_STREAM" -> {
+                stopHardwareTelemetryStream()
             }
 
             "UPDATE_DEVICE_NICKNAME" -> {
@@ -2199,6 +2284,7 @@ class LocalFileServerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        stopHardwareTelemetryStream()
         unregisterReceiver(batteryReceiver)
         try { WebRtcManager.getInstance(applicationContext).stopCapture() } catch (_: Exception) {}
         try { smsObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}

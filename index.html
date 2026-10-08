@@ -710,6 +710,10 @@
             <div class="app-tile bg-gradient-to-tr from-orange-500 to-amber-600">🔔</div>
             <span class="text-xs font-medium text-center mt-1">Ringtone</span>
         </div>
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg cursor-pointer" onclick="wm.openWindow('power-window')">
+            <div class="app-tile bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 shadow-amber-500/20">⚡</div>
+            <span class="text-xs font-medium text-center mt-1">Power & Sensors</span>
+        </div>
 
         <!-- Remote Controls, Web & Security -->
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('url-window')">
@@ -2385,6 +2389,222 @@
                 </div>
             </div>
             <audio id="ringtone-preview-player" onended="onRingtonePreviewEnded()"></audio>
+        </div>
+    </div>
+
+    <!-- Window: Power Control & Hardware Telemetry Hub (Phase 16 Engine) -->
+    <div id="power-window" class="window hidden" style="display: none; width: 880px; height: 620px; top: 65px; left: 250px; min-width: 680px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+        <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
+            <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">⚡</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Power & Hardware Telemetry Hub</span>
+            </div>
+            <div class="flex items-center gap-1.5 no-drag">
+                <button onclick="wm.minimizeWindow('power-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('power-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('power-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+            </div>
+        </div>
+
+        <div class="flex-1 bg-gray-950 overflow-y-auto p-4 text-gray-200 flex flex-col gap-4 font-sans select-none">
+            <!-- Top Status Ribbon -->
+            <div class="bg-gray-900/90 border border-gray-800/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-700 flex items-center justify-center text-lg shadow-sm">
+                        📱
+                    </div>
+                    <div>
+                        <div class="font-bold text-white flex items-center gap-2">
+                            <span id="tel-device-model">Android Device</span>
+                            <span id="tel-os-badge" class="px-2 py-0.2 bg-blue-950 text-blue-300 border border-blue-800/60 rounded-full text-[10px] font-mono">Android OS</span>
+                        </div>
+                        <div class="text-[11px] text-gray-400 mt-0.5 flex items-center gap-2">
+                            <span>⏱️ Uptime: <b id="tel-uptime" class="text-gray-200">--</b></span>
+                            <span>•</span>
+                            <span>🔋 Power Saver: <b id="tel-powersave" class="text-emerald-400">Off</b></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-950 border border-gray-800 text-[11px] font-mono text-cyan-400">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span id="tel-stream-status">Telemetry Active (3s)</span>
+                    </div>
+                    <button onclick="fetchHardwareTelemetryNow()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700/60 cursor-pointer transition-all">
+                        <span>🔄</span><span>Poll Now</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Telemetry Grid (CPU, RAM, Storage, Battery) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <!-- 1. CPU Load Gauge Card -->
+                <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3.5 flex flex-col items-center justify-between relative overflow-hidden">
+                    <div class="w-full flex justify-between items-center mb-2">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">CPU Utilization</span>
+                        <span id="tel-cpu-arch" class="text-[10px] font-mono text-gray-500">arm64</span>
+                    </div>
+                    <div class="relative w-28 h-28 my-1 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                            <path class="text-gray-800" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                            <path id="tel-cpu-meter" class="text-cyan-400 transition-all duration-700 ease-out" stroke-dasharray="0, 100" stroke-linecap="round" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                        </svg>
+                        <div class="absolute flex flex-col items-center justify-center">
+                            <span id="tel-cpu-percent" class="text-2xl font-black text-white font-mono">0%</span>
+                            <span id="tel-cpu-cores" class="text-[10px] text-gray-400 mt-0.5">8 Cores</span>
+                        </div>
+                    </div>
+                    <div class="w-full pt-2 border-t border-gray-800 text-[11px] text-center text-gray-400 font-mono">
+                        Real-time /proc/stat delta
+                    </div>
+                </div>
+
+                <!-- 2. RAM Memory Gauge Card -->
+                <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3.5 flex flex-col items-center justify-between relative overflow-hidden">
+                    <div class="w-full flex justify-between items-center mb-2">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">RAM Allocation</span>
+                        <span id="tel-ram-low" class="text-[10px] text-emerald-400 font-semibold">Healthy</span>
+                    </div>
+                    <div class="relative w-28 h-28 my-1 flex items-center justify-center">
+                        <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                            <path class="text-gray-800" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                            <path id="tel-ram-meter" class="text-purple-400 transition-all duration-700 ease-out" stroke-dasharray="0, 100" stroke-linecap="round" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                        </svg>
+                        <div class="absolute flex flex-col items-center justify-center">
+                            <span id="tel-ram-percent" class="text-2xl font-black text-white font-mono">0%</span>
+                            <span id="tel-ram-avail" class="text-[10px] text-gray-400 mt-0.5">-- Free</span>
+                        </div>
+                    </div>
+                    <div class="w-full pt-2 border-t border-gray-800 text-[11px] text-center text-gray-300 font-mono">
+                        <span id="tel-ram-used-total">-- / --</span>
+                    </div>
+                </div>
+
+                <!-- 3. Internal Storage Breakdown Card -->
+                <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3.5 flex flex-col justify-between relative overflow-hidden">
+                    <div class="w-full flex justify-between items-center mb-2">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Internal Storage</span>
+                        <span id="tel-storage-pct" class="text-[10px] font-mono text-cyan-400 font-bold">0%</span>
+                    </div>
+                    <div class="my-auto space-y-2 py-2">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-gray-400">Used Partition:</span>
+                            <span id="tel-storage-used" class="font-bold text-white font-mono">--</span>
+                        </div>
+                        <div class="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+                            <div id="tel-storage-bar" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-gray-400">
+                            <span>Free: <b id="tel-storage-free" class="text-emerald-400">--</b></span>
+                            <span>Total: <b id="tel-storage-total" class="text-gray-300">--</b></span>
+                        </div>
+                    </div>
+                    <div class="w-full pt-2 border-t border-gray-800 text-[11px] text-center text-gray-500 font-mono">
+                        Ext4 / F2FS Data Mount
+                    </div>
+                </div>
+
+                <!-- 4. Thermal & Battery Diagnostics Card -->
+                <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3.5 flex flex-col justify-between relative overflow-hidden">
+                    <div class="w-full flex justify-between items-center mb-1">
+                        <span class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Thermal & Battery</span>
+                        <span id="tel-battery-health" class="px-2 py-0.2 bg-emerald-950 text-emerald-300 border border-emerald-800/60 rounded-full text-[10px] font-semibold">Good</span>
+                    </div>
+                    <div class="my-auto space-y-1.5 py-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-400 text-xs">Battery Level:</span>
+                            <span id="tel-battery-pct" class="text-base font-bold text-white font-mono">--%</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-400 text-xs">Temperature:</span>
+                            <span id="tel-temp-display" class="font-bold text-amber-400 font-mono text-xs">-- °C</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-400 text-xs">Voltage:</span>
+                            <span id="tel-voltage" class="font-bold text-cyan-300 font-mono text-xs">-- V</span>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="text-gray-400">Charging:</span>
+                            <span id="tel-plug-type" class="text-gray-200 truncate max-w-[110px]">--</span>
+                        </div>
+                    </div>
+                    <div class="w-full pt-2 border-t border-gray-800 text-[10px] text-center text-gray-500 font-mono">
+                        <span id="tel-battery-tech">Li-ion Hardware Sensor</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Remote Power Controls Dock -->
+            <div class="bg-gray-900/90 border border-gray-800/80 rounded-2xl p-4 space-y-3">
+                <div class="flex items-center justify-between border-b border-gray-800 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">⚡</span>
+                        <h4 class="font-bold text-xs text-white uppercase tracking-wider">Remote Power & Lifecycle Actions</h4>
+                    </div>
+                    <span class="text-[11px] text-gray-400">Hardware safety controls protected by confirmation</span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                    <!-- Action 1: Instant Lock -->
+                    <button onclick="promptPowerConfirmation('LOCK_SCREEN')" class="p-3 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700/60 hover:border-cyan-500/50 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm">
+                        <span class="text-2xl group-hover:scale-110 transition-transform">🔒</span>
+                        <div class="text-center">
+                            <div class="font-bold text-white text-xs">Lock Screen</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">Instant DPM lock</div>
+                        </div>
+                    </button>
+
+                    <!-- Action 2: Standby Sleep / Wake -->
+                    <button onclick="promptPowerConfirmation('STANDBY_SLEEP')" class="p-3 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700/60 hover:border-amber-500/50 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm">
+                        <span class="text-2xl group-hover:scale-110 transition-transform">💤</span>
+                        <div class="text-center">
+                            <div class="font-bold text-white text-xs">Standby Sleep</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">Toggle screen off</div>
+                        </div>
+                    </button>
+
+                    <!-- Action 3: Wake Screen -->
+                    <button onclick="promptPowerConfirmation('STANDBY_WAKE')" class="p-3 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700/60 hover:border-emerald-500/50 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm">
+                        <span class="text-2xl group-hover:scale-110 transition-transform">☀️</span>
+                        <div class="text-center">
+                            <div class="font-bold text-white text-xs">Wake Screen</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">Acquire wake lock</div>
+                        </div>
+                    </button>
+
+                    <!-- Action 4: Remote Reboot -->
+                    <button onclick="promptPowerConfirmation('REBOOT')" class="p-3 bg-rose-950/30 hover:bg-rose-900/40 border border-rose-800/40 hover:border-rose-500/60 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm">
+                        <span class="text-2xl group-hover:scale-110 transition-transform">🔄</span>
+                        <div class="text-center">
+                            <div class="font-bold text-rose-300 text-xs">Reboot Phone</div>
+                            <div class="text-[10px] text-rose-400/80 mt-0.5">Remote restart</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Power Action Safety Confirmation Modal -->
+    <div id="power-confirm-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 select-none">
+        <div class="bg-gray-900 border border-gray-700 text-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-4">
+            <div id="power-confirm-icon" class="text-4xl mx-auto w-14 h-14 rounded-2xl bg-gray-800 flex items-center justify-center shadow-inner">
+                ⚠️
+            </div>
+            <div>
+                <h3 id="power-confirm-title" class="text-base font-bold text-white">Confirm Power Action</h3>
+                <p id="power-confirm-desc" class="text-xs text-gray-400 mt-1 leading-relaxed">
+                    Are you sure you want to execute this remote power command on your phone?
+                </p>
+            </div>
+            <div class="flex items-center gap-3 pt-2">
+                <button onclick="closePowerConfirmation()" class="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold border border-gray-700 transition-all cursor-pointer">
+                    Cancel
+                </button>
+                <button id="power-confirm-execute-btn" onclick="executeConfirmedPowerAction()" class="flex-1 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer">
+                    Confirm Action
+                </button>
+            </div>
         </div>
     </div>
 
@@ -4317,6 +4537,10 @@
                         containsEl.textContent = `${info.fileCount || 0} Files, ${info.dirCount || 0} Folders`;
                     }
                 }ctory(data.data);
+            } else if (data.type === 'HARDWARE_TELEMETRY_RESULT') {
+                handleHardwareTelemetryResponse(data);
+            } else if (data.type === 'POWER_ACTION_RESULT') {
+                handlePowerActionResult(data);
             } else if (data.type === 'GALLERY_PHOTOS_RESULT' || data.type === 'PHOTOS_LIST') {
                 handleGalleryPhotosResponse(data);
             } else if (data.type === 'PHOTO_THUMBNAIL_RESULT') {
@@ -8486,6 +8710,7 @@
                     'music-window': { title: 'Music Player', icon: '🎵' },
                     'videos-window': { title: 'Videos', icon: '🎬' },
                     'ringtone-window': { title: 'Ringtones & Audio Alerts', icon: '🔔' },
+                    'power-window': { title: 'Power & Telemetry', icon: '⚡' },
                     'clipboard-window': { title: 'Clipboard Sync', icon: '📋' },
                     'info-window': { title: 'Device Info', icon: '📊' },
                     'map-window': { title: 'Find Phone', icon: '📍' },
@@ -8550,6 +8775,7 @@
                 if (!this.openWindows.includes(id)) {
                     this.openWindows.push(id);
                 }
+                if(id === 'power-window') stopHardwareTelemetrySync();
                 this.minimizedWindows.delete(id);
                 this.activeWindowId = id;
                 this.renderTaskbar();
@@ -8566,6 +8792,7 @@
                 if(id === 'music-window') fetchMusicTracks();
                 if(id === 'videos-window') fetchGalleryVideos();
                 if(id === 'ringtone-window') fetchDeviceRingtones();
+                if(id === 'power-window') startHardwareTelemetrySync();
                 if(id === 'map-window') {
                     sendCommand({action: 'FETCH_LOCATION'});
                     if (latestLocation) renderMap(latestLocation);
@@ -12023,6 +12250,241 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             showToast(`Switching to Gateway ${idx + 1}... 🌐`, 'info');
             initAccountMqtt(idx, true);
         }
+
+        // =========================================================================
+        // --- PHASE 16: REMOTE POWER CONTROL & HARDWARE SENSOR TELEMETRY SUITE ---
+        // =========================================================================
+        let hardwareTelemetryInterval = null;
+        let pendingPowerActionTarget = null;
+
+        function startHardwareTelemetrySync() {
+            sendCommand({ action: 'START_TELEMETRY_STREAM' });
+            sendCommand({ action: 'FETCH_HARDWARE_TELEMETRY' });
+            if (hardwareTelemetryInterval) clearInterval(hardwareTelemetryInterval);
+            hardwareTelemetryInterval = setInterval(() => {
+                const win = document.getElementById('power-window');
+                if (win && !win.classList.contains('hidden')) {
+                    sendCommand({ action: 'FETCH_HARDWARE_TELEMETRY' });
+                }
+            }, 3000);
+        }
+
+        function stopHardwareTelemetrySync() {
+            if (hardwareTelemetryInterval) {
+                clearInterval(hardwareTelemetryInterval);
+                hardwareTelemetryInterval = null;
+            }
+            sendCommand({ action: 'STOP_TELEMETRY_STREAM' });
+        }
+
+        function fetchHardwareTelemetryNow() {
+            showToast("Fetching live hardware metrics... ⚡", "info");
+            sendCommand({ action: 'FETCH_HARDWARE_TELEMETRY' });
+        }
+
+        function handleHardwareTelemetryResponse(data) {
+            const payload = data.data || data;
+            if (!payload || payload.status === 'ERROR') return;
+
+            // 1. Battery & Thermals
+            if (payload.battery) {
+                const b = payload.battery;
+                const pctEl = document.getElementById('tel-battery-pct');
+                const tempEl = document.getElementById('tel-temp-display');
+                const voltEl = document.getElementById('tel-voltage');
+                const plugEl = document.getElementById('tel-plug-type');
+                const healthEl = document.getElementById('tel-battery-health');
+                const techEl = document.getElementById('tel-battery-tech');
+
+                if (pctEl && b.percent !== undefined && b.percent >= 0) {
+                    pctEl.textContent = `${b.percent}% ${b.isCharging ? '⚡' : ''}`;
+                }
+                if (tempEl && b.tempCelsius) {
+                    const temp = parseFloat(b.tempCelsius);
+                    tempEl.textContent = `${b.tempCelsius} °C (${b.tempFahrenheit || '--'} °F)`;
+                    if (temp > 45) {
+                        tempEl.className = "font-bold text-rose-500 font-mono text-xs animate-pulse";
+                    } else if (temp > 38) {
+                        tempEl.className = "font-bold text-amber-400 font-mono text-xs";
+                    } else {
+                        tempEl.className = "font-bold text-emerald-400 font-mono text-xs";
+                    }
+                }
+                if (voltEl && b.voltageVolts) voltEl.textContent = `${b.voltageVolts} V`;
+                if (plugEl && b.plugType) plugEl.textContent = b.plugType;
+                if (healthEl && b.health) {
+                    healthEl.textContent = b.health;
+                    if (b.health.toLowerCase().includes('good')) {
+                        healthEl.className = "px-2 py-0.2 bg-emerald-950 text-emerald-300 border border-emerald-800/60 rounded-full text-[10px] font-semibold";
+                    } else {
+                        healthEl.className = "px-2 py-0.2 bg-rose-950 text-rose-300 border border-rose-800/60 rounded-full text-[10px] font-semibold";
+                    }
+                }
+                if (techEl && b.technology) techEl.textContent = `${b.technology} Sensor Pipeline`;
+            }
+
+            // 2. CPU Load Meter
+            if (payload.cpu) {
+                const c = payload.cpu;
+                const cpuPct = Math.max(0, Math.min(100, Math.round(c.usagePercent || 0)));
+                const cpuPctEl = document.getElementById('tel-cpu-percent');
+                const cpuMeter = document.getElementById('tel-cpu-meter');
+                const cpuCoresEl = document.getElementById('tel-cpu-cores');
+                const cpuArchEl = document.getElementById('tel-cpu-arch');
+
+                if (cpuPctEl) cpuPctEl.textContent = `${cpuPct}%`;
+                if (cpuMeter) {
+                    cpuMeter.setAttribute('stroke-dasharray', `${cpuPct}, 100`);
+                    if (cpuPct > 80) cpuMeter.className = "text-rose-500 transition-all duration-700 ease-out";
+                    else if (cpuPct > 60) cpuMeter.className = "text-amber-400 transition-all duration-700 ease-out";
+                    else cpuMeter.className = "text-cyan-400 transition-all duration-700 ease-out";
+                }
+                if (cpuCoresEl && c.coreCount) cpuCoresEl.textContent = `${c.coreCount} Cores Active`;
+                if (cpuArchEl && c.architecture) cpuArchEl.textContent = c.architecture;
+            }
+
+            // 3. RAM (Memory) Meter
+            if (payload.memory) {
+                const m = payload.memory;
+                const ramPct = Math.max(0, Math.min(100, Math.round(m.usedPercent || 0)));
+                const ramPctEl = document.getElementById('tel-ram-percent');
+                const ramMeter = document.getElementById('tel-ram-meter');
+                const ramAvailEl = document.getElementById('tel-ram-avail');
+                const ramUsedTotal = document.getElementById('tel-ram-used-total');
+                const ramLowEl = document.getElementById('tel-ram-low');
+
+                if (ramPctEl) ramPctEl.textContent = `${ramPct}%`;
+                if (ramMeter) {
+                    ramMeter.setAttribute('stroke-dasharray', `${ramPct}, 100`);
+                    if (ramPct > 85) ramMeter.className = "text-rose-500 transition-all duration-700 ease-out";
+                    else if (ramPct > 70) ramMeter.className = "text-amber-400 transition-all duration-700 ease-out";
+                    else ramMeter.className = "text-purple-400 transition-all duration-700 ease-out";
+                }
+                if (ramAvailEl && m.availFormatted) ramAvailEl.textContent = `${m.availFormatted} Free`;
+                if (ramUsedTotal) ramUsedTotal.textContent = `${m.usedFormatted || '--'} / ${m.totalFormatted || '--'}`;
+                if (ramLowEl) {
+                    if (m.isLowMemory) {
+                        ramLowEl.textContent = "Low Memory";
+                        ramLowEl.className = "text-[10px] text-rose-400 font-semibold animate-pulse";
+                    } else {
+                        ramLowEl.textContent = "Healthy";
+                        ramLowEl.className = "text-[10px] text-emerald-400 font-semibold";
+                    }
+                }
+            }
+
+            // 4. Storage Breakdown
+            if (payload.storage) {
+                const s = payload.storage;
+                const storPct = Math.max(0, Math.min(100, Math.round(s.internalUsedPercent || 0)));
+                const storPctEl = document.getElementById('tel-storage-pct');
+                const storBar = document.getElementById('tel-storage-bar');
+                const storUsed = document.getElementById('tel-storage-used');
+                const storFree = document.getElementById('tel-storage-free');
+                const storTotal = document.getElementById('tel-storage-total');
+
+                if (storPctEl) storPctEl.textContent = `${storPct}%`;
+                if (storBar) storBar.style.width = `${storPct}%`;
+                if (storUsed && s.internalUsedFormatted) storUsed.textContent = s.internalUsedFormatted;
+                if (storFree && s.internalAvailFormatted) storFree.textContent = s.internalAvailFormatted;
+                if (storTotal && s.internalTotalFormatted) storTotal.textContent = s.internalTotalFormatted;
+            }
+
+            // 5. System & Power Mode
+            if (payload.system) {
+                const sys = payload.system;
+                const modelEl = document.getElementById('tel-device-model');
+                const osEl = document.getElementById('tel-os-badge');
+                const uptimeEl = document.getElementById('tel-uptime');
+                const psEl = document.getElementById('tel-powersave');
+
+                if (modelEl && sys.deviceModel) modelEl.textContent = sys.deviceModel;
+                if (osEl && sys.osVersion) osEl.textContent = sys.osVersion;
+                if (uptimeEl && sys.uptimeFormatted) uptimeEl.textContent = sys.uptimeFormatted;
+                if (psEl) {
+                    psEl.textContent = sys.isPowerSaveMode ? "Active" : "Off";
+                    psEl.className = sys.isPowerSaveMode ? "text-amber-400 font-bold" : "text-emerald-400 font-medium";
+                }
+            }
+        }
+
+        function promptPowerConfirmation(action) {
+            pendingPowerActionTarget = action;
+            const modal = document.getElementById('power-confirm-modal');
+            const icon = document.getElementById('power-confirm-icon');
+            const title = document.getElementById('power-confirm-title');
+            const desc = document.getElementById('power-confirm-desc');
+            const btn = document.getElementById('power-confirm-execute-btn');
+
+            if (!modal) return;
+
+            if (action === 'LOCK_SCREEN') {
+                if (icon) icon.textContent = '🔒';
+                if (title) title.textContent = 'Lock Device Screen';
+                if (desc) desc.textContent = 'This will immediately lock your phone screen. You will need your PIN/Pattern to unlock.';
+                if (btn) {
+                    btn.textContent = 'Lock Now';
+                    btn.className = 'flex-1 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer';
+                }
+            } else if (action === 'STANDBY_SLEEP') {
+                if (icon) icon.textContent = '💤';
+                if (title) title.textContent = 'Put Screen to Sleep';
+                if (desc) desc.textContent = 'Turn off phone display to save battery while keeping background services active.';
+                if (btn) {
+                    btn.textContent = 'Put to Sleep';
+                    btn.className = 'flex-1 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer';
+                }
+            } else if (action === 'STANDBY_WAKE') {
+                if (icon) icon.textContent = '☀️';
+                if (title) title.textContent = 'Wake Device Screen';
+                if (desc) desc.textContent = 'Remotely turn on the phone display for 3 seconds.';
+                if (btn) {
+                    btn.textContent = 'Wake Screen';
+                    btn.className = 'flex-1 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer';
+                }
+            } else if (action === 'REBOOT') {
+                if (icon) icon.textContent = '🔄';
+                if (title) title.textContent = 'Reboot Remote Phone';
+                if (desc) desc.textContent = 'Warning: This will restart the remote phone. The WebOS connection will temporarily disconnect during the reboot cycle.';
+                if (btn) {
+                    btn.textContent = 'Confirm Reboot';
+                    btn.className = 'flex-1 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer';
+                }
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closePowerConfirmation() {
+            const modal = document.getElementById('power-confirm-modal');
+            if (modal) modal.classList.add('hidden');
+            pendingPowerActionTarget = null;
+        }
+
+        function executeConfirmedPowerAction() {
+            if (!pendingPowerActionTarget) return;
+            const action = pendingPowerActionTarget;
+            closePowerConfirmation();
+
+            showToast(`Executing remote power command (${action})... ⚡`, "info");
+            sendCommand({
+                action: 'TRIGGER_POWER_ACTION',
+                powerAction: action
+            });
+        }
+
+        function handlePowerActionResult(data) {
+            const success = data.success !== false;
+            const action = data.action || 'Power Action';
+            const msg = data.data?.message || (success ? `${action} executed successfully!` : (data.error || 'Action failed'));
+
+            if (success) {
+                showToast(msg, "success");
+            } else {
+                showToast(msg, "error");
+            }
+        }
+
 </script>
 
     <!-- OpenDroid Bottom Taskbar Dock (Open & Minimized Tabs) -->
@@ -12053,4 +12515,5 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
+
 
