@@ -1,4 +1,7 @@
 package com.example.localutility
+import android.accessibilityservice.AccessibilityService
+import android.content.ComponentName
+import android.util.Log
 
 import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
@@ -3047,7 +3050,7 @@ fun getStorageStats(): JSONObject {
             sysObj.put("isInteractive", isInteractive)
             sysObj.put("uptimeFormatted", uptimeStr)
             sysObj.put("uptimeMs", uptimeMs)
-            sysObj.put("osVersion", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+            sysObj.put("osVersion", "Android ${Build.VERSION.RELEASE}")
             sysObj.put("deviceModel", "${Build.MANUFACTURER} ${Build.MODEL}")
             result.put("system", sysObj)
 
@@ -3107,61 +3110,150 @@ fun getStorageStats(): JSONObject {
         try {
             when (action.uppercase(java.util.Locale.US)) {
                 "LOCK_SCREEN" -> {
+                    // Priority 1: Accessibility Service (Supported on Android 9+ / Android 15 without Device Admin)
+                    val remoteInput = RemoteInputService.instance
+                    if (remoteInput != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        try {
+                            val locked = remoteInput.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+                            if (locked) {
+                                result.put("status", "SUCCESS")
+                                result.put("message", "Screen locked successfully via Remote Control (Accessibility)")
+                                return result
+                            }
+                        } catch (e: Exception) {
+                            Log.e("TelephonyManager", "Accessibility lock failed", e)
+                        }
+                    }
+
+                    // Priority 2: Device Administrator DPM lockNow()
                     val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
-                    if (dpm != null) {
+                    val adminComponent = ComponentName(context, AdminReceiver::class.java)
+                    if (dpm != null && dpm.isAdminActive(adminComponent)) {
                         try {
                             dpm.lockNow()
                             result.put("status", "SUCCESS")
                             result.put("message", "Screen locked successfully via Device Administrator")
                             return result
-                        } catch (e: SecurityException) {
-                            // Fallback to shell keyevent
+                        } catch (e: Exception) {
+                            Log.e("TelephonyManager", "Device Admin lock failed", e)
                         }
                     }
+
+                    // Priority 3: Root shell power toggle
                     try {
-                        Runtime.getRuntime().exec(arrayOf("input", "keyevent", "26"))
-                        result.put("status", "SUCCESS")
-                        result.put("message", "Screen power toggle injected via shell")
-                    } catch (ex: Exception) {
-                        result.put("status", "ERROR")
-                        result.put("error", "Device Administrator lock permission required")
+                        val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", "input keyevent 26"))
+                        proc.waitFor()
+                        if (proc.exitValue() == 0) {
+                            result.put("status", "SUCCESS")
+                            result.put("message", "Screen locked via root shell")
+                            return result
+                        }
+                    } catch (_: Exception) {}
+
+                    // Guidance if neither privilege is active
+                    result.put("status", "ERROR")
+                    result.put("error", "Please enable 'Remote Control (Accessibility)' or 'Device Administrator' in OpenDroid app on your phone.")
+                }
+                "STANDBY_SLEEP" -> {
+                    // Priority 1: Accessibility Service (Lock screen puts display to sleep)
+                    val remoteInput = RemoteInputService.instance
+                    if (remoteInput != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        try {
+                            val slept = remoteInput.performGlobalAction(AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+                            if (slept) {
+                                result.put("status", "SUCCESS")
+                                result.put("message", "Screen put to standby sleep via Accessibility")
+                                return result
+                            }
+                        } catch (e: Exception) {
+                            Log.e("TelephonyManager", "Accessibility sleep failed", e)
+                        }
                     }
+
+                    // Priority 2: Device Administrator lock
+                    val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+                    val adminComponent = ComponentName(context, AdminReceiver::class.java)
+                    if (dpm != null && dpm.isAdminActive(adminComponent)) {
+                        try {
+                            dpm.lockNow()
+                            result.put("status", "SUCCESS")
+                            result.put("message", "Screen put to standby sleep via Device Admin")
+                            return result
+                        } catch (e: Exception) {
+                            Log.e("TelephonyManager", "Device Admin standby sleep failed", e)
+                        }
+                    }
+
+                    // Priority 3: Root shell keyevent
+                    try {
+                        val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", "input keyevent 26"))
+                        proc.waitFor()
+                        if (proc.exitValue() == 0) {
+                            result.put("status", "SUCCESS")
+                            result.put("message", "Standby sleep signal dispatched via root")
+                            return result
+                        }
+                    } catch (_: Exception) {}
+
+                    result.put("status", "ERROR")
+                    result.put("error", "Please enable 'Remote Control (Accessibility)' or 'Device Administrator' in OpenDroid app on your phone.")
                 }
                 "REBOOT" -> {
+                    // Priority 1: Root reboot (Direct silent restart)
+                    try {
+                        val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", "reboot"))
+                        result.put("status", "SUCCESS")
+                        result.put("message", "Reboot initiated via root shell")
+                        return result
+                    } catch (_: Exception) {}
+
+                    // Priority 2: PowerManager (If signed as system app)
                     try {
                         val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
                         pm?.reboot(null)
                         result.put("status", "SUCCESS")
-                        result.put("message", "Reboot initiated via PowerManager")
-                    } catch (e: SecurityException) {
+                        result.put("message", "Reboot initiated via system PowerManager")
+                        return result
+                    } catch (_: Exception) {}
+
+                    // Priority 3: Accessibility Service GLOBAL_ACTION_POWER_DIALOG (Brings up Restart menu on phone screen)
+                    val remoteInput = RemoteInputService.instance
+                    if (remoteInput != null) {
                         try {
-                            Runtime.getRuntime().exec(arrayOf("su", "-c", "reboot"))
-                            result.put("status", "SUCCESS")
-                            result.put("message", "Reboot initiated via root shell")
-                        } catch (re: Exception) {
-                            result.put("status", "PERMISSION_REQUIRED")
-                            result.put("error", "System permission or root required for remote reboot.")
+                            val dialogOpened = remoteInput.performGlobalAction(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)
+                            if (dialogOpened) {
+                                result.put("status", "SUCCESS")
+                                result.put("message", "Power menu opened on phone screen (Tap Restart to confirm)")
+                                return result
+                            }
+                        } catch (e: Exception) {
+                            Log.e("TelephonyManager", "Power dialog failed", e)
                         }
                     }
+
+                    result.put("status", "ERROR")
+                    result.put("error", "Root access or 'Remote Control (Accessibility)' required for remote reboot.")
                 }
                 "SHUTDOWN" -> {
                     try {
                         Runtime.getRuntime().exec(arrayOf("su", "-c", "reboot -p"))
                         result.put("status", "SUCCESS")
                         result.put("message", "Shutdown initiated via root shell")
+                        return result
                     } catch (e: Exception) {
-                        result.put("status", "PERMISSION_REQUIRED")
-                        result.put("error", "Root permission required for remote shutdown.")
-                    }
-                }
-                "STANDBY_SLEEP" -> {
-                    try {
-                        Runtime.getRuntime().exec(arrayOf("input", "keyevent", "26"))
-                        result.put("status", "SUCCESS")
-                        result.put("message", "Standby sleep signal dispatched")
-                    } catch (e: Exception) {
+                        val remoteInput = RemoteInputService.instance
+                        if (remoteInput != null) {
+                            try {
+                                val dialogOpened = remoteInput.performGlobalAction(AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)
+                                if (dialogOpened) {
+                                    result.put("status", "SUCCESS")
+                                    result.put("message", "Power menu opened on phone screen (Tap Power off to confirm)")
+                                    return result
+                                }
+                            } catch (_: Exception) {}
+                        }
                         result.put("status", "ERROR")
-                        result.put("error", e.message ?: "Failed to trigger standby sleep")
+                        result.put("error", "Root permission or Accessibility required for remote shutdown.")
                     }
                 }
                 "STANDBY_WAKE" -> {
