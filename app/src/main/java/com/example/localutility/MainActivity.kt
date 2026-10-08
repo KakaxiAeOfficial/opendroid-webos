@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
 import android.app.AppOpsManager
+import android.widget.Toast
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -799,7 +800,7 @@ class MainActivity : ComponentActivity() {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 })
             } catch (e2: Exception) {
-                Toast.makeText(this, "Please open Settings > Special app access > Usage access", Toast.LENGTH_LONG).show()
+                android.widget.Toast.makeText(this, "Please open Settings > Special app access > Usage access", android.widget.Toast.LENGTH_LONG).show()
             }
         }
     }
