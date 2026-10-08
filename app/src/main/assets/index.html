@@ -2445,7 +2445,7 @@
             </div>
         </div>
 
-        <div class="flex-1 bg-gray-950 overflow-y-auto p-4 text-gray-200 flex flex-col gap-4 font-sans select-none">
+        <div class="flex-1 bg-gray-950 overflow-y-auto p-4 text-gray-200 flex flex-col gap-4 font-sans select-none relative">
             <!-- Top Controls Ribbon: Date Navigation & Filter Chips -->
             <div class="bg-gray-900/90 border border-gray-800/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <!-- Date Nav & Calendar Picker -->
@@ -2650,180 +2650,211 @@
                     </div>
                 </div>
             </div>
+        
+            <!-- Modal: Set App Limit (Hourglass) -->
+            <div id="st-limit-modal" class="hidden absolute inset-0 z-40 bg-gray-950/85 backdrop-blur-md flex items-center justify-center p-4 rounded-b-xl">
+                <div class="bg-gray-900 border border-indigo-500/50 rounded-2xl w-full max-w-sm p-5 text-gray-200 shadow-2xl flex flex-col gap-3">
+                    <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div id="st-modal-app-icon" class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs flex-shrink-0">📱</div>
+                            <div class="truncate">
+                                <div id="st-modal-app-title" class="font-bold text-white text-xs truncate">App Name</div>
+                                <div id="st-modal-app-pkg" class="text-[10px] text-gray-400 font-mono truncate">package.name</div>
+                            </div>
+                        </div>
+                        <button onclick="closeAppLimitModal()" class="text-gray-400 hover:text-rose-400 text-base font-bold transition-all">✕</button>
+                    </div>
+
+                    <div class="text-[11px] text-gray-300">
+                        Set a daily usage timer. Once reached, this app is actively blocked on the child's phone.
+                    </div>
+
+                    <!-- Presets -->
+                    <div class="grid grid-cols-3 gap-1.5 text-xs">
+                        <button onclick="setLimitPreset(15)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all cursor-pointer">15 mins</button>
+                        <button onclick="setLimitPreset(30)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all cursor-pointer">30 mins</button>
+                        <button onclick="setLimitPreset(45)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all cursor-pointer">45 mins</button>
+                        <button onclick="setLimitPreset(60)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all cursor-pointer">1 hour</button>
+                        <button onclick="setLimitPreset(90)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all cursor-pointer">1.5 hours</button>
+                        <button onclick="setLimitPreset(120)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all cursor-pointer">2 hours</button>
+                    </div>
+
+                    <!-- Custom Input -->
+                    <div class="flex items-center gap-2 mt-1">
+                        <span class="text-[11px] text-gray-400 whitespace-nowrap">Custom Limit:</span>
+                        <input type="number" id="st-limit-custom-input" min="1" max="1440" placeholder="Minutes" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-indigo-500">
+                        <span class="text-[11px] text-gray-400">mins</span>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-800 mt-1">
+                        <button onclick="removeCurrentAppLimit()" id="st-modal-remove-btn" class="px-3 py-1.5 rounded-lg bg-rose-950/80 border border-rose-800/80 text-rose-300 hover:bg-rose-900 text-xs font-semibold transition-all cursor-pointer">
+                            Remove Limit
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <button onclick="closeAppLimitModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all cursor-pointer">Cancel</button>
+                            <button onclick="saveCurrentAppLimit()" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm transition-all cursor-pointer">Save Timer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Bedtime Mode (Google Family Link / Wellbeing Style) -->
+            <div id="st-bedtime-modal" class="hidden absolute inset-0 z-40 bg-gray-950/85 backdrop-blur-md flex items-center justify-center p-4 rounded-b-xl">
+                <div class="bg-gray-900 border border-purple-500/50 rounded-2xl w-full max-w-md p-5 text-gray-200 shadow-2xl flex flex-col gap-3.5 max-h-[92%] overflow-y-auto">
+                    <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                        <div class="flex items-center gap-2 font-bold text-purple-300 text-sm">
+                            <span class="text-base">🌙</span><span>Bedtime Mode & Downtime Scheduler</span>
+                        </div>
+                        <button onclick="closeBedtimeModal()" class="text-gray-400 hover:text-rose-400 text-base font-bold transition-all cursor-pointer">✕</button>
+                    </div>
+
+                    <!-- 1-Tap Direct Toggle Card (Turn on now / Turn off now) -->
+                    <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 flex items-center justify-between gap-3">
+                        <div>
+                            <div class="font-bold text-xs text-white" id="st-bedtime-status-label">Bedtime mode is off</div>
+                            <div class="text-[11px] text-gray-400" id="st-bedtime-status-sub">Silence device, dim wallpaper & block non-essential apps</div>
+                        </div>
+                        <button onclick="toggleBedtimeManualNow()" id="st-btn-bedtime-manual-toggle" class="px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-sm transition-all whitespace-nowrap cursor-pointer">
+                            Turn on now
+                        </button>
+                    </div>
+
+                    <!-- Schedule Section -->
+                    <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 flex flex-col gap-2.5 text-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="font-semibold text-gray-200 flex items-center gap-1.5">
+                                <span>📅</span><span>Use a Schedule</span>
+                            </span>
+                            <input type="checkbox" id="st-bedtime-enable-check" class="w-4 h-4 accent-purple-600 cursor-pointer">
+                        </div>
+
+                        <!-- Start & End Time Inputs -->
+                        <div class="grid grid-cols-2 gap-2 mt-1">
+                            <div class="bg-gray-900 p-2 rounded-lg border border-gray-700/60 flex flex-col gap-1">
+                                <span class="text-[10px] text-gray-400 font-semibold">Sleep Starts:</span>
+                                <input type="time" id="st-bedtime-start-time" value="23:00" class="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-purple-500 cursor-pointer">
+                            </div>
+                            <div class="bg-gray-900 p-2 rounded-lg border border-gray-700/60 flex flex-col gap-1">
+                                <span class="text-[10px] text-gray-400 font-semibold">Wake-up Ends:</span>
+                                <input type="time" id="st-bedtime-end-time" value="07:00" class="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-purple-500 cursor-pointer">
+                            </div>
+                        </div>
+
+                        <!-- 7-Day Routine Selector Chips: S M T W T F S -->
+                        <div class="flex flex-col gap-1 mt-1">
+                            <span class="text-[10px] text-gray-400 font-semibold">Repeat on Days:</span>
+                            <div class="flex items-center justify-between gap-1 mt-0.5">
+                                <button onclick="toggleBedtimeDay(1)" id="st-day-1" class="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer">S</button>
+                                <button onclick="toggleBedtimeDay(2)" id="st-day-2" class="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer">M</button>
+                                <button onclick="toggleBedtimeDay(3)" id="st-day-3" class="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer">T</button>
+                                <button onclick="toggleBedtimeDay(4)" id="st-day-4" class="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer">W</button>
+                                <button onclick="toggleBedtimeDay(5)" id="st-day-5" class="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer">T</button>
+                                <button onclick="toggleBedtimeDay(6)" id="st-day-6" class="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer">F</button>
+                                <button onclick="toggleBedtimeDay(7)" id="st-day-7" class="w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer">S</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customise Toggles -->
+                    <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 flex flex-col gap-2 text-xs text-gray-300">
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <div class="flex items-center gap-2">
+                                <span>🔕</span>
+                                <span>Do Not Disturb for Bedtime mode</span>
+                            </div>
+                            <input type="checkbox" id="st-bedtime-dnd-check" checked class="w-4 h-4 accent-purple-600 cursor-pointer">
+                        </label>
+                        <label class="flex items-center justify-between cursor-pointer">
+                            <div class="flex items-center gap-2">
+                                <span>🌓</span>
+                                <span>Greyscale & Dim screen</span>
+                            </div>
+                            <input type="checkbox" id="st-bedtime-gray-check" checked class="w-4 h-4 accent-purple-600 cursor-pointer">
+                        </label>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2 border-t border-gray-800">
+                        <button onclick="closeBedtimeModal()" class="px-3.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all cursor-pointer">Cancel</button>
+                        <button onclick="saveBedtimeSettings()" class="px-5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer">Save Schedule</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Focus Mode -->
+            <div id="st-focus-modal" class="hidden absolute inset-0 z-40 bg-gray-950/85 backdrop-blur-md flex items-center justify-center p-4 rounded-b-xl">
+                <div class="bg-gray-900 border border-cyan-500/50 rounded-2xl w-full max-w-sm p-5 text-gray-200 shadow-2xl flex flex-col gap-3.5">
+                    <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                        <div class="flex items-center gap-2 font-bold text-cyan-300 text-sm">
+                            <span class="text-base">🎯</span><span>Study & Focus Mode</span>
+                        </div>
+                        <button onclick="closeFocusModal()" class="text-gray-400 hover:text-rose-400 text-base font-bold transition-all cursor-pointer">✕</button>
+                    </div>
+
+                    <div class="text-[11px] text-gray-400">
+                        Temporarily freeze distracting social media & games during homework or class time.
+                    </div>
+
+                    <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+                        <span class="text-xs font-semibold text-gray-200">Focus Mode Active</span>
+                        <input type="checkbox" id="st-focus-enable-check" class="w-4 h-4 accent-cyan-600 cursor-pointer">
+                    </div>
+
+                    <!-- Duration Picker -->
+                    <div class="flex flex-col gap-1 text-xs">
+                        <span class="text-[10px] text-gray-400">Focus Session Duration:</span>
+                        <select id="st-focus-duration-select" class="bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer">
+                            <option value="30">30 Minutes</option>
+                            <option value="45">45 Minutes</option>
+                            <option value="60" selected>1 Hour</option>
+                            <option value="120">2 Hours</option>
+                            <option value="0">Until Turned Off</option>
+                        </select>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2 border-t border-gray-800 mt-1">
+                        <button onclick="closeFocusModal()" class="px-3.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all cursor-pointer">Cancel</button>
+                        <button onclick="saveFocusModeSettings()" class="px-5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer">Apply Focus</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Daily Screen Time Reminder Goal -->
+            <div id="st-reminder-modal" class="hidden absolute inset-0 z-40 bg-gray-950/85 backdrop-blur-md flex items-center justify-center p-4 rounded-b-xl">
+                <div class="bg-gray-900 border border-pink-500/50 rounded-2xl w-full max-w-sm p-5 text-gray-200 shadow-2xl flex flex-col gap-3.5">
+                    <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                        <div class="flex items-center gap-2 font-bold text-pink-300 text-sm">
+                            <span class="text-base">⏰</span><span>Daily Screen Time Goal & Alert</span>
+                        </div>
+                        <button onclick="closeReminderModal()" class="text-gray-400 hover:text-rose-400 text-base font-bold transition-all cursor-pointer">✕</button>
+                    </div>
+
+                    <div class="text-[11px] text-gray-400">
+                        Set total daily screen time limit for the device. Get notified on WebOS when reached.
+                    </div>
+
+                    <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+                        <span class="text-xs font-semibold text-gray-200">Enable Daily Goal Alert</span>
+                        <input type="checkbox" id="st-reminder-enable-check" class="w-4 h-4 accent-pink-600 cursor-pointer">
+                    </div>
+
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="text-[11px] text-gray-400 whitespace-nowrap">Daily Target:</span>
+                        <input type="number" id="st-reminder-target-input" value="180" min="30" max="720" class="w-24 bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-pink-500">
+                        <span class="text-[11px] text-gray-400">minutes</span>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2 border-t border-gray-800 mt-1">
+                        <button onclick="closeReminderModal()" class="px-3.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all cursor-pointer">Cancel</button>
+                        <button onclick="saveReminderSettings()" class="px-5 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold shadow-md transition-all cursor-pointer">Set Goal</button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
 
-        <!-- Modal: Set App Limit -->
-        <div id="st-limit-modal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-gray-900 border border-gray-700/80 rounded-2xl w-full max-w-sm p-4 text-gray-200 shadow-2xl flex flex-col gap-3">
-                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
-                    <div class="flex items-center gap-2">
-                        <div id="st-modal-app-icon" class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs">📱</div>
-                        <div class="truncate">
-                            <div id="st-modal-app-title" class="font-bold text-white text-xs truncate">App Name</div>
-                            <div id="st-modal-app-pkg" class="text-[10px] text-gray-400 font-mono truncate">package.name</div>
-                        </div>
-                    </div>
-                    <button onclick="closeAppLimitModal()" class="text-gray-400 hover:text-rose-400 text-sm font-bold">✕</button>
-                </div>
-
-                <div class="text-[11px] text-gray-300">
-                    Set a daily usage timer. Once elapsed, the app will be blocked on the child's device.
-                </div>
-
-                <!-- Quick Presets -->
-                <div class="grid grid-cols-3 gap-1.5 text-xs">
-                    <button onclick="setLimitPreset(15)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">15 mins</button>
-                    <button onclick="setLimitPreset(30)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">30 mins</button>
-                    <button onclick="setLimitPreset(45)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">45 mins</button>
-                    <button onclick="setLimitPreset(60)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">1 hour</button>
-                    <button onclick="setLimitPreset(90)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">1.5 hours</button>
-                    <button onclick="setLimitPreset(120)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">2 hours</button>
-                </div>
-
-                <!-- Custom Limit Input -->
-                <div class="flex items-center gap-2 mt-1">
-                    <span class="text-[11px] text-gray-400 whitespace-nowrap">Custom Limit:</span>
-                    <input type="number" id="st-limit-custom-input" min="1" max="1440" placeholder="Minutes" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-indigo-500">
-                    <span class="text-[11px] text-gray-400">mins</span>
-                </div>
-
-                <!-- Actions -->
-                <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-800 mt-1">
-                    <button onclick="removeCurrentAppLimit()" id="st-modal-remove-btn" class="px-3 py-1.5 rounded-lg bg-rose-950/80 border border-rose-800/80 text-rose-300 hover:bg-rose-900 text-xs font-semibold transition-all">
-                        Remove Limit
-                    </button>
-                    <div class="flex items-center gap-2">
-                        <button onclick="closeAppLimitModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all">Cancel</button>
-                        <button onclick="saveCurrentAppLimit()" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm transition-all">Save Timer</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal: Bedtime Mode -->
-        <div id="st-bedtime-modal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-gray-900 border border-purple-500/40 rounded-2xl w-full max-w-sm p-4 text-gray-200 shadow-2xl flex flex-col gap-3">
-                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
-                    <div class="flex items-center gap-2 font-bold text-purple-300 text-xs">
-                        <span>🌙</span><span>Bedtime Mode & Downtime Scheduler</span>
-                    </div>
-                    <button onclick="closeBedtimeModal()" class="text-gray-400 hover:text-rose-400 text-sm font-bold">✕</button>
-                </div>
-
-                <div class="text-[11px] text-gray-400">
-                    Automatically dims screen, enables Do Not Disturb, and restricts gaming/social media during sleep hours.
-                </div>
-
-                <!-- Toggle Switch -->
-                <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
-                    <span class="text-xs font-semibold text-gray-200">Enable Bedtime Schedule</span>
-                    <input type="checkbox" id="st-bedtime-enable-check" class="w-4 h-4 accent-purple-600 cursor-pointer">
-                </div>
-
-                <!-- Schedule Times -->
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <div class="bg-gray-950 p-2 rounded-xl border border-gray-800 flex flex-col gap-1">
-                        <span class="text-[10px] text-gray-400 font-semibold">Sleep Starts:</span>
-                        <input type="time" id="st-bedtime-start-time" value="22:00" class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-purple-500 cursor-pointer">
-                    </div>
-                    <div class="bg-gray-950 p-2 rounded-xl border border-gray-800 flex flex-col gap-1">
-                        <span class="text-[10px] text-gray-400 font-semibold">Wake-up Ends:</span>
-                        <input type="time" id="st-bedtime-end-time" value="06:00" class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-purple-500 cursor-pointer">
-                    </div>
-                </div>
-
-                <!-- Features options -->
-                <div class="space-y-1.5 text-xs text-gray-300">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="st-bedtime-dnd-check" checked class="accent-purple-600">
-                        <span>Turn on Do Not Disturb automatically</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" id="st-bedtime-gray-check" checked class="accent-purple-600">
-                        <span>Greyscale & Dim display</span>
-                    </label>
-                </div>
-
-                <div class="flex justify-end gap-2 pt-2 border-t border-gray-800 mt-1">
-                    <button onclick="closeBedtimeModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all">Cancel</button>
-                    <button onclick="saveBedtimeSettings()" class="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-sm transition-all">Save Schedule</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal: Focus Mode -->
-        <div id="st-focus-modal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-gray-900 border border-cyan-500/40 rounded-2xl w-full max-w-sm p-4 text-gray-200 shadow-2xl flex flex-col gap-3">
-                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
-                    <div class="flex items-center gap-2 font-bold text-cyan-300 text-xs">
-                        <span>🎯</span><span>Study & Focus Mode</span>
-                    </div>
-                    <button onclick="closeFocusModal()" class="text-gray-400 hover:text-rose-400 text-sm font-bold">✕</button>
-                </div>
-
-                <div class="text-[11px] text-gray-400">
-                    Temporarily freeze distracting social media & games during homework or class time.
-                </div>
-
-                <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
-                    <span class="text-xs font-semibold text-gray-200">Focus Mode Active</span>
-                    <input type="checkbox" id="st-focus-enable-check" class="w-4 h-4 accent-cyan-600 cursor-pointer">
-                </div>
-
-                <!-- Duration Picker -->
-                <div class="flex flex-col gap-1 text-xs">
-                    <span class="text-[10px] text-gray-400">Focus Session Duration:</span>
-                    <select id="st-focus-duration-select" class="bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer">
-                        <option value="30">30 Minutes</option>
-                        <option value="45">45 Minutes</option>
-                        <option value="60" selected>1 Hour</option>
-                        <option value="120">2 Hours</option>
-                        <option value="0">Until Turned Off</option>
-                    </select>
-                </div>
-
-                <div class="flex justify-end gap-2 pt-2 border-t border-gray-800 mt-1">
-                    <button onclick="closeFocusModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all">Cancel</button>
-                    <button onclick="saveFocusModeSettings()" class="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-sm transition-all">Apply Focus</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal: Daily Screen Time Reminder Goal -->
-        <div id="st-reminder-modal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div class="bg-gray-900 border border-pink-500/40 rounded-2xl w-full max-w-sm p-4 text-gray-200 shadow-2xl flex flex-col gap-3">
-                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
-                    <div class="flex items-center gap-2 font-bold text-pink-300 text-xs">
-                        <span>⏰</span><span>Daily Screen Time Goal & Alert</span>
-                    </div>
-                    <button onclick="closeReminderModal()" class="text-gray-400 hover:text-rose-400 text-sm font-bold">✕</button>
-                </div>
-
-                <div class="text-[11px] text-gray-400">
-                    Set total daily screen time limit for the device. Get notified when reached.
-                </div>
-
-                <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
-                    <span class="text-xs font-semibold text-gray-200">Enable Daily Goal Alert</span>
-                    <input type="checkbox" id="st-reminder-enable-check" class="w-4 h-4 accent-pink-600 cursor-pointer">
-                </div>
-
-                <div class="flex items-center gap-2 text-xs">
-                    <span class="text-[11px] text-gray-400">Daily Target:</span>
-                    <input type="number" id="st-reminder-target-input" value="180" min="30" max="720" class="w-24 bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-pink-500">
-                    <span class="text-[11px] text-gray-400">minutes</span>
-                </div>
-
-                <div class="flex justify-end gap-2 pt-2 border-t border-gray-800 mt-1">
-                    <button onclick="closeReminderModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all">Cancel</button>
-                    <button onclick="saveReminderSettings()" class="px-4 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold shadow-sm transition-all">Set Goal</button>
-                </div>
-            </div>
-        </div>
-
-        <div id="power-window" class="window hidden" style="display: none; width: 880px; height: 620px; top: 65px; left: 250px; min-width: 680px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+            <div id="power-window" class="window hidden" style="display: none; width: 880px; height: 620px; top: 65px; left: 250px; min-width: 680px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
                 <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">⚡</div>
@@ -13213,10 +13244,37 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             if (modal) modal.classList.add('hidden');
         }
 
-        function saveBedtimeSettings() {
+        let bedtimeSelectedDays = [1, 2, 3, 4, 5, 6, 7];
+        let isBedtimeManualActive = false;
+
+        function toggleBedtimeDay(dayInt) {
+            const idx = bedtimeSelectedDays.indexOf(dayInt);
+            if (idx > -1) {
+                bedtimeSelectedDays.splice(idx, 1);
+            } else {
+                bedtimeSelectedDays.push(dayInt);
+            }
+            renderBedtimeDaysUI();
+        }
+
+        function renderBedtimeDaysUI() {
+            for (let d = 1; d <= 7; d++) {
+                const btn = document.getElementById(`st-day-${d}`);
+                if (btn) {
+                    if (bedtimeSelectedDays.includes(d)) {
+                        btn.className = 'w-8 h-8 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer shadow-sm';
+                    } else {
+                        btn.className = 'w-8 h-8 rounded-full bg-gray-800 text-gray-400 font-bold text-xs flex items-center justify-center transition-all cursor-pointer border border-gray-700/50 hover:text-white';
+                    }
+                }
+            }
+        }
+
+        function toggleBedtimeManualNow() {
+            isBedtimeManualActive = !isBedtimeManualActive;
             const enabled = document.getElementById('st-bedtime-enable-check')?.checked || false;
-            const startTimeStr = document.getElementById('st-bedtime-start-time')?.value || '22:00';
-            const endTimeStr = document.getElementById('st-bedtime-end-time')?.value || '06:00';
+            const startTimeStr = document.getElementById('st-bedtime-start-time')?.value || '23:00';
+            const endTimeStr = document.getElementById('st-bedtime-end-time')?.value || '07:00';
             const dndEnabled = document.getElementById('st-bedtime-dnd-check')?.checked || true;
             const grayscale = document.getElementById('st-bedtime-gray-check')?.checked || true;
 
@@ -13226,10 +13284,36 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             sendCommand({
                 action: 'SET_BEDTIME_CONFIG',
                 enabled: enabled,
-                startHour: sH || 22,
+                startHour: sH || 23,
                 startMinute: sM || 0,
-                endHour: eH || 6,
+                endHour: eH || 7,
                 endMinute: eM || 0,
+                daysOfWeek: bedtimeSelectedDays,
+                manualActive: isBedtimeManualActive,
+                grayscale: grayscale,
+                dndEnabled: dndEnabled
+            });
+        }
+
+        function saveBedtimeSettings() {
+            const enabled = document.getElementById('st-bedtime-enable-check')?.checked || false;
+            const startTimeStr = document.getElementById('st-bedtime-start-time')?.value || '23:00';
+            const endTimeStr = document.getElementById('st-bedtime-end-time')?.value || '07:00';
+            const dndEnabled = document.getElementById('st-bedtime-dnd-check')?.checked || true;
+            const grayscale = document.getElementById('st-bedtime-gray-check')?.checked || true;
+
+            const [sH, sM] = startTimeStr.split(':').map(n => parseInt(n, 10));
+            const [eH, eM] = endTimeStr.split(':').map(n => parseInt(n, 10));
+
+            sendCommand({
+                action: 'SET_BEDTIME_CONFIG',
+                enabled: enabled,
+                startHour: sH || 23,
+                startMinute: sM || 0,
+                endHour: eH || 7,
+                endMinute: eM || 0,
+                daysOfWeek: bedtimeSelectedDays,
+                manualActive: isBedtimeManualActive,
                 grayscale: grayscale,
                 dndEnabled: dndEnabled
             });
@@ -13240,16 +13324,53 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         function handleBedtimeConfigResponse(data) {
             const cfg = data.data?.config || data.data || data;
             currentBedtimeConfig = cfg;
+            isBedtimeManualActive = !!cfg.manualActive;
+
+            const statusLabel = document.getElementById('st-bedtime-status-label');
+            const manualBtn = document.getElementById('st-btn-bedtime-manual-toggle');
             const btnText = document.getElementById('st-btn-bedtime-text');
+            const topBtn = document.getElementById('st-btn-bedtime');
+
+            const isNowActive = cfg.isCurrentlyActive || cfg.manualActive;
+
+            if (statusLabel) {
+                statusLabel.textContent = isNowActive ? 'Bedtime mode is ON' : 'Bedtime mode is off';
+            }
+            if (manualBtn) {
+                if (isNowActive) {
+                    manualBtn.textContent = 'Turn off now';
+                    manualBtn.className = 'px-3.5 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-purple-300 border border-purple-500/50 font-bold text-xs shadow-sm transition-all whitespace-nowrap cursor-pointer';
+                } else {
+                    manualBtn.textContent = 'Turn on now';
+                    manualBtn.className = 'px-3.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-sm transition-all whitespace-nowrap cursor-pointer';
+                }
+            }
+
             if (btnText) {
-                if (cfg.enabled) {
-                    btnText.textContent = cfg.isCurrentlyActive ? 'Bedtime (Active)' : 'Bedtime (Scheduled)';
+                if (isNowActive) {
+                    btnText.textContent = 'Bedtime (Active)';
+                } else if (cfg.enabled) {
+                    btnText.textContent = 'Bedtime (Scheduled)';
                 } else {
                     btnText.textContent = 'Bedtime';
                 }
             }
+
+            if (topBtn) {
+                if (isNowActive) {
+                    topBtn.className = 'px-2.5 py-1.5 bg-purple-600/30 text-purple-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-purple-500 cursor-pointer transition-all shadow-sm';
+                } else {
+                    topBtn.className = 'px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-purple-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-purple-500/30 cursor-pointer transition-all';
+                }
+            }
+
             const enableCheck = document.getElementById('st-bedtime-enable-check');
             if (enableCheck) enableCheck.checked = !!cfg.enabled;
+
+            if (cfg.daysOfWeek && Array.isArray(cfg.daysOfWeek)) {
+                bedtimeSelectedDays = cfg.daysOfWeek;
+                renderBedtimeDaysUI();
+            }
         }
 
         // Focus Mode Modal
@@ -13268,13 +13389,13 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             const enabled = document.getElementById('st-focus-enable-check')?.checked || false;
             const durationMins = parseInt(document.getElementById('st-focus-duration-select')?.value || '60', 10);
 
-            // Default distracting apps to block if none specified
             const defaultDistracting = [
                 'com.instagram.android',
                 'com.facebook.katana',
                 'com.snapchat.android',
                 'com.zhiliaoapp.musically',
                 'com.supercell.clashofclans',
+                'com.dts.freefiremax',
                 'com.google.android.youtube'
             ];
 
@@ -13292,8 +13413,17 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             const cfg = data.data?.config || data.data || data;
             currentFocusConfig = cfg;
             const btnText = document.getElementById('st-btn-focus-text');
+            const topBtn = document.getElementById('st-btn-focus');
+
             if (btnText) {
                 btnText.textContent = cfg.enabled ? 'Focus: ON' : 'Focus Mode';
+            }
+            if (topBtn) {
+                if (cfg.enabled) {
+                    topBtn.className = 'px-2.5 py-1.5 bg-cyan-600/30 text-cyan-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-cyan-500 cursor-pointer transition-all shadow-sm';
+                } else {
+                    topBtn.className = 'px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-cyan-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-cyan-500/30 cursor-pointer transition-all';
+                }
             }
             const enableCheck = document.getElementById('st-focus-enable-check');
             if (enableCheck) enableCheck.checked = !!cfg.enabled;
@@ -13307,10 +13437,23 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
         function handleDndStatusResponse(data) {
             const res = data.data || data;
+            if (res.status === 'PERMISSION_REQUIRED') {
+                alert("Do Not Disturb permission is required on the phone.\n\nPlease open the OpenDroid app on the child phone and grant 'Do Not Disturb (DND Policy Access)'.");
+                return;
+            }
             currentDndMode = res.currentFilter || (res.isDndActive ? 'PRIORITY' : 'NORMAL');
             const dndBtnText = document.getElementById('st-btn-dnd-text');
+            const dndBtn = document.getElementById('st-btn-dnd');
+
             if (dndBtnText) {
                 dndBtnText.textContent = res.isDndActive ? `DND: ${currentDndMode}` : 'DND: Off';
+            }
+            if (dndBtn) {
+                if (res.isDndActive) {
+                    dndBtn.className = 'px-2.5 py-1.5 bg-amber-600/30 text-amber-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-amber-500 cursor-pointer transition-all shadow-sm';
+                } else {
+                    dndBtn.className = 'px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-amber-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-amber-500/30 cursor-pointer transition-all';
+                }
             }
         }
 
@@ -13337,9 +13480,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
         function handleScreenTimeReminderResponse(data) {
-            // Received reminder config
+            // Updated reminder config
         }
-        
         
         function handleHardwareTelemetryResponse(data) {
             const payload = data.data || data;
@@ -13580,6 +13722,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
+
 
 
 

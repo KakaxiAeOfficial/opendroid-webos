@@ -962,11 +962,31 @@ class LocalFileServerService : Service() {
                 val startM = json.optInt("startMinute", 0)
                 val endH = json.optInt("endHour", 6)
                 val endM = json.optInt("endMinute", 0)
+                val daysArr = json.optJSONArray("daysOfWeek")
+                val daysList = mutableListOf<Int>()
+                if (daysArr != null && daysArr.length() > 0) {
+                    for (i in 0 until daysArr.length()) {
+                        daysList.add(daysArr.optInt(i))
+                    }
+                } else {
+                    for (d in 1..7) daysList.add(d)
+                }
+                val manualActive = json.optBoolean("manualActive", false)
                 val grayscale = json.optBoolean("grayscale", true)
                 val dndEnabled = json.optBoolean("dndEnabled", true)
                 serviceScope.launch(Dispatchers.IO) {
                     try {
-                        val res = teleManager.setBedtimeConfig(enabled, startH, startM, endH, endM, grayscale, dndEnabled)
+                        val res = teleManager.setBedtimeConfig(
+                            enabled = enabled,
+                            startHour = startH,
+                            startMinute = startM,
+                            endHour = endH,
+                            endMinute = endM,
+                            daysOfWeek = daysList,
+                            manualActive = manualActive,
+                            grayscale = grayscale,
+                            dndEnabled = dndEnabled
+                        )
                         val response = JSONObject().apply {
                             put("type", "BEDTIME_CONFIG_RESULT")
                             put("data", res)

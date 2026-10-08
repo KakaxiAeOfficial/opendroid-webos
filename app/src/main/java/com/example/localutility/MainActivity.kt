@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
+import android.app.NotificationManager
 import android.app.AppOpsManager
 import android.widget.Toast
 import android.provider.Settings
@@ -58,6 +59,7 @@ class MainActivity : ComponentActivity() {
     private val isLocationGrantedState = mutableStateOf(false)
     private val isAdminActiveState = mutableStateOf(false)
     private val isUsageAccessGrantedState = mutableStateOf(false)
+    private val isDndAccessGrantedState = mutableStateOf(false)
     private val isStealthActiveState = mutableStateOf(false)
 
     private val requestPermissionsLauncher = registerForActivityResult(
@@ -127,6 +129,7 @@ class MainActivity : ComponentActivity() {
             val isLocationGranted by isLocationGrantedState
             val isAdminActive by isAdminActiveState
             val isUsageAccessGranted by isUsageAccessGrantedState
+                val isDndAccessGranted by isDndAccessGrantedState
             val isStealthActive by isStealthActiveState
 
             DisposableEffect(Unit) {
@@ -569,6 +572,14 @@ class MainActivity : ComponentActivity() {
                                     onGrantClick = { requestUsageAccess() }
                                 )
 
+                                // 10. Do Not Disturb (DND Policy Access)
+                                PermissionCard(
+                                    title = "Do Not Disturb (DND & Bedtime Mode)",
+                                    description = "Allows toggling DND, silencing notifications, and managing Bedtime downtime remotely from WebOS.",
+                                    isGranted = isDndAccessGranted,
+                                    onGrantClick = { requestDndAccess() }
+                                )
+
                                 // 9. Stealth Mode (Hide Launcher App Icon)
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
@@ -703,6 +714,7 @@ class MainActivity : ComponentActivity() {
         )
         isAdminActiveState.value = checkDeviceAdmin()
         isUsageAccessGrantedState.value = checkUsageAccess()
+        isDndAccessGrantedState.value = checkDndAccess()
         isStealthActiveState.value = checkStealthActive()
     }
 
@@ -801,6 +813,36 @@ class MainActivity : ComponentActivity() {
                 })
             } catch (e2: Exception) {
                 android.widget.Toast.makeText(this, "Please open Settings > Special app access > Usage access", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun checkDndAccess(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            nm?.isNotificationPolicyAccessGranted == true
+        } else {
+            true
+        }
+    }
+
+    private fun requestDndAccess() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+            } else {
+                android.widget.Toast.makeText(this, "DND access not required on this Android version", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            try {
+                startActivity(Intent(Settings.ACTION_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+            } catch (e2: Exception) {
+                android.widget.Toast.makeText(this, "Please open Settings > Sound > Do Not Disturb access", android.widget.Toast.LENGTH_LONG).show()
             }
         }
     }

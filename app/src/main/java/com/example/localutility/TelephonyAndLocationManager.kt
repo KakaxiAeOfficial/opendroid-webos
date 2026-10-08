@@ -3811,24 +3811,37 @@ fun getStorageStats(): JSONObject {
         startMinute: Int = 0,
         endHour: Int = 6,
         endMinute: Int = 0,
+        daysOfWeek: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7),
+        manualActive: Boolean = false,
         grayscale: Boolean = true,
         dndEnabled: Boolean = true
     ): JSONObject {
         val result = JSONObject()
         try {
+            val daysArr = JSONArray()
+            daysOfWeek.forEach { daysArr.put(it) }
+
             val config = JSONObject().apply {
                 put("enabled", enabled)
                 put("startHour", startHour)
                 put("startMinute", startMinute)
                 put("endHour", endHour)
                 put("endMinute", endMinute)
+                put("daysOfWeek", daysArr)
+                put("manualActive", manualActive)
                 put("grayscale", grayscale)
                 put("dndEnabled", dndEnabled)
             }
             wellbeingPrefs.edit().putString("bedtime_config", config.toString()).apply()
+
+            val isNowActive = isBedtimeActiveNow()
+            if (isNowActive && dndEnabled) {
+                setDndMode("PRIORITY")
+            }
+
             result.put("status", "SUCCESS")
             result.put("config", config)
-            result.put("isCurrentlyActive", isBedtimeActiveNow())
+            result.put("isCurrentlyActive", isNowActive)
         } catch (e: Exception) {
             result.put("status", "ERROR")
             result.put("error", e.message ?: "Failed to save Bedtime config")
@@ -3836,45 +3849,33 @@ fun getStorageStats(): JSONObject {
         return result
     }
 
-    fun getBedtimeConfig(): JSONObject {
-        val raw = wellbeingPrefs.getString("bedtime_config", null)
-        return if (raw != null) {
-            try {
-                val obj = JSONObject(raw)
-                obj.put("isCurrentlyActive", isBedtimeActiveNow())
-                obj
-            } catch (_: Exception) {
-                defaultBedtimeConfig()
-            }
-        } else {
-            defaultBedtimeConfig()
-        }
-    }
-
-    private fun defaultBedtimeConfig(): JSONObject {
-        return JSONObject().apply {
-            put("enabled", false)
-            put("startHour", 22)
-            put("startMinute", 0)
-            put("endHour", 6)
-            put("endMinute", 0)
-            put("grayscale", true)
-            put("dndEnabled", true)
-            put("isCurrentlyActive", false)
-        }
-    }
-
     fun isBedtimeActiveNow(): Boolean {
         val raw = wellbeingPrefs.getString("bedtime_config", null) ?: return false
         return try {
             val obj = JSONObject(raw)
+            if (obj.optBoolean("manualActive", false)) return true
             if (!obj.optBoolean("enabled", false)) return false
+
+            val cal = Calendar.getInstance()
+            val todayDayOfWeek = cal.get(Calendar.DAY_OF_WEEK) // 1=Sunday..7=Saturday
+
+            val daysArr = obj.optJSONArray("daysOfWeek")
+            if (daysArr != null && daysArr.length() > 0) {
+                var dayMatch = false
+                for (i in 0 until daysArr.length()) {
+                    if (daysArr.optInt(i) == todayDayOfWeek) {
+                        dayMatch = true
+                        break
+                    }
+                }
+                if (!dayMatch) return false
+            }
+
             val startH = obj.optInt("startHour", 22)
             val startM = obj.optInt("startMinute", 0)
             val endH = obj.optInt("endHour", 6)
             val endM = obj.optInt("endMinute", 0)
 
-            val cal = Calendar.getInstance()
             val curMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
             val startMinutes = startH * 60 + startM
             val endMinutes = endH * 60 + endM
@@ -4012,6 +4013,86 @@ fun getStorageStats(): JSONObject {
             put("enabled", false)
             put("targetMinutes", 180)
         }
+    }
+
+
+    // Real-Time Active Parental Control Evaluator
+    fun isPackageCurrentlyBlocked(packageName: String): Pair<Boolean, String> {
+        if (packageName.isEmpty()) return Pair(false, "")
+
+        // Whitelist critical system packages so phone never bricks
+        val criticalWhitelist = setOf(
+            context.packageName,
+            "com.android.phone",
+            "com.google.android.dialer",
+            "com.android.server.telecom",
+            "com.android.settings",
+            "com.google.android.packageinstaller",
+            "com.android.packageinstaller",
+            "com.android.systemui"
+        )
+        if (criticalWhitelist.contains(packageName) || packageName.contains("dialer") || packageName.contains("telecom")) {
+            return Pair(false, "")
+        }
+
+        // 1. Check Bedtime Mode
+        if (isBedtimeActiveNow()) {
+            val whitelistedApps = setOf(
+                context.packageName,
+                "com.android.phone",
+                "com.google.android.dialer",
+                "com.android.mms",
+                "com.google.android.apps.messaging",
+                "com.android.settings"
+            )
+            if (!whitelistedApps.contains(packageName) && !packageName.contains("dialer")) {
+                return Pair(true, "Bedtime Mode is active")
+            }
+        }
+
+        // 2. Check Focus Mode
+        if (isPackageBlockedByFocus(packageName)) {
+            return Pair(true, "App is paused by Focus Mode")
+        }
+
+        // 3. Check Daily App Limit
+        try {
+            val limits = getAppLimits()
+            val limitMinutes = limits.optInt(packageName, 0)
+            if (limitMinutes > 0) {
+                val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+                if (usageStatsManager != null) {
+                    val cal = Calendar.getInstance()
+                    cal.set(Calendar.HOUR_OF_DAY, 0)
+                    cal.set(Calendar.MINUTE, 0)
+                    cal.set(Calendar.SECOND, 0)
+                    cal.set(Calendar.MILLISECOND, 0)
+                    val startOfDay = cal.timeInMillis
+                    val now = System.currentTimeMillis()
+
+                    val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startOfDay, now)
+                    var todayUsageMs = 0L
+                    if (!stats.isNullOrEmpty()) {
+                        for (s in stats) {
+                            if (s.packageName == packageName) {
+                                todayUsageMs += s.totalTimeInForeground
+                            }
+                        }
+                    }
+                    val limitMs = limitMinutes * 60 * 1000L
+                    if (todayUsageMs >= limitMs) {
+                        val hours = limitMinutes / 60
+                        val mins = limitMinutes % 60
+                        val limitStr = if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
+                        return Pair(true, "Daily limit of $limitStr reached")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("TelephonyManager", "Error evaluating limit for $packageName", e)
+        }
+
+        return Pair(false, "")
     }
 
 }

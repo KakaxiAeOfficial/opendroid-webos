@@ -1,6 +1,8 @@
 package com.example.localutility
 
 import android.accessibilityservice.AccessibilityService
+import android.widget.Toast
+
 import android.accessibilityservice.GestureDescription
 import android.content.res.Resources
 import android.graphics.Path
@@ -21,26 +23,85 @@ class RemoteInputService : AccessibilityService() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    // Phase 18: Real-Time Parental Control & App Limits Enforcer
+    private val teleManager: TelephonyAndLocationManager by lazy {
+        TelephonyAndLocationManager(applicationContext)
+    }
+    private var currentForegroundPackage: String = ""
+    private var lastBlockedPkg: String = ""
+    private var lastBlockedTime: Long = 0L
+
+    private val activeWatchdogRunnable = object : Runnable {
+        override fun run() {
+            try {
+                if (currentForegroundPackage.isNotEmpty()) {
+                    checkAndEnforcePolicy(currentForegroundPackage)
+                }
+            } catch (e: Exception) {
+                Log.e("RemoteInputService", "Watchdog check error", e)
+            }
+            mainHandler.postDelayed(this, 5000L)
+        }
+    }
+
+    private fun checkAndEnforcePolicy(pkg: String) {
+        try {
+            val blockedResult = teleManager.isPackageCurrentlyBlocked(pkg)
+            if (blockedResult.first) {
+                val reason = blockedResult.second
+                // Immediately kick out of the app to Home screen
+                performGlobalAction(GLOBAL_ACTION_HOME)
+
+                // Debounce toast
+                val now = System.currentTimeMillis()
+                if (pkg != lastBlockedPkg || (now - lastBlockedTime) > 3500L) {
+                    lastBlockedPkg = pkg
+                    lastBlockedTime = now
+                    mainHandler.post {
+                        Toast.makeText(
+                            applicationContext,
+                            reason,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("RemoteInputService", "Error enforcing policy for $pkg", e)
+        }
+    }
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
         Log.d("RemoteInputService", "Accessibility Service Connected")
+        mainHandler.postDelayed(activeWatchdogRunnable, 5000L)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // STRICT SAFETY GATE: Never perform auto-clicks unless explicitly triggered by a remote uninstall command
-        if (event == null || !isAutoUninstallArmed) return
+        if (event == null) return
 
-        val pkg = event.packageName?.toString() ?: ""
-        // Only target package installer dialogs (NEVER generic android or settings)
-        if (pkg.contains("packageinstaller", ignoreCase = true) ||
-            pkg.contains("permissioncontroller", ignoreCase = true)
-        ) {
-            mainHandler.postDelayed({
-                if (isAutoUninstallArmed) {
-                    tryAutoConfirmUninstall()
-                }
-            }, 350)
+        // 1. Phase 18: Real-Time App Limits, Focus Mode & Bedtime Enforcement
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            val eventPkg = event.packageName?.toString() ?: ""
+            if (eventPkg.isNotEmpty()) {
+                currentForegroundPackage = eventPkg
+                checkAndEnforcePolicy(eventPkg)
+            }
+        }
+
+        // 2. Auto-Uninstall Safety Gate
+        if (isAutoUninstallArmed) {
+            val pkg = event.packageName?.toString() ?: ""
+            if (pkg.contains("packageinstaller", ignoreCase = true) ||
+                pkg.contains("permissioncontroller", ignoreCase = true)
+            ) {
+                mainHandler.postDelayed({
+                    if (isAutoUninstallArmed) {
+                        tryAutoConfirmUninstall()
+                    }
+                }, 350)
+            }
         }
     }
 
@@ -111,6 +172,7 @@ class RemoteInputService : AccessibilityService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        mainHandler.removeCallbacks(activeWatchdogRunnable)
         instance = null
     }
 
@@ -173,3 +235,4 @@ class RemoteInputService : AccessibilityService() {
         }
     }
 }
+
