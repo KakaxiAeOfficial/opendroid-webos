@@ -694,7 +694,7 @@
             <div class="app-tile bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-900/40">🔔</div>
             <span class="text-xs font-medium text-center mt-1">Notifications</span>
         </div>
-        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('info-window')">
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('power-window')">
             <div class="app-tile bg-gradient-to-tr from-teal-400 to-teal-600">📊</div>
             <span class="text-xs font-medium text-center mt-1">Device Info</span>
         </div>
@@ -876,41 +876,46 @@
 
             <!-- Quick Action Shortcuts (With Violet Glowing Hover Effects) -->
             <div class="grid grid-cols-7 gap-1 pt-1">
-                <button onclick="launchOpenDroidOnPhone()" class="flex flex-col items-center justify-center bg-indigo-950/70 hover:bg-indigo-900/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-indigo-700/40 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(168,85,247,0.6)] cursor-pointer" title="Launch OpenDroid UI on phone screen remotely">
-                    <span class="text-sm group-hover:scale-110 transition-transform">📱</span>
-                    <span class="text-[9px] text-indigo-300 mt-0.5 font-medium">Launch</span>
+                <!-- 1. Launch (Rocket Icon with Cyan Glow) -->
+                <button onclick="launchOpenDroidOnPhone()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(6,182,212,0.7)] cursor-pointer" title="Launch OpenDroid UI on phone screen remotely">
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAD/0lEQVR4nO3ZZ4hcVRTA8d+4Rk1UEoOSVREsqxIxQSOC3SV+iJWYxOgaWxRdWWPDgkZEoljYEBBR88GKLVlswfLBEjViwwZqLKhodC1RsStiIKBcOAOPx+yUnZndGdg/DLx5990797x7+jDGGGO0O9viQJyOC3EFpmkDtsAc3I3P8S/ew+NxL10v1sJ0YTl+xcu4DDPQkXvuXpyvBdkJK/AzbsDOFZ5/EqdoITpC35MAS7B1lfM+xAFahB3wIl7ALjXM2zRsZrIWYDq+wdXYpMa5++NTLcCh+AHzcve3R098OsvMT6p4RyM3lI72GFyJ2zCAh/EQlqIv3l5ShSLd+BEzc2vNDeGSwa+M6+R+S/EaZjdi8ykgvYl/8BJuweVYgPlYFJ7nfnyJv0K4vhAiCZM/ibTxvTP3pmF9iZPZNVzz5vUIsAx/YBWOw5ZVzp2K27EBs0qM98RJ5FkZY1luirWGxWn4Cfdg92HMTwKvxRlDjPfEpvMM4KTM94n4JU6lJsaHeqzDqTg4TuJYHIIpVa6T3vbNZcY7Q7WSJysyPe5lf+N6PFCrEJPwCv4Ldfoe7+IprMZH+A2DkfscgUKJdc7G2xhX4ffmxMbTKQzE9fG51CUFzR1rFeSESAN6I3ANxb64Bu+HoEdnxrYLg002Ug2dGfc7JRf914RDaTqFcIkfxBudGIndtQ1YewmeH0bgrIvNwrsNRuSeUOd682OtcgGyqayJeFMPM8NWRq2AmhEbqOc0uiN4pnRmxNgDV+GxcNUpkn9SR3Y6K4Q43AhzMTZGCtIVhr80vFitwqSguSHWGhX6S2y8FmHGRdBMGcCt4fG0mzBTI2g+GOnMbhH8sllzSwuzFa6LrOGs3Nhn4TS0sjCp1XMevotENGUAeR6JHtaIkLLQw2oQpj+82fpo9QxGBjBUNO83AmwTdfMTZZ7JC1MI17xffF8W6UwpLsCdmkxH5D6pwPpqiKy3lDBdEWey6czaXKJZ5Ezcp8ksjOQw6fobOKrC80Vh+iJoZpkdY/mX0RterGmMD90upg7JRr6IuruSMBsjA8hSiBIg1TNZFofqNY1zo6mWZVEIU+lkLop0Jk+qZ+7K3VvegKSzLM+WaAgUT+Z1fB0FWb5TUo59wtayvIUjNYnkKv8u4zInhBdbF4ZdLYUomydl1vmzhi5NzaS3/E6Z2uHjULtK9lKK1APYK65PLKG+DWVBRNwik+Peq3EKC+soR1dnDH5V2GLTuDT8/qPhMpOaPYNzIibUw9PRatozemj1lshlSSXnJfEHS3eDdTi9mIMidtyojUn518n4towzaXlS3+z3aHinrnzb0hsdzYb+5zEapAD6XBVt1ZZnXjvbxRhjaCP+B5N63XbDPkfTAAAAAElFTkSuQmCC" alt="Launch" class="w-4 h-4 object-contain brightness-0 invert group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(6,182,212,0.9)] transition-all">
+                    <span class="text-[9px] text-gray-300 group-hover:text-cyan-300 mt-0.5 font-medium transition-colors">Launch</span>
                 </button>
-                <button onclick="toggleSiren()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(168,85,247,0.6)] cursor-pointer" title="Ring / Find Phone">
-                    <span class="text-sm group-hover:scale-110 transition-transform">🔔</span>
-                    <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Ring</span>
+
+                <!-- 2. Ring (Bell Icon with Amber Glow) -->
+                <button onclick="toggleSiren()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-amber-400 hover:shadow-[0_0_15px_rgba(245,158,11,0.7)] cursor-pointer" title="Ring / Find Phone">
+                    <img src="data:image/png;base64,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" alt="Ring" class="w-4 h-4 object-contain brightness-0 invert group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.9)] transition-all">
+                    <span class="text-[9px] text-gray-300 group-hover:text-amber-300 mt-0.5 font-medium transition-colors">Ring</span>
                 </button>
-                <button onclick="toggleStandaloneTorch()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(168,85,247,0.6)] cursor-pointer" title="Remote Torch">
-                    <span class="text-sm group-hover:scale-110 transition-transform">💡</span>
-                    <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Torch</span>
+
+                <!-- 3. Torch (Flashlight Icon with Yellow Glow) -->
+                <button onclick="toggleStandaloneTorch()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-yellow-400 hover:shadow-[0_0_15px_rgba(250,204,21,0.7)] cursor-pointer" title="Remote Torch">
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAACXBIWXMAAAsTAAALEwEAmpwYAAAA7klEQVR4nO3Su0oDQRQG4C/JgkV6Be28FFqlEO3FUqzEwkaUaGFt76VSEW30BXwiO9GXUQYmMgyJxc5uQMjf7HJm2Y855zDLlDKHUxyg0wbQxyuWsYV7dJsEOnjDJ5Zibb1p6AQDXGbQRpPQTfI+CSqaURdXWS2HtnFYguxjZ0w9QF8RWsGwLrCatWoS9BLXuxbwiN4f3wzi1vVLgAoP+EjOdnGNWxzXHXgOfMdnFX+8V7pJKRDyHtezivVwXpQ1PCfAKD3c/QtgAU9jgMZaFHIRodaAkE2caREY5QjnWIyzaRxIbxRaN/9bmcWU8gM6gCXwv41XPQAAAABJRU5ErkJggg==" alt="Torch" class="w-4 h-4 object-contain brightness-0 invert group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(250,204,21,0.9)] transition-all">
+                    <span class="text-[9px] text-gray-300 group-hover:text-yellow-300 mt-0.5 font-medium transition-colors">Torch</span>
                 </button>
-                <button onclick="lockPhoneNow()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(168,85,247,0.6)] cursor-pointer" title="Lock Screen">
-                    <span class="text-sm group-hover:scale-110 transition-transform">🔒</span>
-                    <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Lock</span>
+
+                <!-- 4. Lock (Circle Lock Icon with Blue Glow) -->
+                <button onclick="lockPhoneNow()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.7)] cursor-pointer" title="Lock Screen">
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAAEBElEQVR4nO2azW+UVRTGfw11OoYizgDiQhNZEoyyFpeNQhojuEPLToIbPlLZomz4sLBq0oS/Q20IEDVNULAgtiz4ELqxwIIPFyqtTWuGnPC8yUmd6XvfO3dmiuFJbvpxzz333HvPPfecZwae4/+LKrAdOAGMAjeAP4A5Nfv9uvpM5kOgwjJBGdgFnAX+BWoF2wJwBhgAejqxgBeBz4F7zqh/gO+BQzqZjdrxF9Qq+p/1fQH8oDHZ+LvAoDanLegHppwBl4BPgdURul4GdgOXnb7bwDZaCNupU27CX4D3EurfCvzq9I+04nReleE2wWNgL7Ai9SQ81bkfmHGnvT6V8g067pqizpu0Hm8BNzXnLdnQFNY5hePAWtqHCnBec0/JK6JQdu70E7CS9mMlcNG5WdSdOeXcyR67IijL138G/lYzg/ZFvBdrnFdYACgcYrOLXfROvA5cXeIRnABei7gzMxpv0S34scveCYtORU8iW8SkNqRXrd/1TUSczAF3+YNc7KB7J1ZETjYp4xdjVROb1K0NqGmeJVF2aUfMYzeusbb7jbBdMnZnimKbxt7JO9EBFyFi8JfG1zsNfyom82eE/i4XST9eSvCchCx3ikF2oVPJ1cMejT1dt1chdkEZaUwC2K6FVFTfzDeyc4eUfxc5QbsWYhjT+A+og5PqtHoiFCXgq0V1SdFmdcgx6QrFYY0dqtc5qk4rQUNxvIkFLG5HC8ybec839Tp/U6dVcaG4qzHvEI8t7mRCsUljjBf4Dx6ps0he1ayvx+pZK/n79Trn1Fl6BhbS43iCtiykX6/wdE4dnnQhD9VpaXMo8gyYdjK/N6GnkWs9SHXZ8wzwbMtUE3oKXfZvI8JvngF9TqavCT2Nwu/XSz2IRp6FIsSAVDLBD2KWXhsDGIoQA6zcvZBAT3CKUnFJozGAyzX8Vl3S+FIjoTNSuLsFBqTS85lkLaVqiE8kZFxskRTF0oxYvCsd9t6EFFZXJL8zr9TNjHs/QPGxhEnjkQLsznQIeTEo4SsB5ENJi8kWH9PuaBF5GUW3SI2a+LFclB3XayTbcsGgbLpZhErK2IoZkWOdxmZgNpbdGXE7UCT/So11IuXMluEYBWXRQhkH1QkSu1cPak0/e5rZjRtSNK6/24Uq8KPmvp3iA58N7mjNzd6mPXfilua0rPyNVIrXOzebEfdq4TA1uhWdZp07vZJ6krILADURyqk+fe3SYzfp9A+3+rP3re7Ya+Ji90R+i6Gq3ClLO2pypZSfFueezgG9ypkBc0qvv1Ths0lhu6S2Rh8afSSZMccTZGnHvk59A6JHrPhplQBF05N5ZbE7O7WAelitQmdIDOB1ERrZl2rs92sqT4ck27CeeA6ecTwBhN3E7TcZQfQAAAAASUVORK5CYII=" alt="Lock" class="w-4 h-4 object-contain brightness-0 invert group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(59,130,246,0.9)] transition-all">
+                    <span class="text-[9px] text-gray-300 group-hover:text-blue-300 mt-0.5 font-medium transition-colors">Lock</span>
                 </button>
-                <button onclick="confirmEmergencyWipe()" class="flex flex-col items-center justify-center bg-red-950/70 hover:bg-red-900/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-red-800/40 hover:border-red-500 hover:shadow-[0_0_12px_rgba(239,68,68,0.7)] cursor-pointer" title="Emergency Remote Factory Reset">
-                    <span class="text-sm group-hover:scale-110 transition-transform">⚠️</span>
-                    <span class="text-[9px] text-red-300 mt-0.5 font-medium">Wipe</span>
+
+                <!-- 5. Wipe (Broom Icon with Rose/Red Glow) -->
+                <button onclick="confirmEmergencyWipe()" class="flex flex-col items-center justify-center bg-red-950/70 hover:bg-red-900/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-red-800/40 hover:border-rose-500 hover:shadow-[0_0_15px_rgba(244,63,94,0.8)] cursor-pointer" title="Emergency Remote Factory Reset">
+                    <img src="data:image/png;base64,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" alt="Wipe" class="w-4 h-4 object-contain brightness-0 invert group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(244,63,94,0.9)] transition-all">
+                    <span class="text-[9px] text-red-300 group-hover:text-rose-200 mt-0.5 font-medium transition-colors">Wipe</span>
                 </button>
-                <!-- Espionage / Hooded Figure Icon for Stealth Mode -->
-                <button onclick="toggleStealthMode()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(168,85,247,0.6)] cursor-pointer" title="Toggle Stealth Mode (Hide App Icon)">
-                    <span class="w-4 h-4 flex items-center justify-center group-hover:scale-110 transition-transform text-purple-300">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2C8 2 6 6 6 10c0 4 2 6 6 7 4-1 6-3 6-7 0-4-2-8-6-8z"></path>
-                            <path d="M9 11c1 1.5 5 1.5 6 0"></path>
-                            <path d="M4 22v-3a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v3"></path>
-                            <circle cx="12" cy="18" r="2.2"></circle>
-                        </svg>
-                    </span>
-                    <span id="widget-stealth-label" class="text-[9px] text-gray-300 mt-0.5 font-medium">Stealth</span>
+
+                <!-- 6. Stealth (Mask Icon with Violet/Purple Glow) -->
+                <button onclick="toggleStealthMode()" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-purple-400 hover:shadow-[0_0_15px_rgba(168,85,247,0.8)] cursor-pointer" title="Toggle Stealth Mode (Hide App Icon)">
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAAAsTAAALEwEAmpwYAAADl0lEQVR4nO2ZW4hNYRTHf66DmaEZPNB4mYwiSS6J1JRLShRKcinXGnkQSiQyD24PmJRpvCpvckuUB8l1XEaEPBiXcsl9jMkTM7ZW/Xd97eacs8/Ze5+Dzr++ztlrr++/1trffX1QxP+FocBMYDNwFDgH3AVeAW3AN8BT+SaZvbsj3aOqaxxD8ul4X2A+0Ag8d5yMq7QquHmylciXPwB8CBjuAG4osI3AQmAKUA1UAhUOR4Vk1dJZqDqN4jAul9ts7Y+zpZYDXx0Dj4BdcqZXXEbENUXcjx17X4BlUclXAL9FeBaYRP4wWTY9+WAfNGe8F9EqCodV8uFdFBK/eQsNL6ofxUD+lUBKgDrgNtCuqfM6sDrkTGY6a5xpt11cdeLOSyDDgeY0i9plYGAazkHAlTT1bwHDkg6kDHgIHANqgXItcms13/v6V4F+3fCZ7Jqj91ktUymuWnE/AEqTDGQBUJVCd5Qc8+s0daPT5Lz/BNSk4KqSrVR+ZI1sCeY5C6j1/SB+OAvc3AT9iIVgnxze0827vXpnvxQ6kDJgO3BfTv3Q/22Bfp0J2fB4SQRyJs2MczoL7mx4vCRbpMX5ki0RWiQMj1dc2YViIDHDKwbyvwXyXQTpNoFJY5B8sB1yzngikjF6ng30Jnn0li3DWPlgCYmccUokK/U8QouVm+aJGxWyYbbQGcd8OBmFdINIjjuyTUqkjQ5Rv97p35YXy4SRwFPZ8HFC9e3QlTNGiuQj0Mc53bUo/TkrZBB+MVkqGFebuP1TZl/naGCJvUh4JKJFjmwi0An8UquFCSJdMBvE1SluH4tVxw5zkeF3rwsBeUMaZ3MtDQEblyRfH0cg5ZqG7TA0PiB/HcK53doIZtIzLuP0MUE2OwLySDgiY+cD8gUZnKsP2d28wNHWcFHyw8ScjW8X8TSSx3TZssE/OG7yrSK36bE/yaHEycZvScrACxk4SHJokI3WpC57UN6pS2VGAvyzxd2p7pUo9jh3guMy6AYHdDrYjNgeYuGMDT01e/krfqokWzaBVDt3MWdlIy8oV9LZ07ipiRCIZShf6v1NJSXyCtul3pMDX1LsuzIFMse5n7QPY2ePgqDU6WZdms1KQwRSpoXOT6/anfsACgzbqe7Ups+ceqPsfEk3gZhsHfBWzz+BHTHfDsdyC3vHcdofvF4KWXNgp/tXoQewVDncVHsqG1dLpPtPYJrGwTOVQ8DUQjtVRBFkhz+zTsUfvIZXZgAAAABJRU5ErkJggg==" alt="Stealth" class="w-4 h-4 object-contain brightness-0 invert group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(168,85,247,0.9)] transition-all">
+                    <span id="widget-stealth-label" class="text-[9px] text-gray-300 group-hover:text-purple-300 mt-0.5 font-medium transition-colors">Stealth</span>
                 </button>
-                <button onclick="wm.openWindow('info-window')" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-purple-500 hover:shadow-[0_0_12px_rgba(168,85,247,0.6)] cursor-pointer" title="Device Details">
-                    <span class="text-sm group-hover:scale-110 transition-transform">📊</span>
-                    <span class="text-[9px] text-gray-300 mt-0.5 font-medium">Details</span>
+
+                <!-- 7. Power (Power & Sensors Hub with Amber Glow) -->
+                <button onclick="wm.openWindow('power-window')" id="widget-btn-power" class="flex flex-col items-center justify-center bg-gray-800/70 hover:bg-gray-700/90 p-1.5 rounded-xl text-center transition-all duration-200 group border border-gray-700/40 hover:border-amber-400 hover:shadow-[0_0_15px_rgba(245,158,11,0.8)] cursor-pointer" title="Power & Sensors Hub (Device Information & Hardware Profile)">
+                    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAADu0lEQVR4nO3ZzW/URhgH4NwLeCqiSIhSCgIJIbhU/QdaECek9lJV5cCpEoIbDYjQiipKDz0URJAaqIpUUC895BCk8M0hElUqPhJ7k7AVUSAkHq832a+s17te7649v8rLJmtgbQdizwHtK1nyYeSZxzPvjD3T0dGOdrTjrWPdWKJTkOhFQZQpkWSLSBTvdsmWIMoyEeXfybi6tYNHCBL9nIh04d0b3foSRLkgxOgXkb/5KBpPmj2S+iCW7IoMIEjypeXKdjxRcT5j4oYODBeB/TOZVTf0s+kMetIM3y8yfEPL2DypNntCogPRAZzx2qhoIGNipATcKwG3isDlpRp2TiUDG791Konji1WcybA6ojvF8DUtuwDyXGQAd8L+UwLuG3gF4fTEkA4M6sDfBYa/Cgx/agx/5Bku5hkuLDGczTH8kmXoy7IVhNMT7sSOENB8kw/LwKgRHoK4nh0dQKTPnQp2P0lizESoCMIDsGFc3nHoRfbOTb0GyUSoCMID4MR0Bb3/VYDJCkJFEF6AmQp6p6tA2AjCKQcO74qrtD9VwmoQ13WGawW2KgThARBEWXcq2DShYKYKX0SPqmNjjKIzpqBbKQYiCJcecFUyW4Mn4l8D6JpQVso699cbK7YXgvAGzNXgiXhkAh9NJFbKOvd3A3KC8AbINfgi+tMGtk+p2Dal4teUEZjYhDdAsRCIeJvZifAGJC14Ih4YNgbzFVzJmRjWa6tCEN6ARQstEUNa5ZUEJjGKnxeLgQjCG5C20RLRt1B44xP6wEwqcDgR3oCsjZYIqWzjq+eZ+g/Pctmjcj4wJwhvwJINT4TTE6cS2krZbkULTGzCG5C34YvocQFOJLTA2YnwBhRs+CJOuwAnE1rgFEt4A3Qbvogf1CbAGU5B6wThDSgx+CJ+dAGc4RS02BHeAIPBE3G7YNZnouWyXz7L4JpW8UXsjTd2NET5KReAydASMbhkeG6pXM0anoibuoVvZ3O3PhxLfMwFUGFoiRhIFz0B51JF32+nx2X0Rtb41wE1hpaItMXQp2o4Np/Dd3MvryPzOfxUzwPm/wFY5gzwQgRNsa0Ql7NlfBpPTpOYcpALwGoAwkJsmWz8AIk0xw0QJoLwnkbtBiAsBOEDaG7uVhlCQ8xWwWdz1729Plo0YSMcxJBm8tledx9w7ImrGCmYa+qJBQsY1kzsjvM64JBefOKcZXktVGu9BInmI12J64hxZZ8g0WQEjdecZ3fwiPUPlY2CSH8TJHl+zceskjznDJvI33w72vGexv9PAlPp9QN5KQAAAABJRU5ErkJggg==" alt="Power" class="w-4 h-4 object-contain group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(245,158,11,0.9)] transition-all">
+                    <span id="widget-power-label" class="text-[9px] text-amber-300 group-hover:text-amber-200 mt-0.5 font-semibold transition-colors">Power</span>
                 </button>
             </div>
 
@@ -1659,6 +1664,35 @@
                                 <span>✈️</span>
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device Hardware & System Information (Unified from Device Details) -->
+            <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3.5 space-y-2.5">
+                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base text-cyan-400">📊</span>
+                        <h4 class="font-bold text-xs text-white uppercase tracking-wider">Device Hardware & System Information</h4>
+                    </div>
+                    <span class="text-[10px] text-gray-400 font-mono">Live Hardware Profile</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div class="bg-gray-950/80 p-2.5 rounded-lg border border-gray-800">
+                        <span class="text-gray-400 block text-[10px]">Device Model</span>
+                        <span id="tel-detail-model" class="font-bold text-white mt-0.5 block truncate">Android Device</span>
+                    </div>
+                    <div class="bg-gray-950/80 p-2.5 rounded-lg border border-gray-800">
+                        <span class="text-gray-400 block text-[10px]">OS & Architecture</span>
+                        <span id="tel-detail-arch" class="font-bold text-cyan-300 font-mono mt-0.5 block truncate">Android 15 (arm64-v8a)</span>
+                    </div>
+                    <div class="bg-gray-950/80 p-2.5 rounded-lg border border-gray-800">
+                        <span class="text-gray-400 block text-[10px]">CPU Cores</span>
+                        <span id="tel-detail-cores" class="font-bold text-emerald-400 font-mono mt-0.5 block">8 Cores Active</span>
+                    </div>
+                    <div class="bg-gray-950/80 p-2.5 rounded-lg border border-gray-800">
+                        <span class="text-gray-400 block text-[10px]">Network Tunnel</span>
+                        <span id="tel-detail-network" class="font-bold text-purple-300 mt-0.5 block truncate">Cloud Relay • SSL</span>
                     </div>
                 </div>
             </div>
@@ -2416,7 +2450,7 @@
                     <div>
                         <div class="font-bold text-white flex items-center gap-2">
                             <span id="tel-device-model">Android Device</span>
-                            <span id="tel-os-badge" class="px-2 py-0.2 bg-blue-950 text-blue-300 border border-blue-800/60 rounded-full text-[10px] font-mono">Android OS</span>
+                            <span id="tel-os-badge" class="px-2 py-0.5 bg-blue-950/80 text-blue-300 border border-blue-800/60 rounded-full text-[10px] font-semibold tracking-wide">Android OS</span>
                         </div>
                         <div class="text-[11px] text-gray-400 mt-0.5 flex items-center gap-2">
                             <span>⏱️ Uptime: <b id="tel-uptime" class="text-gray-200">--</b></span>
@@ -2545,65 +2579,58 @@
                 </div>
 
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-                    <!-- Action 1: Instant Lock -->
-                    <button onclick="promptPowerConfirmation('LOCK_SCREEN')" class="p-3 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700/60 hover:border-cyan-500/50 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm">
+                    <!-- Action 1: Instant Lock (1-Tap Direct Execution) -->
+                    <button onclick="executeDirectPowerAction('LOCK_SCREEN')" class="p-3 bg-gray-800/80 hover:bg-blue-950/50 active:scale-95 border border-gray-700/60 hover:border-blue-500/60 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(59,130,246,0.25)]">
                         <span class="text-2xl group-hover:scale-110 transition-transform">🔒</span>
                         <div class="text-center">
-                            <div class="font-bold text-white text-xs">Lock Screen</div>
-                            <div class="text-[10px] text-gray-400 mt-0.5">Instant DPM lock</div>
+                            <div class="font-bold text-white text-xs group-hover:text-blue-300 transition-colors">Lock Screen</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">1-Tap Instant Lock</div>
                         </div>
                     </button>
 
-                    <!-- Action 2: Standby Sleep / Wake -->
-                    <button onclick="promptPowerConfirmation('STANDBY_SLEEP')" class="p-3 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700/60 hover:border-amber-500/50 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm">
+                    <!-- Action 2: Standby Sleep (1-Tap Direct Execution) -->
+                    <button onclick="executeDirectPowerAction('STANDBY_SLEEP')" class="p-3 bg-gray-800/80 hover:bg-amber-950/40 active:scale-95 border border-gray-700/60 hover:border-amber-500/60 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(245,158,11,0.25)]">
                         <span class="text-2xl group-hover:scale-110 transition-transform">💤</span>
                         <div class="text-center">
-                            <div class="font-bold text-white text-xs">Standby Sleep</div>
-                            <div class="text-[10px] text-gray-400 mt-0.5">Toggle screen off</div>
+                            <div class="font-bold text-white text-xs group-hover:text-amber-300 transition-colors">Standby Sleep</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">1-Tap Screen Off</div>
                         </div>
                     </button>
 
-                    <!-- Action 3: Wake Screen -->
-                    <button onclick="promptPowerConfirmation('STANDBY_WAKE')" class="p-3 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700/60 hover:border-emerald-500/50 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm">
+                    <!-- Action 3: Wake Screen (1-Tap Direct Execution) -->
+                    <button onclick="executeDirectPowerAction('STANDBY_WAKE')" class="p-3 bg-gray-800/80 hover:bg-emerald-950/40 active:scale-95 border border-gray-700/60 hover:border-emerald-500/60 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]">
                         <span class="text-2xl group-hover:scale-110 transition-transform">☀️</span>
                         <div class="text-center">
-                            <div class="font-bold text-white text-xs">Wake Screen</div>
-                            <div class="text-[10px] text-gray-400 mt-0.5">Acquire wake lock</div>
+                            <div class="font-bold text-white text-xs group-hover:text-emerald-300 transition-colors">Wake Screen</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">1-Tap Turn On</div>
                         </div>
                     </button>
 
-                    <!-- Action 4: Remote Reboot -->
-                    <button onclick="promptPowerConfirmation('REBOOT')" class="p-3 bg-rose-950/30 hover:bg-rose-900/40 border border-rose-800/40 hover:border-rose-500/60 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm">
-                        <span class="text-2xl group-hover:scale-110 transition-transform">🔄</span>
-                        <div class="text-center">
-                            <div class="font-bold text-rose-300 text-xs">Reboot Phone</div>
-                            <div class="text-[10px] text-rose-400/80 mt-0.5">Remote restart</div>
+                    <!-- Action 4: Remote Reboot (In-Card Inline Confirm - Zero Fullscreen Modal) -->
+                    <div id="reboot-card-container" class="relative">
+                        <button id="reboot-primary-btn" onclick="showInlineRebootConfirm()" class="w-full h-full p-3 bg-rose-950/30 hover:bg-rose-900/50 active:scale-95 border border-rose-800/40 hover:border-rose-500/70 rounded-xl transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]">
+                            <span class="text-2xl group-hover:scale-110 transition-transform">🔄</span>
+                            <div class="text-center">
+                                <div class="font-bold text-rose-300 text-xs">Reboot Phone</div>
+                                <div class="text-[10px] text-rose-400/80 mt-0.5">In-Card Confirm</div>
+                            </div>
+                        </button>
+
+                        <div id="reboot-inline-confirm" class="hidden w-full h-full min-h-[82px] p-2 bg-gradient-to-b from-rose-950 to-gray-900 border border-rose-600 rounded-xl transition-all flex flex-col items-center justify-center gap-1.5 shadow-xl animate-fadeIn">
+                            <div class="text-[10px] font-bold text-rose-200 flex items-center gap-1">
+                                <span>⚠️</span><span>Restart Device?</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 w-full">
+                                <button onclick="executeDirectPowerAction('REBOOT'); resetInlineRebootConfirm();" class="flex-1 py-1 px-1.5 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-lg text-[11px] font-bold transition-all shadow cursor-pointer">
+                                    Reboot
+                                </button>
+                                <button onclick="resetInlineRebootConfirm()" class="px-2 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-[11px] font-semibold transition-all border border-gray-700 cursor-pointer" title="Cancel">
+                                    ✕
+                                </button>
+                            </div>
                         </div>
-                    </button>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Power Action Safety Confirmation Modal -->
-    <div id="power-confirm-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-[130] flex items-center justify-center p-4 select-none">
-        <div class="bg-gray-900 border border-gray-700 text-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-4">
-            <div id="power-confirm-icon" class="text-4xl mx-auto w-14 h-14 rounded-2xl bg-gray-800 flex items-center justify-center shadow-inner">
-                ⚠️
-            </div>
-            <div>
-                <h3 id="power-confirm-title" class="text-base font-bold text-white">Confirm Power Action</h3>
-                <p id="power-confirm-desc" class="text-xs text-gray-400 mt-1 leading-relaxed">
-                    Are you sure you want to execute this remote power command on your phone?
-                </p>
-            </div>
-            <div class="flex items-center gap-3 pt-2">
-                <button onclick="closePowerConfirmation()" class="flex-1 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold border border-gray-700 transition-all cursor-pointer">
-                    Cancel
-                </button>
-                <button id="power-confirm-execute-btn" onclick="executeConfirmedPowerAction()" class="flex-1 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer">
-                    Confirm Action
-                </button>
             </div>
         </div>
     </div>
@@ -12399,8 +12426,18 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 const psEl = document.getElementById('tel-powersave');
 
                 if (modelEl && sys.deviceModel) modelEl.textContent = sys.deviceModel;
-                if (osEl && sys.osVersion) osEl.textContent = sys.osVersion;
+                if (osEl && sys.osVersion) osEl.textContent = sys.osVersion.replace(/\s*\(?API\s*\d+\)?/gi, '').trim() || 'Android OS';
                 if (uptimeEl && sys.uptimeFormatted) uptimeEl.textContent = sys.uptimeFormatted;
+                if (document.getElementById('tel-detail-model') && sys.deviceModel) {
+                    document.getElementById('tel-detail-model').textContent = sys.deviceModel;
+                }
+                if (document.getElementById('tel-detail-arch') && sys.osVersion) {
+                    const cleanOs = sys.osVersion.replace(/\s*\(?API\s*\d+\)?/gi, '').trim() || 'Android';
+                    document.getElementById('tel-detail-arch').textContent = `${cleanOs} (${payload.cpu?.abi || 'arm64-v8a'})`;
+                }
+                if (document.getElementById('tel-detail-cores') && payload.cpu?.cores) {
+                    document.getElementById('tel-detail-cores').textContent = `${payload.cpu.cores} Cores Active`;
+                }
                 if (psEl) {
                     psEl.textContent = sys.isPowerSaveMode ? "Active" : "Off";
                     psEl.className = sys.isPowerSaveMode ? "text-amber-400 font-bold" : "text-emerald-400 font-medium";
@@ -12408,69 +12445,65 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             }
         }
 
-        function promptPowerConfirmation(action) {
-            pendingPowerActionTarget = action;
-            const modal = document.getElementById('power-confirm-modal');
-            const icon = document.getElementById('power-confirm-icon');
-            const title = document.getElementById('power-confirm-title');
-            const desc = document.getElementById('power-confirm-desc');
-            const btn = document.getElementById('power-confirm-execute-btn');
+        let rebootInlineTimer = null;
 
-            if (!modal) return;
-
-            if (action === 'LOCK_SCREEN') {
-                if (icon) icon.textContent = '🔒';
-                if (title) title.textContent = 'Lock Device Screen';
-                if (desc) desc.textContent = 'This will immediately lock your phone screen. You will need your PIN/Pattern to unlock.';
-                if (btn) {
-                    btn.textContent = 'Lock Now';
-                    btn.className = 'flex-1 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer';
-                }
-            } else if (action === 'STANDBY_SLEEP') {
-                if (icon) icon.textContent = '💤';
-                if (title) title.textContent = 'Put Screen to Sleep';
-                if (desc) desc.textContent = 'Turn off phone display to save battery while keeping background services active.';
-                if (btn) {
-                    btn.textContent = 'Put to Sleep';
-                    btn.className = 'flex-1 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer';
-                }
-            } else if (action === 'STANDBY_WAKE') {
-                if (icon) icon.textContent = '☀️';
-                if (title) title.textContent = 'Wake Device Screen';
-                if (desc) desc.textContent = 'Remotely turn on the phone display for 3 seconds.';
-                if (btn) {
-                    btn.textContent = 'Wake Screen';
-                    btn.className = 'flex-1 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer';
-                }
-            } else if (action === 'REBOOT') {
-                if (icon) icon.textContent = '🔄';
-                if (title) title.textContent = 'Reboot Remote Phone';
-                if (desc) desc.textContent = 'Warning: This will restart the remote phone. The WebOS connection will temporarily disconnect during the reboot cycle.';
-                if (btn) {
-                    btn.textContent = 'Confirm Reboot';
-                    btn.className = 'flex-1 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all cursor-pointer';
-                }
+        function showInlineRebootConfirm() {
+            const primary = document.getElementById("reboot-primary-btn");
+            const inline = document.getElementById("reboot-inline-confirm");
+            if (primary && inline) {
+                primary.classList.add("hidden");
+                inline.classList.remove("hidden");
+                if (rebootInlineTimer) clearTimeout(rebootInlineTimer);
+                rebootInlineTimer = setTimeout(() => {
+                    resetInlineRebootConfirm();
+                }, 5000); // Auto-revert after 5 seconds if not clicked
             }
+        }
 
-            modal.classList.remove('hidden');
+        function resetInlineRebootConfirm() {
+            if (rebootInlineTimer) clearTimeout(rebootInlineTimer);
+            rebootInlineTimer = null;
+            const primary = document.getElementById("reboot-primary-btn");
+            const inline = document.getElementById("reboot-inline-confirm");
+            if (primary && inline) {
+                inline.classList.add("hidden");
+                primary.classList.remove("hidden");
+            }
+        }
+
+        // Option 1: 1-Tap Direct Power Execution (Zero Fullscreen Modals)
+        function executeDirectPowerAction(action) {
+            if (action === "LOCK_SCREEN") {
+                showToast("Locking remote device screen... 🔒", "info");
+                sendCommand({ action: "TRIGGER_POWER_ACTION", powerAction: "LOCK_SCREEN" });
+                sendCommand({ action: "INPUT_GLOBAL", globalAction: "LOCK_SCREEN" });
+                sendCommand({ action: "LOCK_DEVICE" });
+            } else if (action === "STANDBY_SLEEP") {
+                showToast("Putting screen to standby sleep... 💤", "info");
+                sendCommand({ action: "TRIGGER_POWER_ACTION", powerAction: "STANDBY_SLEEP" });
+                sendCommand({ action: "INPUT_GLOBAL", globalAction: "LOCK_SCREEN" });
+            } else if (action === "STANDBY_WAKE") {
+                showToast("Waking device screen display... ☀️", "info");
+                sendCommand({ action: "TRIGGER_POWER_ACTION", powerAction: "STANDBY_WAKE" });
+            } else if (action === "REBOOT") {
+                showToast("Initiating remote reboot sequence... 🔄", "warning");
+                sendCommand({ action: "TRIGGER_POWER_ACTION", powerAction: "REBOOT" });
+            }
+        }
+
+        function promptPowerConfirmation(action) {
+            executeDirectPowerAction(action);
         }
 
         function closePowerConfirmation() {
-            const modal = document.getElementById('power-confirm-modal');
-            if (modal) modal.classList.add('hidden');
-            pendingPowerActionTarget = null;
+            resetInlineRebootConfirm();
         }
 
         function executeConfirmedPowerAction() {
-            if (!pendingPowerActionTarget) return;
-            const action = pendingPowerActionTarget;
-            closePowerConfirmation();
-
-            showToast(`Executing remote power command (${action})... ⚡`, "info");
-            sendCommand({
-                action: 'TRIGGER_POWER_ACTION',
-                powerAction: action
-            });
+            if (pendingPowerActionTarget) {
+                executeDirectPowerAction(pendingPowerActionTarget);
+                pendingPowerActionTarget = null;
+            }
         }
 
         function handlePowerActionResult(data) {
