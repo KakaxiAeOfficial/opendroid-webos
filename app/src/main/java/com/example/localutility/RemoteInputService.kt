@@ -1,7 +1,11 @@
 package com.example.localutility
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.widget.Toast
+import java.util.Locale
 
 import android.accessibilityservice.GestureDescription
 import android.content.res.Resources
@@ -31,10 +35,38 @@ class RemoteInputService : AccessibilityService() {
     private var lastBlockedPkg: String = ""
     private var lastBlockedTime: Long = 0L
 
+    private fun isLauncherOrSystem(packageName: String): Boolean {
+        if (packageName.isEmpty()) return true
+        if (packageName == applicationContext.packageName) return true
+
+        val lower = packageName.lowercase(Locale.US)
+        if (lower.contains("launcher") || lower.contains("home") ||
+            lower.contains("systemui") || lower.contains("inputmethod") ||
+            lower.contains("keyguard") || lower.contains("dialer") ||
+            lower.contains("telecom") || lower.contains("settings") ||
+            lower.contains("permissioncontroller") || lower.contains("packageinstaller") ||
+            lower.contains("google.android.gms")
+        ) {
+            return true
+        }
+
+        // Dynamically resolve device's active Home Launcher
+        try {
+            val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+            val resolveInfo = packageManager.resolveActivity(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
+            val currentLauncherPkg = resolveInfo?.activityInfo?.packageName
+            if (currentLauncherPkg != null && packageName == currentLauncherPkg) {
+                return true
+            }
+        } catch (_: Exception) {}
+
+        return false
+    }
+
     private val activeWatchdogRunnable = object : Runnable {
         override fun run() {
             try {
-                if (currentForegroundPackage.isNotEmpty()) {
+                if (currentForegroundPackage.isNotEmpty() && !isLauncherOrSystem(currentForegroundPackage)) {
                     checkAndEnforcePolicy(currentForegroundPackage)
                 }
             } catch (e: Exception) {
@@ -45,16 +77,18 @@ class RemoteInputService : AccessibilityService() {
     }
 
     private fun checkAndEnforcePolicy(pkg: String) {
+        if (isLauncherOrSystem(pkg)) return
+
         try {
             val blockedResult = teleManager.isPackageCurrentlyBlocked(pkg)
             if (blockedResult.first) {
                 val reason = blockedResult.second
-                // Immediately kick out of the app to Home screen
+                // Kick out of the restricted app to Home screen
                 performGlobalAction(GLOBAL_ACTION_HOME)
 
-                // Debounce toast
+                // Debounce toast alert so child isn't spammed
                 val now = System.currentTimeMillis()
-                if (pkg != lastBlockedPkg || (now - lastBlockedTime) > 3500L) {
+                if (pkg != lastBlockedPkg || (now - lastBlockedTime) > 4000L) {
                     lastBlockedPkg = pkg
                     lastBlockedTime = now
                     mainHandler.post {
@@ -84,7 +118,7 @@ class RemoteInputService : AccessibilityService() {
         // 1. Phase 18: Real-Time App Limits, Focus Mode & Bedtime Enforcement
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val eventPkg = event.packageName?.toString() ?: ""
-            if (eventPkg.isNotEmpty()) {
+            if (eventPkg.isNotEmpty() && !isLauncherOrSystem(eventPkg)) {
                 currentForegroundPackage = eventPkg
                 checkAndEnforcePolicy(eventPkg)
             }

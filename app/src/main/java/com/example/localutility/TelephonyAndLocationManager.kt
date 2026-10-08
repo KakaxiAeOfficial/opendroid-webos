@@ -3813,6 +3813,7 @@ fun getStorageStats(): JSONObject {
         endMinute: Int = 0,
         daysOfWeek: List<Int> = listOf(1, 2, 3, 4, 5, 6, 7),
         manualActive: Boolean = false,
+        manualOverrideOff: Boolean = false,
         grayscale: Boolean = true,
         dndEnabled: Boolean = true
     ): JSONObject {
@@ -3829,14 +3830,21 @@ fun getStorageStats(): JSONObject {
                 put("endMinute", endMinute)
                 put("daysOfWeek", daysArr)
                 put("manualActive", manualActive)
+                put("manualOverrideOff", manualOverrideOff)
                 put("grayscale", grayscale)
                 put("dndEnabled", dndEnabled)
             }
             wellbeingPrefs.edit().putString("bedtime_config", config.toString()).apply()
 
             val isNowActive = isBedtimeActiveNow()
-            if (isNowActive && dndEnabled) {
-                setDndMode("PRIORITY")
+
+            // Bi-directional DND sync: Turn DND ON when Bedtime activates, Turn DND OFF (NORMAL) when Bedtime turns off
+            if (dndEnabled) {
+                if (isNowActive) {
+                    setDndMode("PRIORITY")
+                } else {
+                    setDndMode("NORMAL")
+                }
             }
 
             result.put("status", "SUCCESS")
@@ -3853,7 +3861,14 @@ fun getStorageStats(): JSONObject {
         val raw = wellbeingPrefs.getString("bedtime_config", null) ?: return false
         return try {
             val obj = JSONObject(raw)
+
+            // 1. Manual 1-tap ON takes immediate precedence
             if (obj.optBoolean("manualActive", false)) return true
+
+            // 2. Manual 1-tap OFF override pauses schedule for the night
+            if (obj.optBoolean("manualOverrideOff", false)) return false
+
+            // 3. If schedule is disabled, return false
             if (!obj.optBoolean("enabled", false)) return false
 
             val cal = Calendar.getInstance()
@@ -3890,7 +3905,7 @@ fun getStorageStats(): JSONObject {
         }
     }
 
-    fun getBedtimeConfig(): JSONObject {
+        fun getBedtimeConfig(): JSONObject {
         val raw = wellbeingPrefs.getString("bedtime_config", null)
         return if (raw != null) {
             try {
@@ -3916,6 +3931,7 @@ fun getStorageStats(): JSONObject {
             put("endMinute", 0)
             put("daysOfWeek", defaultDays)
             put("manualActive", false)
+            put("manualOverrideOff", false)
             put("grayscale", true)
             put("dndEnabled", true)
             put("isCurrentlyActive", false)

@@ -13272,11 +13272,12 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
         function toggleBedtimeManualNow() {
             isBedtimeManualActive = !isBedtimeManualActive;
+            const manualOverrideOff = !isBedtimeManualActive;
             const enabled = document.getElementById('st-bedtime-enable-check')?.checked || false;
             const startTimeStr = document.getElementById('st-bedtime-start-time')?.value || '23:00';
             const endTimeStr = document.getElementById('st-bedtime-end-time')?.value || '07:00';
-            const dndEnabled = document.getElementById('st-bedtime-dnd-check')?.checked || true;
-            const grayscale = document.getElementById('st-bedtime-gray-check')?.checked || true;
+            const dndEnabled = document.getElementById('st-bedtime-dnd-check')?.checked ?? true;
+            const grayscale = document.getElementById('st-bedtime-gray-check')?.checked ?? true;
 
             const [sH, sM] = startTimeStr.split(':').map(n => parseInt(n, 10));
             const [eH, eM] = endTimeStr.split(':').map(n => parseInt(n, 10));
@@ -13290,6 +13291,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 endMinute: eM || 0,
                 daysOfWeek: bedtimeSelectedDays,
                 manualActive: isBedtimeManualActive,
+                manualOverrideOff: manualOverrideOff,
                 grayscale: grayscale,
                 dndEnabled: dndEnabled
             });

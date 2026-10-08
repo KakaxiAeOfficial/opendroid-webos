@@ -972,6 +972,7 @@ class LocalFileServerService : Service() {
                     for (d in 1..7) daysList.add(d)
                 }
                 val manualActive = json.optBoolean("manualActive", false)
+                val manualOverrideOff = json.optBoolean("manualOverrideOff", false)
                 val grayscale = json.optBoolean("grayscale", true)
                 val dndEnabled = json.optBoolean("dndEnabled", true)
                 serviceScope.launch(Dispatchers.IO) {
@@ -984,6 +985,7 @@ class LocalFileServerService : Service() {
                             endMinute = endM,
                             daysOfWeek = daysList,
                             manualActive = manualActive,
+                            manualOverrideOff = manualOverrideOff,
                             grayscale = grayscale,
                             dndEnabled = dndEnabled
                         )
@@ -992,6 +994,13 @@ class LocalFileServerService : Service() {
                             put("data", res)
                         }
                         broadcastMessage(response.toString())
+
+                        // Broadcast updated DND status as Bedtime mode changes sound profile
+                        val dndRes = teleManager.getDndStatus()
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "DND_STATUS_RESULT")
+                            put("data", dndRes)
+                        }.toString())
                     } catch (e: Exception) {
                         Log.e("OpenDroid", "Error setting bedtime config", e)
                     }
