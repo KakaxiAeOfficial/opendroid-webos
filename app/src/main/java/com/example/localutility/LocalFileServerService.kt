@@ -890,6 +890,39 @@ class LocalFileServerService : Service() {
             }
 
             // --- Phase 16: Remote Power Control & Hardware Telemetry Handlers ---
+            // --- Phase 17: Google Family Link-Grade Screen Time & Digital Wellbeing ---
+            "FETCH_SCREEN_TIME" -> {
+                val dateStr = json.optString("date", "").trim()
+                val daysAgo = json.optInt("daysAgo", 0)
+                val rangeType = json.optString("rangeType", "day")
+                val reqId = json.optString("requestId", "")
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val screenTimeSummary = teleManager.getScreenTimeSummary(
+                            dateStr = if (dateStr.isNotEmpty()) dateStr else null,
+                            daysAgo = daysAgo,
+                            rangeType = rangeType
+                        )
+                        val response = JSONObject().apply {
+                            put("type", "SCREEN_TIME_RESULT")
+                            put("requestId", reqId)
+                            put("data", screenTimeSummary)
+                            put("timestamp", System.currentTimeMillis())
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error fetching Screen Time data", e)
+                        val errResponse = JSONObject().apply {
+                            put("type", "SCREEN_TIME_RESULT")
+                            put("requestId", reqId)
+                            put("status", "ERROR")
+                            put("error", e.message ?: "Failed to read screen time")
+                        }
+                        broadcastMessage(errResponse.toString())
+                    }
+                }
+            }
+
             "FETCH_HARDWARE_TELEMETRY" -> {
                 serviceScope.launch(Dispatchers.IO) {
                     try {
@@ -2493,6 +2526,7 @@ class LocalFileServerService : Service() {
         }
     }
 }
+
 
 
 

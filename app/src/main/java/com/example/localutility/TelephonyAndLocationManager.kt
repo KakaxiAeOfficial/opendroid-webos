@@ -51,6 +51,16 @@ import android.media.RingtoneManager
 import android.app.WallpaperManager
 import java.io.ByteArrayOutputStream
 import android.provider.Settings
+import android.app.AppOpsManager
+import android.app.usage.UsageStatsManager
+import android.app.usage.UsageStats
+import android.app.usage.UsageEvents
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+
 
 data class GeofenceZone(
 val id: String,
@@ -3284,5 +3294,347 @@ fun getStorageStats(): JSONObject {
         }
         return result
     }
+
+    // =========================================================================
+    // Phase 17: Google Family Link-Grade Screen Time & Digital Wellbeing Engine
+    // =========================================================================
+
+    fun checkUsageAccessPermission(): Boolean {
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager
+            if (appOps == null) false
+            else {
+                val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    appOps.unsafeCheckOpNoThrow(
+                        AppOpsManager.OPSTR_GET_USAGE_STATS,
+                        android.os.Process.myUid(),
+                        context.packageName
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    appOps.checkOpNoThrow(
+                        AppOpsManager.OPSTR_GET_USAGE_STATS,
+                        android.os.Process.myUid(),
+                        context.packageName
+                    )
+                }
+                mode == AppOpsManager.MODE_ALLOWED
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun formatDurationMs(ms: Long): String {
+        if (ms <= 0L) return "0m"
+        val totalSec = ms / 1000L
+        val hours = totalSec / 3600L
+        val minutes = (totalSec % 3600L) / 60L
+        val seconds = totalSec % 60L
+        return when {
+            hours > 0 -> "${hours}h ${minutes}m"
+            minutes > 0 -> "${minutes}m ${seconds}s"
+            else -> "${seconds}s"
+        }
+    }
+
+    private fun distributeTimeToHourlyBuckets(startMs: Long, endMs: Long, buckets: LongArray) {
+        if (endMs <= startMs) return
+        val cal = Calendar.getInstance()
+        var cur = startMs
+        while (cur < endMs) {
+            cal.timeInMillis = cur
+            val hour = cal.get(Calendar.HOUR_OF_DAY)
+            
+            cal.set(Calendar.MINUTE, 0)
+            cal.set(Calendar.SECOND, 0)
+            cal.set(Calendar.MILLISECOND, 0)
+            cal.add(Calendar.HOUR_OF_DAY, 1)
+            val nextHourMs = cal.timeInMillis
+            
+            val chunkEnd = Math.min(endMs, nextHourMs)
+            val duration = chunkEnd - cur
+            if (hour in 0..23 && duration > 0) {
+                buckets[hour] = buckets[hour] + duration
+            }
+            cur = chunkEnd
+        }
+    }
+
+    fun getScreenTimeSummary(dateStr: String? = null, daysAgo: Int = 0, rangeType: String = "day"): JSONObject {
+        val result = JSONObject()
+        val hasPerm = checkUsageAccessPermission()
+        result.put("hasPermission", hasPerm)
+        if (!hasPerm) {
+            result.put("status", "PERMISSION_REQUIRED")
+            result.put("error", "Usage Access permission is not granted on device. Please enable it in Settings.")
+            return result
+        }
+
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+        if (usageStatsManager == null) {
+            result.put("status", "UNAVAILABLE")
+            result.put("error", "UsageStatsManager service not available on this device.")
+            return result
+        }
+
+        try {
+            val sdfDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val sdfTime = SimpleDateFormat("hh:mm a", Locale.getDefault())
+            val sdfDisplay = SimpleDateFormat("EEEE, MMM d, yyyy", Locale.getDefault())
+            val sdfShort = SimpleDateFormat("MMM d", Locale.getDefault())
+
+            val isRange = rangeType == "7days" || rangeType == "30days" || daysAgo == 7 || daysAgo == 30
+            val rangeDays = when {
+                rangeType == "30days" || daysAgo == 30 -> 30
+                rangeType == "7days" || daysAgo == 7 -> 7
+                else -> 1
+            }
+
+            val startTime: Long
+            val endTime: Long
+            val displayLabel: String
+            val now = System.currentTimeMillis()
+
+            if (isRange) {
+                val startCal = Calendar.getInstance()
+                startCal.add(Calendar.DAY_OF_YEAR, -(rangeDays - 1))
+                startCal.set(Calendar.HOUR_OF_DAY, 0)
+                startCal.set(Calendar.MINUTE, 0)
+                startCal.set(Calendar.SECOND, 0)
+                startCal.set(Calendar.MILLISECOND, 0)
+                startTime = startCal.timeInMillis
+                endTime = now
+                displayLabel = "Last $rangeDays Days (${sdfShort.format(Date(startTime))} - ${sdfShort.format(Date(endTime))})"
+            } else {
+                val targetCal = Calendar.getInstance()
+                if (!dateStr.isNullOrEmpty()) {
+                    try {
+                        val parsed = sdfDate.parse(dateStr.trim())
+                        if (parsed != null) targetCal.time = parsed
+                    } catch (_: Exception) {}
+                } else if (daysAgo > 0) {
+                    targetCal.add(Calendar.DAY_OF_YEAR, -daysAgo)
+                }
+                targetCal.set(Calendar.HOUR_OF_DAY, 0)
+                targetCal.set(Calendar.MINUTE, 0)
+                targetCal.set(Calendar.SECOND, 0)
+                targetCal.set(Calendar.MILLISECOND, 0)
+                startTime = targetCal.timeInMillis
+
+                targetCal.set(Calendar.HOUR_OF_DAY, 23)
+                targetCal.set(Calendar.MINUTE, 59)
+                targetCal.set(Calendar.SECOND, 59)
+                targetCal.set(Calendar.MILLISECOND, 999)
+                val dayEnd = targetCal.timeInMillis
+                endTime = if (dayEnd > now) now else dayEnd
+                
+                val calToday = Calendar.getInstance()
+                calToday.set(Calendar.HOUR_OF_DAY, 0)
+                calToday.set(Calendar.MINUTE, 0)
+                calToday.set(Calendar.SECOND, 0)
+                calToday.set(Calendar.MILLISECOND, 0)
+                val todayStart = calToday.timeInMillis
+                val yesterdayStart = todayStart - (24 * 3600 * 1000L)
+
+                displayLabel = when (startTime) {
+                    todayStart -> "Today, ${sdfDisplay.format(Date(startTime))}"
+                    yesterdayStart -> "Yesterday, ${sdfDisplay.format(Date(startTime))}"
+                    else -> sdfDisplay.format(Date(startTime))
+                }
+            }
+
+            result.put("status", "SUCCESS")
+            result.put("dateIso", sdfDate.format(Date(startTime)))
+            result.put("dateLabel", displayLabel)
+            result.put("isRange", isRange)
+            result.put("rangeDays", rangeDays)
+            result.put("startTime", startTime)
+            result.put("endTime", endTime)
+
+            // 1. Query Usage Events for Locks/Unlocks, Launch Counts & Hourly Activity
+            var unlockCount = 0
+            var totalLaunches = 0
+            var firstPickup = 0L
+            var lastScreenOff = 0L
+            val hourlyBucketsMs = LongArray(24)
+            val launchCounts = mutableMapOf<String, Int>()
+
+            var currentFgPkg: String? = null
+            var currentFgStart = 0L
+
+            try {
+                val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
+                val event = UsageEvents.Event()
+
+                while (usageEvents.hasNextEvent()) {
+                    usageEvents.getNextEvent(event)
+                    val eventTime = event.timeStamp
+                    val eventType = event.eventType
+
+                    // Unlocks & Screen Pickups
+                    if (eventType == UsageEvents.Event.KEYGUARD_HIDDEN || eventType == UsageEvents.Event.SCREEN_INTERACTIVE) {
+                        unlockCount++
+                        if (firstPickup == 0L || eventTime < firstPickup) {
+                            firstPickup = eventTime
+                        }
+                    }
+
+                    if (eventType == UsageEvents.Event.SCREEN_NON_INTERACTIVE) {
+                        lastScreenOff = eventTime
+                    }
+
+                    // App Resumed (Foreground launch)
+                    if (eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                        val pkg = event.packageName ?: ""
+                        if (pkg.isNotEmpty()) {
+                            launchCounts[pkg] = (launchCounts[pkg] ?: 0) + 1
+                            totalLaunches++
+                        }
+
+                        if (!isRange && currentFgPkg != null && currentFgStart > 0 && eventTime > currentFgStart) {
+                            distributeTimeToHourlyBuckets(currentFgStart, eventTime, hourlyBucketsMs)
+                        }
+                        currentFgPkg = pkg
+                        currentFgStart = eventTime
+                    } else if (eventType == UsageEvents.Event.ACTIVITY_PAUSED ||
+                               eventType == UsageEvents.Event.ACTIVITY_STOPPED ||
+                               eventType == UsageEvents.Event.SCREEN_NON_INTERACTIVE) {
+                        if (!isRange && currentFgPkg != null && currentFgStart > 0 && eventTime > currentFgStart) {
+                            distributeTimeToHourlyBuckets(currentFgStart, eventTime, hourlyBucketsMs)
+                        }
+                        currentFgPkg = null
+                        currentFgStart = 0L
+                    }
+                }
+
+                if (!isRange && currentFgPkg != null && currentFgStart > 0 && endTime > currentFgStart) {
+                    distributeTimeToHourlyBuckets(currentFgStart, endTime, hourlyBucketsMs)
+                }
+            } catch (e: Exception) {
+                Log.e("TelephonyManager", "Error querying UsageEvents", e)
+            }
+
+            // 2. Query App Usage Stats
+            class RawAppUsage(
+                val packageName: String,
+                var totalTimeMs: Long = 0L,
+                var lastTimeUsed: Long = 0L
+            )
+            val appUsageMap = mutableMapOf<String, RawAppUsage>()
+
+            try {
+                val intervalType = if (isRange) UsageStatsManager.INTERVAL_WEEKLY else UsageStatsManager.INTERVAL_DAILY
+                val rawStats = usageStatsManager.queryUsageStats(intervalType, startTime, endTime)
+                if (!rawStats.isNullOrEmpty()) {
+                    for (stat in rawStats) {
+                        val pkg = stat.packageName ?: continue
+                        val timeInFg = stat.totalTimeInForeground
+                        if (timeInFg <= 0L) continue
+
+                        val existing = appUsageMap[pkg]
+                        if (existing == null) {
+                            appUsageMap[pkg] = RawAppUsage(
+                                packageName = pkg,
+                                totalTimeMs = timeInFg,
+                                lastTimeUsed = stat.lastTimeUsed
+                            )
+                        } else {
+                            existing.totalTimeMs += timeInFg
+                            if (stat.lastTimeUsed > existing.lastTimeUsed) {
+                                existing.lastTimeUsed = stat.lastTimeUsed
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("TelephonyManager", "Error querying UsageStats", e)
+            }
+
+            // 3. Resolve App Metadata, System vs 3rd-Party & Categories
+            val pm = context.packageManager
+            val appsArray = JSONArray()
+            var calculatedTotalScreenTimeMs = 0L
+
+            val sortedApps = appUsageMap.values.sortedByDescending { it.totalTimeMs }
+            for (rawApp in sortedApps) {
+                val pkg = rawApp.packageName
+                val timeMs = rawApp.totalTimeMs
+                calculatedTotalScreenTimeMs += timeMs
+
+                var appLabel = pkg
+                var isSystem = false
+                var category = "Other"
+
+                try {
+                    val appInfo = pm.getApplicationInfo(pkg, 0)
+                    appLabel = pm.getApplicationLabel(appInfo).toString()
+                    isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        category = when (appInfo.category) {
+                            ApplicationInfo.CATEGORY_GAME -> "Games"
+                            ApplicationInfo.CATEGORY_AUDIO -> "Audio & Music"
+                            ApplicationInfo.CATEGORY_VIDEO -> "Video & Movies"
+                            ApplicationInfo.CATEGORY_IMAGE -> "Photography"
+                            ApplicationInfo.CATEGORY_SOCIAL -> "Social & Messaging"
+                            ApplicationInfo.CATEGORY_NEWS -> "News & Reading"
+                            ApplicationInfo.CATEGORY_MAPS -> "Maps & Travel"
+                            ApplicationInfo.CATEGORY_PRODUCTIVITY -> "Productivity"
+                            else -> if (isSystem) "System & Tools" else "General"
+                        }
+                    } else {
+                        category = if (isSystem) "System & Tools" else "General"
+                    }
+                } catch (_: Exception) {}
+
+                val appObj = JSONObject().apply {
+                    put("packageName", pkg)
+                    put("appName", appLabel)
+                    put("totalTimeMs", timeMs)
+                    put("formattedTime", formatDurationMs(timeMs))
+                    put("launchCount", launchCounts[pkg] ?: 0)
+                    put("lastTimeUsed", rawApp.lastTimeUsed)
+                    put("isSystemApp", isSystem)
+                    put("category", category)
+                }
+                appsArray.put(appObj)
+            }
+
+            // 4. Assemble 24-Hour Hourly Timeline (Minutes active per hour)
+            val hourlyArray = JSONArray()
+            for (hour in 0..23) {
+                val hourMinutes = Math.min(60, Math.round(hourlyBucketsMs[hour] / 60000.0).toInt())
+                hourlyArray.put(hourMinutes)
+            }
+
+            // 5. Overall Totals & Metadata
+            result.put("totalScreenTimeMs", calculatedTotalScreenTimeMs)
+            result.put("formattedTotalTime", formatDurationMs(calculatedTotalScreenTimeMs))
+            result.put("unlockCount", unlockCount)
+            result.put("totalAppLaunches", totalLaunches)
+            result.put("firstPickup", firstPickup)
+            result.put("formattedFirstPickup", if (firstPickup > 0L) sdfTime.format(Date(firstPickup)) else "--")
+            result.put("lastScreenOff", lastScreenOff)
+            result.put("formattedLastScreenOff", if (lastScreenOff > 0L) sdfTime.format(Date(lastScreenOff)) else "--")
+            result.put("hourlyActivity", hourlyArray)
+            result.put("apps", appsArray)
+
+            // Top most used app
+            if (appsArray.length() > 0) {
+                result.put("topApp", appsArray.getJSONObject(0))
+            } else {
+                result.put("topApp", JSONObject.NULL)
+            }
+
+        } catch (e: Exception) {
+            Log.e("TelephonyManager", "Error compiling Screen Time summary", e)
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to compute Screen Time")
+        }
+
+        return result
+    }
+
 }
 

