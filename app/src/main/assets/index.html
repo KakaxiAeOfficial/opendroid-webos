@@ -2471,6 +2471,19 @@
                         <button onclick="setScreenTimeFilter('7days')" id="st-chip-7days" class="px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition-all">Last 7 Days</button>
                         <button onclick="setScreenTimeFilter('30days')" id="st-chip-30days" class="px-2.5 py-1 rounded-md text-gray-400 hover:text-white transition-all">Last 30 Days</button>
                     </div>
+                    <!-- Parental Control Tools (Bedtime, Focus, DND, Reminder) -->
+                    <button onclick="openBedtimeModal()" id="st-btn-bedtime" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-purple-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-purple-500/30 cursor-pointer transition-all" title="Configure Bedtime & Downtime">
+                        <span>🌙</span><span id="st-btn-bedtime-text">Bedtime</span>
+                    </button>
+                    <button onclick="openFocusModal()" id="st-btn-focus" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-cyan-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-cyan-500/30 cursor-pointer transition-all" title="Study & Focus Mode">
+                        <span>🎯</span><span id="st-btn-focus-text">Focus Mode</span>
+                    </button>
+                    <button onclick="toggleDndQuick()" id="st-btn-dnd" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-amber-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-amber-500/30 cursor-pointer transition-all" title="Toggle Do Not Disturb">
+                        <span>🔕</span><span id="st-btn-dnd-text">DND: Off</span>
+                    </button>
+                    <button onclick="openReminderModal()" id="st-btn-reminder" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-pink-300 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-pink-500/30 cursor-pointer transition-all" title="Set Daily Screen Time Goal">
+                        <span>⏰</span><span>Goal</span>
+                    </button>
                     <button onclick="fetchScreenTimeData()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-gray-700/60 cursor-pointer transition-all">
                         <span id="st-refresh-icon">🔄</span><span>Refresh</span>
                     </button>
@@ -2640,7 +2653,177 @@
         </div>
     </div>
 
-    <div id="power-window" class="window hidden" style="display: none; width: 880px; height: 620px; top: 65px; left: 250px; min-width: 680px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+
+        <!-- Modal: Set App Limit -->
+        <div id="st-limit-modal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-gray-900 border border-gray-700/80 rounded-2xl w-full max-w-sm p-4 text-gray-200 shadow-2xl flex flex-col gap-3">
+                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                    <div class="flex items-center gap-2">
+                        <div id="st-modal-app-icon" class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-white text-xs">📱</div>
+                        <div class="truncate">
+                            <div id="st-modal-app-title" class="font-bold text-white text-xs truncate">App Name</div>
+                            <div id="st-modal-app-pkg" class="text-[10px] text-gray-400 font-mono truncate">package.name</div>
+                        </div>
+                    </div>
+                    <button onclick="closeAppLimitModal()" class="text-gray-400 hover:text-rose-400 text-sm font-bold">✕</button>
+                </div>
+
+                <div class="text-[11px] text-gray-300">
+                    Set a daily usage timer. Once elapsed, the app will be blocked on the child's device.
+                </div>
+
+                <!-- Quick Presets -->
+                <div class="grid grid-cols-3 gap-1.5 text-xs">
+                    <button onclick="setLimitPreset(15)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">15 mins</button>
+                    <button onclick="setLimitPreset(30)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">30 mins</button>
+                    <button onclick="setLimitPreset(45)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">45 mins</button>
+                    <button onclick="setLimitPreset(60)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">1 hour</button>
+                    <button onclick="setLimitPreset(90)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">1.5 hours</button>
+                    <button onclick="setLimitPreset(120)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all">2 hours</button>
+                </div>
+
+                <!-- Custom Limit Input -->
+                <div class="flex items-center gap-2 mt-1">
+                    <span class="text-[11px] text-gray-400 whitespace-nowrap">Custom Limit:</span>
+                    <input type="number" id="st-limit-custom-input" min="1" max="1440" placeholder="Minutes" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-indigo-500">
+                    <span class="text-[11px] text-gray-400">mins</span>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center justify-between gap-2 pt-2 border-t border-gray-800 mt-1">
+                    <button onclick="removeCurrentAppLimit()" id="st-modal-remove-btn" class="px-3 py-1.5 rounded-lg bg-rose-950/80 border border-rose-800/80 text-rose-300 hover:bg-rose-900 text-xs font-semibold transition-all">
+                        Remove Limit
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="closeAppLimitModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all">Cancel</button>
+                        <button onclick="saveCurrentAppLimit()" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-sm transition-all">Save Timer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Bedtime Mode -->
+        <div id="st-bedtime-modal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-gray-900 border border-purple-500/40 rounded-2xl w-full max-w-sm p-4 text-gray-200 shadow-2xl flex flex-col gap-3">
+                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                    <div class="flex items-center gap-2 font-bold text-purple-300 text-xs">
+                        <span>🌙</span><span>Bedtime Mode & Downtime Scheduler</span>
+                    </div>
+                    <button onclick="closeBedtimeModal()" class="text-gray-400 hover:text-rose-400 text-sm font-bold">✕</button>
+                </div>
+
+                <div class="text-[11px] text-gray-400">
+                    Automatically dims screen, enables Do Not Disturb, and restricts gaming/social media during sleep hours.
+                </div>
+
+                <!-- Toggle Switch -->
+                <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+                    <span class="text-xs font-semibold text-gray-200">Enable Bedtime Schedule</span>
+                    <input type="checkbox" id="st-bedtime-enable-check" class="w-4 h-4 accent-purple-600 cursor-pointer">
+                </div>
+
+                <!-- Schedule Times -->
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-gray-950 p-2 rounded-xl border border-gray-800 flex flex-col gap-1">
+                        <span class="text-[10px] text-gray-400 font-semibold">Sleep Starts:</span>
+                        <input type="time" id="st-bedtime-start-time" value="22:00" class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-purple-500 cursor-pointer">
+                    </div>
+                    <div class="bg-gray-950 p-2 rounded-xl border border-gray-800 flex flex-col gap-1">
+                        <span class="text-[10px] text-gray-400 font-semibold">Wake-up Ends:</span>
+                        <input type="time" id="st-bedtime-end-time" value="06:00" class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white outline-none focus:border-purple-500 cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Features options -->
+                <div class="space-y-1.5 text-xs text-gray-300">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="st-bedtime-dnd-check" checked class="accent-purple-600">
+                        <span>Turn on Do Not Disturb automatically</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="st-bedtime-gray-check" checked class="accent-purple-600">
+                        <span>Greyscale & Dim display</span>
+                    </label>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-800 mt-1">
+                    <button onclick="closeBedtimeModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all">Cancel</button>
+                    <button onclick="saveBedtimeSettings()" class="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-sm transition-all">Save Schedule</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Focus Mode -->
+        <div id="st-focus-modal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-gray-900 border border-cyan-500/40 rounded-2xl w-full max-w-sm p-4 text-gray-200 shadow-2xl flex flex-col gap-3">
+                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                    <div class="flex items-center gap-2 font-bold text-cyan-300 text-xs">
+                        <span>🎯</span><span>Study & Focus Mode</span>
+                    </div>
+                    <button onclick="closeFocusModal()" class="text-gray-400 hover:text-rose-400 text-sm font-bold">✕</button>
+                </div>
+
+                <div class="text-[11px] text-gray-400">
+                    Temporarily freeze distracting social media & games during homework or class time.
+                </div>
+
+                <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+                    <span class="text-xs font-semibold text-gray-200">Focus Mode Active</span>
+                    <input type="checkbox" id="st-focus-enable-check" class="w-4 h-4 accent-cyan-600 cursor-pointer">
+                </div>
+
+                <!-- Duration Picker -->
+                <div class="flex flex-col gap-1 text-xs">
+                    <span class="text-[10px] text-gray-400">Focus Session Duration:</span>
+                    <select id="st-focus-duration-select" class="bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-cyan-500 cursor-pointer">
+                        <option value="30">30 Minutes</option>
+                        <option value="45">45 Minutes</option>
+                        <option value="60" selected>1 Hour</option>
+                        <option value="120">2 Hours</option>
+                        <option value="0">Until Turned Off</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-800 mt-1">
+                    <button onclick="closeFocusModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all">Cancel</button>
+                    <button onclick="saveFocusModeSettings()" class="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow-sm transition-all">Apply Focus</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Daily Screen Time Reminder Goal -->
+        <div id="st-reminder-modal" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-gray-900 border border-pink-500/40 rounded-2xl w-full max-w-sm p-4 text-gray-200 shadow-2xl flex flex-col gap-3">
+                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
+                    <div class="flex items-center gap-2 font-bold text-pink-300 text-xs">
+                        <span>⏰</span><span>Daily Screen Time Goal & Alert</span>
+                    </div>
+                    <button onclick="closeReminderModal()" class="text-gray-400 hover:text-rose-400 text-sm font-bold">✕</button>
+                </div>
+
+                <div class="text-[11px] text-gray-400">
+                    Set total daily screen time limit for the device. Get notified when reached.
+                </div>
+
+                <div class="flex items-center justify-between bg-gray-950 p-2.5 rounded-xl border border-gray-800">
+                    <span class="text-xs font-semibold text-gray-200">Enable Daily Goal Alert</span>
+                    <input type="checkbox" id="st-reminder-enable-check" class="w-4 h-4 accent-pink-600 cursor-pointer">
+                </div>
+
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="text-[11px] text-gray-400">Daily Target:</span>
+                    <input type="number" id="st-reminder-target-input" value="180" min="30" max="720" class="w-24 bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-pink-500">
+                    <span class="text-[11px] text-gray-400">minutes</span>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-gray-800 mt-1">
+                    <button onclick="closeReminderModal()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold transition-all">Cancel</button>
+                    <button onclick="saveReminderSettings()" class="px-4 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold shadow-sm transition-all">Set Goal</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="power-window" class="window hidden" style="display: none; width: 880px; height: 620px; top: 65px; left: 250px; min-width: 680px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
                 <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-500 via-orange-600 to-red-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">⚡</div>
@@ -4777,6 +4960,18 @@
                         containsEl.textContent = `${info.fileCount || 0} Files, ${info.dirCount || 0} Folders`;
                     }
                 }ctory(data.data);
+            } else if (data.type === 'APP_LIMIT_UPDATED' || data.type === 'APP_LIMITS_RESULT') {
+                handleAppLimitsResponse(data);
+            } else if (data.type === 'DND_STATUS_RESULT') {
+                handleDndStatusResponse(data);
+            } else if (data.type === 'BEDTIME_CONFIG_RESULT') {
+                handleBedtimeConfigResponse(data);
+            } else if (data.type === 'FOCUS_CONFIG_RESULT') {
+                handleFocusConfigResponse(data);
+            } else if (data.type === 'SCREEN_TIME_REMINDER_RESULT') {
+                handleScreenTimeReminderResponse(data);
+            } else if (data.type === 'APP_ICON_RESULT') {
+                handleAppIconResponse(data);
             } else if (data.type === 'SCREEN_TIME_RESULT') {
                 handleScreenTimeResponse(data);
             } else if (data.type === 'HARDWARE_TELEMETRY_RESULT') {
@@ -12527,14 +12722,39 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
         // =========================================================================
-        // Phase 17: Google Family Link-Grade Screen Time & Digital Wellbeing Engine
-        // =========================================================================
-
+        // Phase 17 & 18: Google Family Link-Grade Screen Time, App Limits & Parental Controls
         let currentScreenTimeFilter = 'today'; // 'today', 'yesterday', '7days', '30days', 'custom'
         let currentScreenTimeDateStr = '';
         let currentScreenTimeData = null;
         let screenTimeAppTypeFilter = 'all'; // 'all', 'user', 'system'
         let screenTimeSearchQuery = '';
+
+        // Phase 18 States
+        let cachedAppIcons = {}; // packageName -> base64
+        let selectedAppForLimit = null; // { packageName, appName, currentLimit }
+        let currentAppLimits = {}; // pkg -> minutes
+        let currentBedtimeConfig = null;
+        let currentFocusConfig = null;
+        let currentDndMode = 'NORMAL';
+
+        // Initialize icon cache from localStorage
+        try {
+            const savedIcons = localStorage.getItem('opendroid_cached_app_icons');
+            if (savedIcons) cachedAppIcons = JSON.parse(savedIcons);
+        } catch (_) {}
+
+        function saveIconToCache(pkg, b64) {
+            if (!pkg || !b64) return;
+            cachedAppIcons[pkg] = b64;
+            try {
+                // Limit cached icons to 100 to prevent quota issues
+                const keys = Object.keys(cachedAppIcons);
+                if (keys.length > 100) delete cachedAppIcons[keys[0]];
+                localStorage.setItem('opendroid_cached_app_icons', JSON.stringify(cachedAppIcons));
+            } catch (_) {}
+        }
+
+
 
         function setScreenTimeFilter(filterType) {
             currentScreenTimeFilter = filterType;
@@ -12819,44 +13039,308 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 ];
                 const bgGradient = colors[idx % colors.length];
 
+                // Check icon from response or cache
+                if (app.iconBase64) {
+                    saveIconToCache(app.packageName, app.iconBase64);
+                }
+                const iconB64 = app.iconBase64 || cachedAppIcons[app.packageName] || '';
+
+                // Check limit
+                const limitMins = app.limitMinutes || (currentAppLimits[app.packageName] || 0);
+                const isLimitExceeded = limitMins > 0 && app.totalTimeMs >= (limitMins * 60 * 1000);
+
                 const row = document.createElement('div');
                 row.className = 'bg-gray-950/70 border border-gray-800/80 hover:border-indigo-500/40 rounded-xl p-2.5 flex flex-col gap-2 transition-all hover:bg-gray-900/60';
+
+                // App icon HTML
+                const iconHtml = iconB64 
+                    ? `<img src="data:image/png;base64,${iconB64}" class="w-8 h-8 rounded-lg object-contain shadow-sm flex-shrink-0" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-8 h-8 rounded-lg bg-gradient-to-tr ${bgGradient} flex items-center justify-center text-white font-bold text-xs\'>${letter}</div>';">`
+                    : `<div class="w-8 h-8 rounded-lg bg-gradient-to-tr ${bgGradient} flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0">${letter}</div>`;
+
+                // Limit Badge HTML
+                let limitBadge = '';
+                if (limitMins > 0) {
+                    limitBadge = isLimitExceeded
+                        ? `<span class="px-2 py-0.5 rounded-full bg-rose-950/90 border border-rose-800/80 text-[10px] font-bold text-rose-300 font-mono animate-pulse">⏳ Limit Reached (${limitMins}m)</span>`
+                        : `<span class="px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-800/60 text-[10px] font-semibold text-amber-300 font-mono">⏳ ${limitMins}m limit</span>`;
+                }
 
                 row.innerHTML = `
                     <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center gap-2.5 min-w-0">
-                            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr ${bgGradient} flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0">
-                                ${letter}
-                            </div>
+                            ${iconHtml}
                             <div class="truncate">
                                 <div class="font-bold text-gray-100 text-xs truncate flex items-center gap-2">
                                     <span class="truncate">${app.appName || app.packageName}</span>
                                     ${app.isSystemApp ? '<span class="px-1.5 py-0.2 bg-gray-800 text-gray-400 border border-gray-700 rounded text-[9px]">System</span>' : ''}
+                                    ${limitBadge}
                                 </div>
                                 <div class="text-[10px] text-gray-500 font-mono truncate">${app.packageName}</div>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-3 flex-shrink-0">
+                        <div class="flex items-center gap-2.5 flex-shrink-0">
                             <span class="px-2 py-0.5 rounded-full bg-gray-900 border border-gray-800 text-[10px] text-gray-300 font-mono">
                                 🚀 ${app.launchCount || 0} opens
                             </span>
                             <span class="px-2 py-0.5 rounded-full bg-indigo-950/80 border border-indigo-800/60 text-[11px] font-bold text-indigo-300 font-mono">
                                 ⏱️ ${app.formattedTime || '0m'}
                             </span>
+                            <!-- Hourglass App Limit Button -->
+                            <button onclick="openAppLimitModal('${app.packageName}', '${(app.appName || app.packageName).replace(/'/g, "\\'")}', ${limitMins})" class="w-7 h-7 rounded-lg bg-gray-900 hover:bg-indigo-600/30 border border-gray-700 hover:border-indigo-500 text-gray-300 hover:text-white flex items-center justify-center text-xs transition-all cursor-pointer" title="Set daily app limit timer">
+                                ⏳
+                            </button>
                         </div>
                     </div>
 
                     <!-- Usage Duration Bar -->
                     <div class="w-full bg-gray-900 rounded-full h-1.5 overflow-hidden flex">
-                        <div class="bg-gradient-to-r ${bgGradient} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        <div class="bg-gradient-to-r ${isLimitExceeded ? 'from-rose-600 to-red-500' : bgGradient} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
                     </div>
                 `;
 
                 container.appendChild(row);
+
+                // Fetch icon asynchronously if missing from cache
+                if (!iconB64 && apps.length <= 50) {
+                    sendCommand({ action: 'FETCH_APP_ICON', package: app.packageName });
+                }
             });
         }
 
+        // --- Phase 18 Parental Controls Handlers & Modals ---
+
+        function openAppLimitModal(pkg, name, currentLimit) {
+            selectedAppForLimit = { packageName: pkg, appName: name, currentLimit: currentLimit || 0 };
+            const modal = document.getElementById('st-limit-modal');
+            const titleEl = document.getElementById('st-modal-app-title');
+            const pkgEl = document.getElementById('st-modal-app-pkg');
+            const iconEl = document.getElementById('st-modal-app-icon');
+            const customInput = document.getElementById('st-limit-custom-input');
+            const removeBtn = document.getElementById('st-modal-remove-btn');
+
+            if (titleEl) titleEl.textContent = name;
+            if (pkgEl) pkgEl.textContent = pkg;
+            if (customInput) customInput.value = currentLimit > 0 ? currentLimit : '';
+
+            const iconB64 = cachedAppIcons[pkg];
+            if (iconEl) {
+                if (iconB64) {
+                    iconEl.innerHTML = `<img src="data:image/png;base64,${iconB64}" class="w-full h-full rounded-lg object-contain">`;
+                } else {
+                    iconEl.textContent = (name || 'A')[0].toUpperCase();
+                }
+            }
+
+            if (removeBtn) {
+                if (currentLimit > 0) removeBtn.classList.remove('hidden');
+                else removeBtn.classList.add('hidden');
+            }
+
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeAppLimitModal() {
+            const modal = document.getElementById('st-limit-modal');
+            if (modal) modal.classList.add('hidden');
+            selectedAppForLimit = null;
+        }
+
+        function setLimitPreset(minutes) {
+            const input = document.getElementById('st-limit-custom-input');
+            if (input) input.value = minutes;
+        }
+
+        function saveCurrentAppLimit() {
+            if (!selectedAppForLimit) return;
+            const input = document.getElementById('st-limit-custom-input');
+            const limitMins = parseInt(input?.value || '0', 10);
+            if (limitMins <= 0) {
+                removeCurrentAppLimit();
+                return;
+            }
+
+            sendCommand({
+                action: 'SET_APP_LIMIT',
+                package: selectedAppForLimit.packageName,
+                limitMinutes: limitMins
+            });
+
+            currentAppLimits[selectedAppForLimit.packageName] = limitMins;
+            closeAppLimitModal();
+            renderScreenTimeAppList();
+        }
+
+        function removeCurrentAppLimit() {
+            if (!selectedAppForLimit) return;
+            sendCommand({
+                action: 'SET_APP_LIMIT',
+                package: selectedAppForLimit.packageName,
+                limitMinutes: 0
+            });
+            delete currentAppLimits[selectedAppForLimit.packageName];
+            closeAppLimitModal();
+            renderScreenTimeAppList();
+        }
+
+        function handleAppLimitsResponse(data) {
+            const payload = data.data || data;
+            if (payload.appLimits) {
+                currentAppLimits = payload.appLimits;
+            } else if (payload.allLimits) {
+                currentAppLimits = payload.allLimits;
+            }
+            renderScreenTimeAppList();
+        }
+
+        function handleAppIconResponse(data) {
+            if (data.package && data.iconBase64) {
+                saveIconToCache(data.package, data.iconBase64);
+                // Dynamically update existing img or avatar in list if visible
+                renderScreenTimeAppList();
+            }
+        }
+
+        // Bedtime Modal
+        function openBedtimeModal() {
+            const modal = document.getElementById('st-bedtime-modal');
+            if (modal) modal.classList.remove('hidden');
+            sendCommand({ action: 'GET_BEDTIME_CONFIG' });
+        }
+
+        function closeBedtimeModal() {
+            const modal = document.getElementById('st-bedtime-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function saveBedtimeSettings() {
+            const enabled = document.getElementById('st-bedtime-enable-check')?.checked || false;
+            const startTimeStr = document.getElementById('st-bedtime-start-time')?.value || '22:00';
+            const endTimeStr = document.getElementById('st-bedtime-end-time')?.value || '06:00';
+            const dndEnabled = document.getElementById('st-bedtime-dnd-check')?.checked || true;
+            const grayscale = document.getElementById('st-bedtime-gray-check')?.checked || true;
+
+            const [sH, sM] = startTimeStr.split(':').map(n => parseInt(n, 10));
+            const [eH, eM] = endTimeStr.split(':').map(n => parseInt(n, 10));
+
+            sendCommand({
+                action: 'SET_BEDTIME_CONFIG',
+                enabled: enabled,
+                startHour: sH || 22,
+                startMinute: sM || 0,
+                endHour: eH || 6,
+                endMinute: eM || 0,
+                grayscale: grayscale,
+                dndEnabled: dndEnabled
+            });
+
+            closeBedtimeModal();
+        }
+
+        function handleBedtimeConfigResponse(data) {
+            const cfg = data.data?.config || data.data || data;
+            currentBedtimeConfig = cfg;
+            const btnText = document.getElementById('st-btn-bedtime-text');
+            if (btnText) {
+                if (cfg.enabled) {
+                    btnText.textContent = cfg.isCurrentlyActive ? 'Bedtime (Active)' : 'Bedtime (Scheduled)';
+                } else {
+                    btnText.textContent = 'Bedtime';
+                }
+            }
+            const enableCheck = document.getElementById('st-bedtime-enable-check');
+            if (enableCheck) enableCheck.checked = !!cfg.enabled;
+        }
+
+        // Focus Mode Modal
+        function openFocusModal() {
+            const modal = document.getElementById('st-focus-modal');
+            if (modal) modal.classList.remove('hidden');
+            sendCommand({ action: 'GET_FOCUS_MODE' });
+        }
+
+        function closeFocusModal() {
+            const modal = document.getElementById('st-focus-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function saveFocusModeSettings() {
+            const enabled = document.getElementById('st-focus-enable-check')?.checked || false;
+            const durationMins = parseInt(document.getElementById('st-focus-duration-select')?.value || '60', 10);
+
+            // Default distracting apps to block if none specified
+            const defaultDistracting = [
+                'com.instagram.android',
+                'com.facebook.katana',
+                'com.snapchat.android',
+                'com.zhiliaoapp.musically',
+                'com.supercell.clashofclans',
+                'com.google.android.youtube'
+            ];
+
+            sendCommand({
+                action: 'SET_FOCUS_MODE',
+                enabled: enabled,
+                packages: defaultDistracting,
+                durationMinutes: durationMins
+            });
+
+            closeFocusModal();
+        }
+
+        function handleFocusConfigResponse(data) {
+            const cfg = data.data?.config || data.data || data;
+            currentFocusConfig = cfg;
+            const btnText = document.getElementById('st-btn-focus-text');
+            if (btnText) {
+                btnText.textContent = cfg.enabled ? 'Focus: ON' : 'Focus Mode';
+            }
+            const enableCheck = document.getElementById('st-focus-enable-check');
+            if (enableCheck) enableCheck.checked = !!cfg.enabled;
+        }
+
+        // DND Toggle Quick
+        function toggleDndQuick() {
+            const nextMode = (currentDndMode === 'NORMAL' || currentDndMode === 'OFF') ? 'PRIORITY' : 'NORMAL';
+            sendCommand({ action: 'SET_DND_MODE', mode: nextMode });
+        }
+
+        function handleDndStatusResponse(data) {
+            const res = data.data || data;
+            currentDndMode = res.currentFilter || (res.isDndActive ? 'PRIORITY' : 'NORMAL');
+            const dndBtnText = document.getElementById('st-btn-dnd-text');
+            if (dndBtnText) {
+                dndBtnText.textContent = res.isDndActive ? `DND: ${currentDndMode}` : 'DND: Off';
+            }
+        }
+
+        // Reminder Modal
+        function openReminderModal() {
+            const modal = document.getElementById('st-reminder-modal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeReminderModal() {
+            const modal = document.getElementById('st-reminder-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function saveReminderSettings() {
+            const enabled = document.getElementById('st-reminder-enable-check')?.checked || false;
+            const targetMins = parseInt(document.getElementById('st-reminder-target-input')?.value || '180', 10);
+            sendCommand({
+                action: 'SET_SCREEN_TIME_REMINDER',
+                enabled: enabled,
+                targetMinutes: targetMins
+            });
+            closeReminderModal();
+        }
+
+        function handleScreenTimeReminderResponse(data) {
+            // Received reminder config
+        }
+        
+        
         function handleHardwareTelemetryResponse(data) {
             const payload = data.data || data;
             if (!payload || payload.status === 'ERROR') return;
@@ -13099,4 +13583,3 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 
 
- 

@@ -51,6 +51,10 @@ import android.media.RingtoneManager
 import android.app.WallpaperManager
 import java.io.ByteArrayOutputStream
 import android.provider.Settings
+import android.app.NotificationManager
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.app.usage.UsageStats
@@ -3588,6 +3592,11 @@ fun getStorageStats(): JSONObject {
                     }
                 } catch (_: Exception) {}
 
+                val appLimitsObj = getAppLimits()
+                val appLimitMins = appLimitsObj.optInt(pkg, 0)
+                val isLimitExceeded = appLimitMins > 0 && timeMs >= (appLimitMins * 60 * 1000L)
+                val iconB64 = if (appsArray.length() < 35) (getAppIconBase64(pkg) ?: "") else ""
+
                 val appObj = JSONObject().apply {
                     put("packageName", pkg)
                     put("appName", appLabel)
@@ -3597,6 +3606,10 @@ fun getStorageStats(): JSONObject {
                     put("lastTimeUsed", rawApp.lastTimeUsed)
                     put("isSystemApp", isSystem)
                     put("category", category)
+                    put("limitMinutes", appLimitMins)
+                    put("isLimited", appLimitMins > 0)
+                    put("isLimitExceeded", isLimitExceeded)
+                    put("iconBase64", iconB64)
                 }
                 appsArray.put(appObj)
             }
@@ -3619,6 +3632,11 @@ fun getStorageStats(): JSONObject {
             result.put("formattedLastScreenOff", if (lastScreenOff > 0L) sdfTime.format(Date(lastScreenOff)) else "--")
             result.put("hourlyActivity", hourlyArray)
             result.put("apps", appsArray)
+            result.put("appLimits", getAppLimits())
+            result.put("bedtimeConfig", getBedtimeConfig())
+            result.put("focusConfig", getFocusModeConfig())
+            result.put("dndStatus", getDndStatus())
+            result.put("reminderConfig", getScreenTimeReminder())
 
             // Top most used app
             if (appsArray.length() > 0) {
@@ -3636,6 +3654,365 @@ fun getStorageStats(): JSONObject {
         return result
     }
 
+
+    // =========================================================================
+    // Phase 18: Google Family Link-Grade App Limits, Bedtime & Controls
+    // =========================================================================
+
+    private val wellbeingPrefs: SharedPreferences by lazy {
+        context.getSharedPreferences("opendroid_wellbeing_prefs", Context.MODE_PRIVATE)
+    }
+
+    private val appIconCache = mutableMapOf<String, String>()
+
+    fun getAppIconBase64(packageName: String): String? {
+        if (packageName.isEmpty()) return null
+        appIconCache[packageName]?.let { return it }
+        return try {
+            val pm = context.packageManager
+            val drawable = pm.getApplicationIcon(packageName)
+            val bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
+                Bitmap.createScaledBitmap(drawable.bitmap, 64, 64, true)
+            } else {
+                val w = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 64
+                val h = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 64
+                val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bmp)
+                drawable.setBounds(0, 0, canvas.width, canvas.height)
+                drawable.draw(canvas)
+                Bitmap.createScaledBitmap(bmp, 64, 64, true)
+            }
+            val stream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 85, stream)
+            val base64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+            appIconCache[packageName] = base64
+            base64
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun setAppLimit(packageName: String, limitMinutes: Int): JSONObject {
+        val result = JSONObject()
+        try {
+            val limitsJsonStr = wellbeingPrefs.getString("app_limits", "{}") ?: "{}"
+            val limitsObj = JSONObject(limitsJsonStr)
+            if (limitMinutes <= 0) {
+                limitsObj.remove(packageName)
+            } else {
+                limitsObj.put(packageName, limitMinutes)
+            }
+            wellbeingPrefs.edit().putString("app_limits", limitsObj.toString()).apply()
+            result.put("status", "SUCCESS")
+            result.put("package", packageName)
+            result.put("limitMinutes", limitMinutes)
+            result.put("appLimits", limitsObj)
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to set app limit")
+        }
+        return result
+    }
+
+    fun removeAppLimit(packageName: String): JSONObject {
+        return setAppLimit(packageName, 0)
+    }
+
+    fun getAppLimits(): JSONObject {
+        val limitsJsonStr = wellbeingPrefs.getString("app_limits", "{}") ?: "{}"
+        return try {
+            JSONObject(limitsJsonStr)
+        } catch (_: Exception) {
+            JSONObject()
+        }
+    }
+
+    fun getDndStatus(): JSONObject {
+        val result = JSONObject()
+        try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            if (nm == null) {
+                result.put("status", "UNAVAILABLE")
+                return result
+            }
+
+            val hasPolicyAccess = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                nm.isNotificationPolicyAccessGranted
+            } else {
+                true
+            }
+            result.put("hasPolicyAccess", hasPolicyAccess)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val filter = nm.currentInterruptionFilter
+                val modeStr = when (filter) {
+                    NotificationManager.INTERRUPTION_FILTER_ALL -> "NORMAL"
+                    NotificationManager.INTERRUPTION_FILTER_PRIORITY -> "PRIORITY"
+                    NotificationManager.INTERRUPTION_FILTER_NONE -> "TOTAL_SILENCE"
+                    NotificationManager.INTERRUPTION_FILTER_ALARMS -> "ALARMS_ONLY"
+                    else -> "UNKNOWN"
+                }
+                result.put("currentFilter", modeStr)
+                result.put("isDndActive", filter != NotificationManager.INTERRUPTION_FILTER_ALL)
+            } else {
+                result.put("currentFilter", "NORMAL")
+                result.put("isDndActive", false)
+            }
+            result.put("status", "SUCCESS")
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to read DND status")
+        }
+        return result
+    }
+
+    fun setDndMode(mode: String): JSONObject {
+        val result = JSONObject()
+        try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            if (nm == null) {
+                result.put("status", "UNAVAILABLE")
+                result.put("error", "NotificationManager service unavailable")
+                return result
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (!nm.isNotificationPolicyAccessGranted) {
+                    result.put("status", "PERMISSION_REQUIRED")
+                    result.put("error", "Notification Policy Access (DND) permission is required. Please grant it in device Settings.")
+                    return result
+                }
+
+                val targetFilter = when (mode.uppercase(Locale.US)) {
+                    "TOTAL_SILENCE", "NONE", "SILENT" -> NotificationManager.INTERRUPTION_FILTER_NONE
+                    "PRIORITY" -> NotificationManager.INTERRUPTION_FILTER_PRIORITY
+                    "ALARMS_ONLY", "ALARMS" -> NotificationManager.INTERRUPTION_FILTER_ALARMS
+                    "NORMAL", "OFF", "ALL" -> NotificationManager.INTERRUPTION_FILTER_ALL
+                    else -> NotificationManager.INTERRUPTION_FILTER_ALL
+                }
+                nm.setInterruptionFilter(targetFilter)
+                result.put("status", "SUCCESS")
+                result.put("mode", mode)
+                result.put("isDndActive", targetFilter != NotificationManager.INTERRUPTION_FILTER_ALL)
+            } else {
+                result.put("status", "UNSUPPORTED_VERSION")
+                result.put("error", "DND policy requires Android 6.0+")
+            }
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to set DND mode")
+        }
+        return result
+    }
+
+    fun setBedtimeConfig(
+        enabled: Boolean,
+        startHour: Int = 22,
+        startMinute: Int = 0,
+        endHour: Int = 6,
+        endMinute: Int = 0,
+        grayscale: Boolean = true,
+        dndEnabled: Boolean = true
+    ): JSONObject {
+        val result = JSONObject()
+        try {
+            val config = JSONObject().apply {
+                put("enabled", enabled)
+                put("startHour", startHour)
+                put("startMinute", startMinute)
+                put("endHour", endHour)
+                put("endMinute", endMinute)
+                put("grayscale", grayscale)
+                put("dndEnabled", dndEnabled)
+            }
+            wellbeingPrefs.edit().putString("bedtime_config", config.toString()).apply()
+            result.put("status", "SUCCESS")
+            result.put("config", config)
+            result.put("isCurrentlyActive", isBedtimeActiveNow())
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to save Bedtime config")
+        }
+        return result
+    }
+
+    fun getBedtimeConfig(): JSONObject {
+        val raw = wellbeingPrefs.getString("bedtime_config", null)
+        return if (raw != null) {
+            try {
+                val obj = JSONObject(raw)
+                obj.put("isCurrentlyActive", isBedtimeActiveNow())
+                obj
+            } catch (_: Exception) {
+                defaultBedtimeConfig()
+            }
+        } else {
+            defaultBedtimeConfig()
+        }
+    }
+
+    private fun defaultBedtimeConfig(): JSONObject {
+        return JSONObject().apply {
+            put("enabled", false)
+            put("startHour", 22)
+            put("startMinute", 0)
+            put("endHour", 6)
+            put("endMinute", 0)
+            put("grayscale", true)
+            put("dndEnabled", true)
+            put("isCurrentlyActive", false)
+        }
+    }
+
+    fun isBedtimeActiveNow(): Boolean {
+        val raw = wellbeingPrefs.getString("bedtime_config", null) ?: return false
+        return try {
+            val obj = JSONObject(raw)
+            if (!obj.optBoolean("enabled", false)) return false
+            val startH = obj.optInt("startHour", 22)
+            val startM = obj.optInt("startMinute", 0)
+            val endH = obj.optInt("endHour", 6)
+            val endM = obj.optInt("endMinute", 0)
+
+            val cal = Calendar.getInstance()
+            val curMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+            val startMinutes = startH * 60 + startM
+            val endMinutes = endH * 60 + endM
+
+            if (startMinutes <= endMinutes) {
+                curMinutes in startMinutes until endMinutes
+            } else {
+                curMinutes >= startMinutes || curMinutes < endMinutes
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun setFocusModeConfig(
+        enabled: Boolean,
+        blockedPackages: List<String>,
+        durationMinutes: Int = 0
+    ): JSONObject {
+        val result = JSONObject()
+        try {
+            val pkgArray = JSONArray()
+            blockedPackages.forEach { pkgArray.put(it) }
+
+            val expireTime = if (enabled && durationMinutes > 0) {
+                System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
+            } else 0L
+
+            val config = JSONObject().apply {
+                put("enabled", enabled)
+                put("packages", pkgArray)
+                put("durationMinutes", durationMinutes)
+                put("expireTime", expireTime)
+            }
+            wellbeingPrefs.edit().putString("focus_config", config.toString()).apply()
+            result.put("status", "SUCCESS")
+            result.put("config", config)
+            result.put("isCurrentlyActive", isFocusModeActiveNow())
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to save Focus config")
+        }
+        return result
+    }
+
+    fun getFocusModeConfig(): JSONObject {
+        val raw = wellbeingPrefs.getString("focus_config", null)
+        return if (raw != null) {
+            try {
+                val obj = JSONObject(raw)
+                obj.put("isCurrentlyActive", isFocusModeActiveNow())
+                obj
+            } catch (_: Exception) {
+                defaultFocusConfig()
+            }
+        } else {
+            defaultFocusConfig()
+        }
+    }
+
+    private fun defaultFocusConfig(): JSONObject {
+        return JSONObject().apply {
+            put("enabled", false)
+            put("packages", JSONArray())
+            put("durationMinutes", 0)
+            put("expireTime", 0L)
+            put("isCurrentlyActive", false)
+        }
+    }
+
+    fun isFocusModeActiveNow(): Boolean {
+        val raw = wellbeingPrefs.getString("focus_config", null) ?: return false
+        return try {
+            val obj = JSONObject(raw)
+            if (!obj.optBoolean("enabled", false)) return false
+            val expireTime = obj.optLong("expireTime", 0L)
+            if (expireTime > 0L && System.currentTimeMillis() > expireTime) {
+                obj.put("enabled", false)
+                wellbeingPrefs.edit().putString("focus_config", obj.toString()).apply()
+                return false
+            }
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun isPackageBlockedByFocus(packageName: String): Boolean {
+        if (!isFocusModeActiveNow()) return false
+        val raw = wellbeingPrefs.getString("focus_config", null) ?: return false
+        return try {
+            val obj = JSONObject(raw)
+            val arr = obj.optJSONArray("packages") ?: return false
+            for (i in 0 until arr.length()) {
+                if (arr.optString(i) == packageName) return true
+            }
+            false
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun setScreenTimeReminder(enabled: Boolean, targetMinutes: Int): JSONObject {
+        val result = JSONObject()
+        try {
+            val config = JSONObject().apply {
+                put("enabled", enabled)
+                put("targetMinutes", targetMinutes)
+            }
+            wellbeingPrefs.edit().putString("reminder_config", config.toString()).apply()
+            result.put("status", "SUCCESS")
+            result.put("config", config)
+        } catch (e: Exception) {
+            result.put("status", "ERROR")
+            result.put("error", e.message ?: "Failed to save reminder config")
+        }
+        return result
+    }
+
+    fun getScreenTimeReminder(): JSONObject {
+        val raw = wellbeingPrefs.getString("reminder_config", null)
+        return if (raw != null) {
+            try {
+                JSONObject(raw)
+            } catch (_: Exception) {
+                defaultReminderConfig()
+            }
+        } else {
+            defaultReminderConfig()
+        }
+    }
+
+    private fun defaultReminderConfig(): JSONObject {
+        return JSONObject().apply {
+            put("enabled", false)
+            put("targetMinutes", 180)
+        }
+    }
+
 }
 
- 

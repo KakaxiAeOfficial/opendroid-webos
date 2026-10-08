@@ -891,6 +891,181 @@ class LocalFileServerService : Service() {
 
             // --- Phase 16: Remote Power Control & Hardware Telemetry Handlers ---
             // --- Phase 17: Google Family Link-Grade Screen Time & Digital Wellbeing ---
+            // --- Phase 18: Active App Limits, Bedtime & Wellbeing Controls ---
+            "SET_APP_LIMIT" -> {
+                val pkg = json.optString("package", "").trim()
+                val limitMins = json.optInt("limitMinutes", 0)
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.setAppLimit(pkg, limitMins)
+                        val response = JSONObject().apply {
+                            put("type", "APP_LIMIT_UPDATED")
+                            put("data", res)
+                            put("timestamp", System.currentTimeMillis())
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error setting app limit", e)
+                    }
+                }
+            }
+
+            "GET_APP_LIMITS" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val limits = teleManager.getAppLimits()
+                        val response = JSONObject().apply {
+                            put("type", "APP_LIMITS_RESULT")
+                            put("data", limits)
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error getting app limits", e)
+                    }
+                }
+            }
+
+            "SET_DND_MODE" -> {
+                val mode = json.optString("mode", "NORMAL").trim()
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.setDndMode(mode)
+                        val response = JSONObject().apply {
+                            put("type", "DND_STATUS_RESULT")
+                            put("data", res)
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error setting DND mode", e)
+                    }
+                }
+            }
+
+            "GET_DND_STATUS" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.getDndStatus()
+                        val response = JSONObject().apply {
+                            put("type", "DND_STATUS_RESULT")
+                            put("data", res)
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error getting DND status", e)
+                    }
+                }
+            }
+
+            "SET_BEDTIME_CONFIG" -> {
+                val enabled = json.optBoolean("enabled", false)
+                val startH = json.optInt("startHour", 22)
+                val startM = json.optInt("startMinute", 0)
+                val endH = json.optInt("endHour", 6)
+                val endM = json.optInt("endMinute", 0)
+                val grayscale = json.optBoolean("grayscale", true)
+                val dndEnabled = json.optBoolean("dndEnabled", true)
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.setBedtimeConfig(enabled, startH, startM, endH, endM, grayscale, dndEnabled)
+                        val response = JSONObject().apply {
+                            put("type", "BEDTIME_CONFIG_RESULT")
+                            put("data", res)
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error setting bedtime config", e)
+                    }
+                }
+            }
+
+            "GET_BEDTIME_CONFIG" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.getBedtimeConfig()
+                        val response = JSONObject().apply {
+                            put("type", "BEDTIME_CONFIG_RESULT")
+                            put("data", res)
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error getting bedtime config", e)
+                    }
+                }
+            }
+
+            "SET_FOCUS_MODE" -> {
+                val enabled = json.optBoolean("enabled", false)
+                val packagesArr = json.optJSONArray("packages")
+                val pkgList = mutableListOf<String>()
+                if (packagesArr != null) {
+                    for (i in 0 until packagesArr.length()) {
+                        pkgList.add(packagesArr.optString(i))
+                    }
+                }
+                val durationMins = json.optInt("durationMinutes", 0)
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.setFocusModeConfig(enabled, pkgList, durationMins)
+                        val response = JSONObject().apply {
+                            put("type", "FOCUS_CONFIG_RESULT")
+                            put("data", res)
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error setting focus config", e)
+                    }
+                }
+            }
+
+            "GET_FOCUS_MODE" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.getFocusModeConfig()
+                        val response = JSONObject().apply {
+                            put("type", "FOCUS_CONFIG_RESULT")
+                            put("data", res)
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error getting focus config", e)
+                    }
+                }
+            }
+
+            "SET_SCREEN_TIME_REMINDER" -> {
+                val enabled = json.optBoolean("enabled", false)
+                val targetMins = json.optInt("targetMinutes", 180)
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.setScreenTimeReminder(enabled, targetMins)
+                        val response = JSONObject().apply {
+                            put("type", "SCREEN_TIME_REMINDER_RESULT")
+                            put("data", res)
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error setting reminder config", e)
+                    }
+                }
+            }
+
+            "FETCH_APP_ICON" -> {
+                val pkg = json.optString("package", "").trim()
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val iconB64 = teleManager.getAppIconBase64(pkg)
+                        val response = JSONObject().apply {
+                            put("type", "APP_ICON_RESULT")
+                            put("package", pkg)
+                            put("iconBase64", iconB64 ?: "")
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error fetching app icon", e)
+                    }
+                }
+            }
+
             "FETCH_SCREEN_TIME" -> {
                 val dateStr = json.optString("date", "").trim()
                 val daysAgo = json.optInt("daysAgo", 0)
@@ -2532,4 +2707,3 @@ class LocalFileServerService : Service() {
 
 
 
- 
