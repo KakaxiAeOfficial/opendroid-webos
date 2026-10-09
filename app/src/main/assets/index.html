@@ -694,7 +694,7 @@
             <div class="app-tile bg-gradient-to-tr from-amber-500 to-orange-600 shadow-amber-900/40">🔔</div>
             <span class="text-xs font-medium text-center mt-1">Notifications</span>
         </div>
-        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg" onclick="wm.openWindow('power-window')">
+        <div class="desktop-icon flex flex-col items-center text-white drop-shadow-lg cursor-pointer" onclick="wm.openWindow('info-window')">
             <div class="app-tile bg-gradient-to-tr from-teal-400 to-teal-600">📊</div>
             <span class="text-xs font-medium text-center mt-1">Device Info</span>
         </div>
@@ -1672,34 +1672,7 @@
                 </div>
             </div>
 
-            <!-- Device Hardware & System Information (Unified from Device Details) -->
-            <div class="bg-gray-900/80 border border-gray-800 rounded-xl p-3.5 space-y-2.5">
-                <div class="flex items-center justify-between pb-2 border-b border-gray-800">
-                    <div class="flex items-center gap-2">
-                        <span class="text-base text-cyan-400">📊</span>
-                        <h4 class="font-bold text-xs text-white uppercase tracking-wider">Device Hardware & System Information</h4>
-                    </div>
-                    <span class="text-[10px] text-gray-400 font-mono">Live Hardware Profile</span>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                    <div class="bg-gray-950/80 p-2.5 rounded-lg border border-gray-800">
-                        <span class="text-gray-400 block text-[10px]">Device Model</span>
-                        <span id="tel-detail-model" class="font-bold text-white mt-0.5 block truncate">Android Device</span>
-                    </div>
-                    <div class="bg-gray-950/80 p-2.5 rounded-lg border border-gray-800">
-                        <span class="text-gray-400 block text-[10px]">OS & Architecture</span>
-                        <span id="tel-detail-arch" class="font-bold text-cyan-300 font-mono mt-0.5 block truncate">Android 15 (arm64-v8a)</span>
-                    </div>
-                    <div class="bg-gray-950/80 p-2.5 rounded-lg border border-gray-800">
-                        <span class="text-gray-400 block text-[10px]">CPU Cores</span>
-                        <span id="tel-detail-cores" class="font-bold text-emerald-400 font-mono mt-0.5 block">8 Cores Active</span>
-                    </div>
-                    <div class="bg-gray-950/80 p-2.5 rounded-lg border border-gray-800">
-                        <span class="text-gray-400 block text-[10px]">Network Tunnel</span>
-                        <span id="tel-detail-network" class="font-bold text-purple-300 mt-0.5 block truncate">Cloud Relay • SSL</span>
-                    </div>
-                </div>
-            </div>
+
         </div>
     </div>
 
@@ -3107,45 +3080,81 @@
         </div>
     </div>
 
-    <!-- Window: Device Info -->
-    <div id="info-window" class="window hidden" style="display: none; width: 380px; height: 350px; top: 140px; left: 400px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <span class="font-semibold text-xs">📊 Device Information</span>
+    <!-- Window: Device Info (Pure Device Information Hub) -->
+    <div id="info-window" class="window hidden" style="display: none; width: 440px; height: 490px; top: 120px; left: 360px; min-width: 380px; min-height: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
+        <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
+            <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-teal-400 to-teal-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">📊</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Device Information</span>
+            </div>
             <div class="flex items-center gap-1.5 no-drag">
-                <button onclick="wm.minimizeWindow('info-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
-                <button onclick="wm.maximizeWindow('info-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
-                <button onclick="wm.closeWindow('info-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-1.5 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+                <button onclick="wm.minimizeWindow('info-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('info-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('info-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
-        <div class="flex-1 p-5 bg-gray-50 flex flex-col justify-between text-xs">
-            <div class="space-y-3">
-                <div class="flex justify-between pb-2 border-b border-gray-200">
-                    <span class="text-gray-500">Device Model:</span>
-                    <span id="device-model-text" class="font-bold text-gray-800">Connected Phone</span>
-                </div>
-                <div class="flex justify-between pb-2 border-b border-gray-200">
-                    <span class="text-gray-500">Network:</span>
-                    <span class="font-bold text-green-600">Cloud Relay</span>
-                </div>
-                <div class="flex justify-between pb-2 border-b border-gray-200">
-                    <span class="text-gray-500">Battery:</span>
-                    <span id="device-battery-detail" class="font-bold text-gray-800">--%</span>
-                </div>
-                <div>
-                    <div class="flex justify-between text-[11px] mb-1">
-                        <span class="text-gray-500">Internal Storage</span>
-                        <span id="storage-detail-text" class="text-gray-700 font-semibold">Loading...</span>
+
+        <div class="flex-1 p-4 bg-gray-950 text-gray-200 flex flex-col justify-between text-xs overflow-y-auto font-sans select-none space-y-3">
+            <!-- Header Card -->
+            <div class="p-3.5 bg-gray-900/90 border border-gray-800 rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-teal-500 to-emerald-600 flex items-center justify-center text-white text-xl font-bold shadow-md">
+                        📱
                     </div>
-                    <div class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
-                        <div id="storage-progress-bar" class="bg-blue-600 h-full w-[0%] transition-all duration-500"></div>
+                    <div>
+                        <div id="device-model-text" class="text-sm font-bold text-white select-text">Connected Phone</div>
+                        <div id="tel-detail-arch" class="text-[11px] text-cyan-400 font-mono mt-0.5 select-text">Android OS</div>
                     </div>
-                    <div class="flex justify-between text-[10px] text-gray-400 mt-1">
-                        <span id="storage-free-text">Free: --</span>
-                        <span id="storage-percent-text">0% used</span>
-                    </div>
+                </div>
+                <div class="text-right">
+                    <span id="tel-detail-network" class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Cloud Relay • SSL</span>
                 </div>
             </div>
-            <button onclick="toggleSiren()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded-lg transition-colors">Test Remote Alarm Siren</button>
+
+            <!-- Hardware Specs Grid -->
+            <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-gray-900/60 p-2.5 rounded-lg border border-gray-800/80">
+                    <span class="text-gray-400 block text-[10px]">Device Model</span>
+                    <span id="tel-detail-model" class="font-bold text-white mt-0.5 block truncate select-text">Android Device</span>
+                </div>
+                <div class="bg-gray-900/60 p-2.5 rounded-lg border border-gray-800/80">
+                    <span class="text-gray-400 block text-[10px]">CPU Cores</span>
+                    <span id="tel-detail-cores" class="font-bold text-emerald-400 font-mono mt-0.5 block">8 Cores Active</span>
+                </div>
+                <div class="bg-gray-900/60 p-2.5 rounded-lg border border-gray-800/80">
+                    <span class="text-gray-400 block text-[10px]">Battery Status</span>
+                    <span id="device-battery-detail" class="font-bold text-amber-400 font-mono mt-0.5 block">--%</span>
+                </div>
+                <div class="bg-gray-900/60 p-2.5 rounded-lg border border-gray-800/80">
+                    <span class="text-gray-400 block text-[10px]">Storage Used</span>
+                    <span id="storage-percent-text" class="font-bold text-blue-400 font-mono mt-0.5 block">0% used</span>
+                </div>
+            </div>
+
+            <!-- Storage Meter Card -->
+            <div class="p-3 bg-gray-900/60 border border-gray-800/80 rounded-xl space-y-2">
+                <div class="flex justify-between items-center text-[11px]">
+                    <span class="text-gray-400 font-medium">Internal Storage Capacity</span>
+                    <span id="storage-detail-text" class="text-gray-200 font-semibold font-mono">Loading...</span>
+                </div>
+                <div class="w-full bg-gray-800 h-2.5 rounded-full overflow-hidden border border-gray-700/50">
+                    <div id="storage-progress-bar" class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full w-[0%] transition-all duration-500 rounded-full"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-400">
+                    <span id="storage-free-text">Free: --</span>
+                    <span class="text-gray-500">Local Flash Memory</span>
+                </div>
+            </div>
+
+            <!-- Actions Row -->
+            <div class="pt-1 flex gap-2">
+                <button onclick="fetchHardwareTelemetryNow(); sendCommand({action: 'FETCH_STORAGE'}); showToast('Refreshing device info...', 'info');" class="flex-1 bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 rounded-lg transition-all text-xs flex items-center justify-center gap-1.5 border border-gray-700/70 cursor-pointer">
+                    <span>🔄 Refresh Info</span>
+                </button>
+                <button onclick="toggleSiren()" class="px-3 py-2 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 font-medium rounded-lg transition-all text-xs flex items-center justify-center gap-1 border border-rose-500/30 cursor-pointer" title="Test Alarm Siren">
+                    <span>🚨 Siren</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -9276,7 +9285,7 @@
 
                 if(id === 'sms-window') { initSmsWindow(); sendCommand({action: 'FETCH_SMS'}); }
                 if(id === 'contacts-window') sendCommand({action: 'FETCH_CONTACTS'});
-                if(id === 'info-window') sendCommand({action: 'FETCH_STORAGE'});
+                if(id === 'info-window') { sendCommand({action: 'FETCH_STORAGE'}); fetchHardwareTelemetryNow(); }
                 if(id === 'settings-window') switchSettingsTab('account');
                 if(id === 'call-logs-window') { setCallLogsFilter('All'); rawCallLogs = []; isLoadingCallLogs = true; sendCommand({action: 'FETCH_CALL_LOGS', offset: 0, limit: 100}); sendCommand({action: 'FETCH_CALL_RECORDINGS'}); }
                 if(id === 'apps-window') sendCommand({action: 'FETCH_APPS'});
