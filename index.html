@@ -2671,6 +2671,7 @@
 
                     <!-- Presets -->
                     <div class="grid grid-cols-3 gap-1.5 text-xs">
+                        <button onclick="setLimitPreset(1)" class="py-1.5 bg-amber-500/20 hover:bg-amber-600 text-amber-300 rounded-lg font-bold transition-all cursor-pointer border border-amber-500/40">⚡ 1 min (Test)</button>
                         <button onclick="setLimitPreset(15)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all cursor-pointer">15 mins</button>
                         <button onclick="setLimitPreset(30)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all cursor-pointer">30 mins</button>
                         <button onclick="setLimitPreset(45)" class="py-1.5 bg-gray-800 hover:bg-indigo-600 rounded-lg font-medium transition-all cursor-pointer">45 mins</button>
@@ -12966,7 +12967,17 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 if (topAppNameEl) topAppNameEl.textContent = data.topApp.appName;
                 if (topAppTimeEl) topAppTimeEl.textContent = data.topApp.formattedTime || '0m';
                 if (topAppCatEl) topAppCatEl.textContent = data.topApp.category || 'Most used';
-                if (topAppBadgeEl) topAppBadgeEl.textContent = (data.topApp.appName || 'A')[0].toUpperCase();
+                
+                const topIconB64 = data.topApp.iconBase64 || cachedAppIcons[data.topApp.packageName];
+                if (topAppBadgeEl) {
+                    if (topIconB64) {
+                        topAppBadgeEl.className = 'w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0';
+                        topAppBadgeEl.innerHTML = '<img src="data:image/png;base64,' + topIconB64 + '" class="w-full h-full object-contain">';
+                    } else {
+                        topAppBadgeEl.className = 'w-7 h-7 rounded-lg bg-emerald-950 border border-emerald-800 flex items-center justify-center text-xs font-bold text-emerald-300';
+                        topAppBadgeEl.textContent = (data.topApp.appName || 'A')[0].toUpperCase();
+                    }
+                }
             } else {
                 if (topAppNameEl) topAppNameEl.textContent = 'None';
                 if (topAppTimeEl) topAppTimeEl.textContent = '0m';
@@ -13076,9 +13087,10 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 }
                 const iconB64 = app.iconBase64 || cachedAppIcons[app.packageName] || '';
 
-                // Check limit
+                // Check limit (Only trigger 'Limit Reached' alert if viewing Today)
                 const limitMins = app.limitMinutes || (currentAppLimits[app.packageName] || 0);
-                const isLimitExceeded = limitMins > 0 && app.totalTimeMs >= (limitMins * 60 * 1000);
+                const isTodayView = currentScreenTimeFilter === 'today';
+                const isLimitExceeded = limitMins > 0 && isTodayView && app.totalTimeMs >= (limitMins * 60 * 1000);
 
                 const row = document.createElement('div');
                 row.className = 'bg-gray-950/70 border border-gray-800/80 hover:border-indigo-500/40 rounded-xl p-2.5 flex flex-col gap-2 transition-all hover:bg-gray-900/60';
