@@ -26,6 +26,7 @@ import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
 import android.provider.Settings
+import android.provider.ContactsContract
 import android.util.Base64
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -118,6 +119,39 @@ class LocalFileServerService : Service() {
         } catch (_: Exception) {}
     }
 
+    private var contactsObserver: android.database.ContentObserver? = null
+    private var lastContactsNotifyTime = 0L
+
+    private fun registerContactsObserver() {
+        try {
+            contactsObserver = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean, uri: Uri?) {
+                    super.onChange(selfChange, uri)
+                    val now = System.currentTimeMillis()
+                    if (now - lastContactsNotifyTime < 2500L) return
+                    lastContactsNotifyTime = now
+
+                    serviceScope.launch(Dispatchers.IO) {
+                        try {
+                            val paged = teleManager.getContactsPaged(0, 100)
+                            broadcastMessage(JSONObject().apply {
+                                put("type", "CONTACTS_LIST")
+                                put("data", paged.getJSONArray("data"))
+                                put("offset", 0)
+                                put("limit", 100)
+                                put("total", paged.getInt("total"))
+                                put("hasMore", paged.getBoolean("hasMore"))
+                                put("isLiveUpdate", true)
+                            }.toString())
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+            contentResolver.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contactsObserver!!)
+        } catch (_: Exception) {}
+    }
+
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -160,6 +194,7 @@ class LocalFileServerService : Service() {
         createNotificationChannel()
         registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         registerSmsObserver()
+        registerContactsObserver()
 
         try {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -2178,15 +2213,29 @@ class LocalFileServerService : Service() {
             "FETCH_CONTACTS" -> {
                 val offset = json.optInt("offset", 0)
                 val limit = json.optInt("limit", 100)
-                val paged = teleManager.getContactsPaged(offset, limit)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "CONTACTS_LIST")
-                    put("data", paged.getJSONArray("data"))
-                    put("offset", paged.getInt("offset"))
-                    put("limit", paged.getInt("limit"))
-                    put("total", paged.getInt("total"))
-                    put("hasMore", paged.getBoolean("hasMore"))
-                }.toString())
+                serviceScope.launch(Dispatchers.IO) {
+                    val paged = teleManager.getContactsPaged(offset, limit)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CONTACTS_LIST")
+                        put("data", paged.getJSONArray("data"))
+                        put("offset", paged.getInt("offset"))
+                        put("limit", paged.getInt("limit"))
+                        put("total", paged.getInt("total"))
+                        put("hasMore", paged.getBoolean("hasMore"))
+                    }.toString())
+                }
+            }
+
+            // Phase 19: Full Single Contact Details Inspector
+            "FETCH_CONTACT_DETAILS" -> {
+                val contactId = json.optLong("id", -1L)
+                serviceScope.launch(Dispatchers.IO) {
+                    val details = if (contactId > 0) teleManager.getContactDetails(contactId) else JSONObject()
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CONTACT_DETAILS_RESULT")
+                        put("data", details)
+                    }.toString())
+                }
             }
 
             "DELETE_CALL_LOG" -> {
@@ -2219,59 +2268,156 @@ class LocalFileServerService : Service() {
 
             "ADD_CONTACT" -> {
                 val name = json.optString("name", "")
-                val number = json.optString("number", "")
-                val email = json.optString("email", "")
-                if (name.isNotEmpty() && number.isNotEmpty()) {
-                    teleManager.addContact(name, number, if (email.isNotEmpty()) email else null)
+                val numbersList = mutableListOf<Pair<String, String>>()
+                val emailsList = mutableListOf<Pair<String, String>>()
+
+                if (json.has("numbers")) {
+                    val numsArr = json.optJSONArray("numbers") ?: JSONArray()
+                    for (i in 0 until numsArr.length()) {
+                        val nObj = numsArr.optJSONObject(i)
+                        if (nObj != null) {
+                            val num = nObj.optString("number", "").trim()
+                            val type = nObj.optString("type", "Mobile")
+                            if (num.isNotEmpty()) numbersList.add(Pair(num, type))
+                        }
+                    }
+                } else {
+                    val num = json.optString("number", "").trim()
+                    val type = json.optString("type", "Mobile")
+                    if (num.isNotEmpty()) numbersList.add(Pair(num, type))
                 }
-                val paged = teleManager.getContactsPaged(0, 100)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "CONTACTS_LIST")
-                    put("data", paged.getJSONArray("data"))
-                    put("offset", 0)
-                    put("limit", 100)
-                    put("total", paged.getInt("total"))
-                    put("hasMore", paged.getBoolean("hasMore"))
-                }.toString())
+
+                if (json.has("emails")) {
+                    val emsArr = json.optJSONArray("emails") ?: JSONArray()
+                    for (i in 0 until emsArr.length()) {
+                        val eObj = emsArr.optJSONObject(i)
+                        if (eObj != null) {
+                            val em = eObj.optString("email", "").trim()
+                            val type = eObj.optString("type", "Home")
+                            if (em.isNotEmpty()) emailsList.add(Pair(em, type))
+                        }
+                    }
+                } else {
+                    val em = json.optString("email", "").trim()
+                    if (em.isNotEmpty()) emailsList.add(Pair(em, "Home"))
+                }
+
+                val company = json.optString("company", json.optString("organization", ""))
+                val title = json.optString("title", json.optString("jobTitle", ""))
+                val notes = json.optString("notes", "")
+
+                serviceScope.launch(Dispatchers.IO) {
+                    val success = if (name.isNotEmpty() && numbersList.isNotEmpty()) {
+                        teleManager.addContactRich(
+                            name = name,
+                            numbers = numbersList,
+                            emails = emailsList,
+                            organization = if (company.isNotEmpty()) company else null,
+                            jobTitle = if (title.isNotEmpty()) title else null,
+                            notes = if (notes.isNotEmpty()) notes else null
+                        )
+                    } else false
+
+                    val paged = teleManager.getContactsPaged(0, 100)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CONTACTS_LIST")
+                        put("data", paged.getJSONArray("data"))
+                        put("offset", 0)
+                        put("limit", 100)
+                        put("total", paged.getInt("total"))
+                        put("hasMore", paged.getBoolean("hasMore"))
+                        put("actionStatus", if (success) "ADDED" else "FAILED")
+                    }.toString())
+                }
             }
 
-            // Phase 13: Full Bi-Directional Contact Update Engine
+            // Phase 19: Full Bi-Directional Multi-Field Contact Update Engine
             "UPDATE_CONTACT" -> {
                 val id = json.optLong("id", -1L)
                 val name = json.optString("name", "")
-                val number = json.optString("number", "")
-                val email = json.optString("email", "")
-                val success = if (id > 0 && name.isNotEmpty() && number.isNotEmpty()) {
-                    teleManager.updateContact(id, name, number, if (email.isNotEmpty()) email else null)
-                } else false
-                val paged = teleManager.getContactsPaged(0, 100)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "CONTACTS_LIST")
-                    put("data", paged.getJSONArray("data"))
-                    put("offset", 0)
-                    put("limit", 100)
-                    put("total", paged.getInt("total"))
-                    put("hasMore", paged.getBoolean("hasMore"))
-                    put("actionStatus", if (success) "UPDATED" else "FAILED")
-                }.toString())
+                val numbersList = mutableListOf<Pair<String, String>>()
+                val emailsList = mutableListOf<Pair<String, String>>()
+
+                if (json.has("numbers")) {
+                    val numsArr = json.optJSONArray("numbers") ?: JSONArray()
+                    for (i in 0 until numsArr.length()) {
+                        val nObj = numsArr.optJSONObject(i)
+                        if (nObj != null) {
+                            val num = nObj.optString("number", "").trim()
+                            val type = nObj.optString("type", "Mobile")
+                            if (num.isNotEmpty()) numbersList.add(Pair(num, type))
+                        }
+                    }
+                } else {
+                    val num = json.optString("number", "").trim()
+                    val type = json.optString("type", "Mobile")
+                    if (num.isNotEmpty()) numbersList.add(Pair(num, type))
+                }
+
+                if (json.has("emails")) {
+                    val emsArr = json.optJSONArray("emails") ?: JSONArray()
+                    for (i in 0 until emsArr.length()) {
+                        val eObj = emsArr.optJSONObject(i)
+                        if (eObj != null) {
+                            val em = eObj.optString("email", "").trim()
+                            val type = eObj.optString("type", "Home")
+                            if (em.isNotEmpty()) emailsList.add(Pair(em, type))
+                        }
+                    }
+                } else {
+                    val em = json.optString("email", "").trim()
+                    if (em.isNotEmpty()) emailsList.add(Pair(em, "Home"))
+                }
+
+                val company = json.optString("company", json.optString("organization", ""))
+                val title = json.optString("title", json.optString("jobTitle", ""))
+                val notes = json.optString("notes", "")
+
+                serviceScope.launch(Dispatchers.IO) {
+                    val success = if (id > 0 && name.isNotEmpty() && numbersList.isNotEmpty()) {
+                        teleManager.updateContactRich(
+                            contactId = id,
+                            name = name,
+                            numbers = numbersList,
+                            emails = emailsList,
+                            organization = if (company.isNotEmpty()) company else null,
+                            jobTitle = if (title.isNotEmpty()) title else null,
+                            notes = if (notes.isNotEmpty()) notes else null
+                        )
+                    } else false
+
+                    val paged = teleManager.getContactsPaged(0, 100)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CONTACTS_LIST")
+                        put("data", paged.getJSONArray("data"))
+                        put("offset", 0)
+                        put("limit", 100)
+                        put("total", paged.getInt("total"))
+                        put("hasMore", paged.getBoolean("hasMore"))
+                        put("actionStatus", if (success) "UPDATED" else "FAILED")
+                    }.toString())
+                }
             }
 
             "DELETE_CONTACT" -> {
                 val id = if (json.has("id")) json.optLong("id", -1L) else -1L
                 val number = json.optString("number", "")
-                teleManager.deleteContact(if (id > 0) id else null, number)
-                val paged = teleManager.getContactsPaged(0, 100)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "CONTACTS_LIST")
-                    put("data", paged.getJSONArray("data"))
-                    put("offset", 0)
-                    put("limit", 100)
-                    put("total", paged.getInt("total"))
-                    put("hasMore", paged.getBoolean("hasMore"))
-                }.toString())
+                serviceScope.launch(Dispatchers.IO) {
+                    val success = teleManager.deleteContact(if (id > 0) id else null, number)
+                    val paged = teleManager.getContactsPaged(0, 100)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CONTACTS_LIST")
+                        put("data", paged.getJSONArray("data"))
+                        put("offset", 0)
+                        put("limit", 100)
+                        put("total", paged.getInt("total"))
+                        put("hasMore", paged.getBoolean("hasMore"))
+                        put("actionStatus", if (success) "DELETED" else "FAILED")
+                    }.toString())
+                }
             }
 
-            // Phase 13: Batch / Bulk Delete Contacts Handler
+            // Phase 19: High-Speed Batch / Bulk Delete Contacts Handler
             "BULK_DELETE_CONTACTS" -> {
                 val idsArray = json.optJSONArray("ids") ?: JSONArray()
                 val idsList = mutableListOf<Long>()
@@ -2279,20 +2425,22 @@ class LocalFileServerService : Service() {
                     val contactId = idsArray.optLong(i, -1L)
                     if (contactId > 0) idsList.add(contactId)
                 }
-                val deletedCount = if (idsList.isNotEmpty()) teleManager.bulkDeleteContacts(idsList) else 0
-                val paged = teleManager.getContactsPaged(0, 100)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "CONTACTS_LIST")
-                    put("data", paged.getJSONArray("data"))
-                    put("offset", 0)
-                    put("limit", 100)
-                    put("total", paged.getInt("total"))
-                    put("hasMore", paged.getBoolean("hasMore"))
-                    put("deletedCount", deletedCount)
-                }.toString())
+                serviceScope.launch(Dispatchers.IO) {
+                    val deletedCount = if (idsList.isNotEmpty()) teleManager.bulkDeleteContacts(idsList) else 0
+                    val paged = teleManager.getContactsPaged(0, 100)
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CONTACTS_LIST")
+                        put("data", paged.getJSONArray("data"))
+                        put("offset", 0)
+                        put("limit", 100)
+                        put("total", paged.getInt("total"))
+                        put("hasMore", paged.getBoolean("hasMore"))
+                        put("deletedCount", deletedCount)
+                    }.toString())
+                }
             }
 
-            // Phase 13: Export All Contacts to vCard 3.0 (.vcf)
+            // Phase 19: Full-Spectrum Export All Contacts to vCard 3.0/4.0 (.vcf)
             "EXPORT_VCF" -> {
                 serviceScope.launch(Dispatchers.IO) {
                     try {
@@ -2312,7 +2460,7 @@ class LocalFileServerService : Service() {
                 }
             }
 
-            // Phase 13: Bulk Import Contacts from vCard 3.0 (.vcf)
+            // Phase 19: Full-Spectrum Bulk Import Contacts from vCard 3.0/4.0 (.vcf)
             "IMPORT_VCF" -> {
                 val vcfData = json.optString("vcf", "")
                 serviceScope.launch(Dispatchers.IO) {
@@ -2633,6 +2781,7 @@ class LocalFileServerService : Service() {
         unregisterReceiver(batteryReceiver)
         try { WebRtcManager.getInstance(applicationContext).stopCapture() } catch (_: Exception) {}
         try { smsObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}
+        try { contactsObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}
 
         // Immortal Self-Healing Watchdog: Auto-restart service if killed or dismissed
         try {
@@ -2838,11 +2987,3 @@ class LocalFileServerService : Service() {
         }
     }
 }
-
-
-
-
-
-
-
- 

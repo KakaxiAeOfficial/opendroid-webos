@@ -1708,7 +1708,8 @@
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
                 <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">📇</div>
-                <span class="font-semibold text-xs tracking-wide text-gray-100">Contacts</span>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Contacts Studio</span>
+                <span id="contacts-sync-badge" class="hidden text-[10px] text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-full font-mono border border-emerald-800/40">● Live Synced</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
                 <button onclick="wm.minimizeWindow('contacts-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
@@ -1721,30 +1722,33 @@
         <div class="bg-[#f7f8fa] border-b border-gray-200 px-3 py-1.5 flex items-center justify-between text-xs select-none flex-wrap gap-2">
             <!-- Left: Search Box -->
             <div class="relative flex items-center">
-                <input type="text" id="contacts-search-input" oninput="onContactsSearch(this.value)" placeholder="Search" class="w-48 lg:w-56 pl-7 pr-6 py-1 text-xs bg-white border border-gray-300 rounded shadow-2xs focus:outline-none focus:border-blue-500 transition-all text-gray-800 placeholder-gray-400">
+                <input type="text" id="contacts-search-input" oninput="onContactsSearch(this.value)" placeholder="Search contacts..." class="w-48 lg:w-56 pl-7 pr-6 py-1 text-xs bg-white border border-gray-300 rounded shadow-2xs focus:outline-none focus:border-blue-500 transition-all text-gray-800 placeholder-gray-400">
                 <span class="absolute left-2 text-gray-400 text-[11px] pointer-events-none">🔍</span>
-                <button id="contacts-search-clear" onclick="clearContactsSearch()" class="hidden absolute right-1.5 text-gray-400 hover:text-gray-600 text-[10px] font-bold">✕</button>
+                <button id="contacts-search-clear" onclick="clearContactsSearch()" class="hidden absolute right-1.5 text-gray-400 hover:text-gray-600 text-[10px] font-bold cursor-pointer">✕</button>
             </div>
 
-            <!-- Right: Delete(N), Refresh, + New contact, Dialer, Export -->
-            <div class="flex items-center gap-2">
-                <button id="btn-delete-contacts" onclick="deleteSelectedContacts()" disabled class="px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+            <!-- Right: Delete(N), Export Selected(N), Refresh, + New contact, Dialer, Export, Import -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <button id="btn-delete-contacts" onclick="deleteSelectedContacts()" disabled class="px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer">
                     <span>Delete( 0 )</span>
                 </button>
-                <button onclick="refreshContacts()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1">
-                    <span>Refresh</span>
+                <button id="btn-export-selected-contacts" onclick="exportSelectedContactsVcf()" disabled class="px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 cursor-pointer" title="Export only checked contacts to .vcf">
+                    <span>Export Selected( 0 )</span>
                 </button>
-                <button onclick="openNewContactModal()" class="px-3 py-1 bg-[#108ee9] hover:bg-blue-600 text-white font-medium text-xs rounded shadow-xs transition-all flex items-center gap-1">
+                <button onclick="refreshContacts()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer" title="Reload contacts from phone">
+                    <span>🔄 Refresh</span>
+                </button>
+                <button onclick="openNewContactModal()" class="px-3 py-1 bg-[#108ee9] hover:bg-blue-600 text-white font-medium text-xs rounded shadow-xs transition-all flex items-center gap-1 cursor-pointer">
                     <span>+ New contact</span>
                 </button>
-                <button onclick="toggleDialerDrawer()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1" title="Toggle Dialer Keypad">
+                <button onclick="toggleDialerDrawer()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer" title="Toggle Dialer Keypad">
                     <span>🔢 Dialer</span>
                 </button>
-                <button onclick="exportContactsVcf()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1" title="Export Contacts as .vcf">
-                    <span>📤 Export</span>
+                <button onclick="exportContactsVcf()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer" title="Export All Contacts as .vcf backup">
+                    <span>📤 Export All</span>
                 </button>
-                <button onclick="triggerImportVcf()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1" title="Import Contacts from .vcf file">
-                    <span>📥 Import</span>
+                <button onclick="triggerImportVcf()" class="px-2.5 py-1 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer" title="Import Contacts from .vcf file">
+                    <span>📥 Import VCF</span>
                 </button>
                 <input type="file" id="contacts-vcf-import-input" accept=".vcf,text/vcard" class="hidden" onchange="handleVcfFileSelected(this)">
             </div>
@@ -1756,18 +1760,18 @@
             <div class="w-80 lg:w-96 border-r border-gray-200 flex flex-col bg-[#fcfdfe]">
                 <!-- Group Dropdown Selector Bar -->
                 <div class="p-2 border-b border-gray-200 bg-white relative">
-                    <button id="btn-contact-group-dropdown" onclick="toggleContactGroupDropdown()" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-gray-100 flex items-center justify-between text-xs font-semibold text-gray-800 transition-all">
+                    <button id="btn-contact-group-dropdown" onclick="toggleContactGroupDropdown()" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-gray-100 flex items-center justify-between text-xs font-semibold text-gray-800 transition-all cursor-pointer">
                         <span id="contact-group-label" class="truncate">Contacts with number (0)</span>
                         <span class="text-gray-400 text-[10px]">▼</span>
                     </button>
 
-                    <!-- OpenDroid Groups Popup Menu (image_2c041e.png) -->
+                    <!-- OpenDroid Groups Popup Menu -->
                     <div id="contact-groups-menu" class="hidden absolute top-full left-2 right-2 mt-1 bg-white rounded-lg shadow-xl border border-gray-200 py-1.5 z-40 text-xs">
                         <div id="contact-groups-list" class="max-h-60 overflow-y-auto divide-y divide-gray-50">
                             <!-- Populated dynamically -->
                         </div>
                         <div class="pt-1.5 px-3 border-t border-gray-100 mt-1">
-                            <button onclick="promptAddContactGroup()" class="text-blue-600 hover:text-blue-800 font-medium text-xs flex items-center gap-1">
+                            <button onclick="promptAddContactGroup()" class="text-blue-600 hover:text-blue-800 font-medium text-xs flex items-center gap-1 cursor-pointer">
                                 <span>+ Add group</span>
                             </button>
                         </div>
@@ -1776,7 +1780,7 @@
 
                 <!-- Contacts List + Alphabet Index Strip -->
                 <div class="flex-1 flex overflow-hidden relative">
-                    <!-- Alphabet Vertical Index Strip (OpenDroid left margin) -->
+                    <!-- Alphabet Vertical Index Strip -->
                     <div id="contacts-alphabet-strip" class="w-5 py-1 flex flex-col items-center justify-between text-[9px] font-bold text-gray-400 select-none border-r border-gray-100 overflow-y-auto bg-gray-50/50">
                         <!-- # A B C D ... Z -->
                     </div>
@@ -1802,47 +1806,44 @@
                     <div>
                         <!-- Contact Header -->
                         <div class="flex items-center gap-4 pb-6 border-b border-gray-200">
-                            <div id="cd-avatar-circle" class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-3xl font-bold shadow-inner">
+                            <div id="cd-avatar-circle" class="w-16 h-16 rounded-full bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-md overflow-hidden shrink-0">
                                 👤
                             </div>
-                            <div>
-                                <div id="cd-name" class="text-xl font-bold text-gray-800 leading-snug">Contact Name</div>
-                                <div class="flex items-center gap-2 mt-1">
+                            <div class="flex-1 min-w-0">
+                                <div id="cd-name" class="text-xl font-bold text-gray-800 leading-snug truncate">Contact Name</div>
+                                <div class="flex items-center gap-2 mt-1.5 flex-wrap">
                                     <span id="cd-group-badge" class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[11px] font-medium border border-blue-200/50">All Contacts</span>
+                                    <span id="cd-org-badge" class="hidden bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[11px] font-medium border border-gray-200">🏢 Company</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Contact Details Table -->
                         <div class="py-6 space-y-4">
-                            <!-- Mobile Number Row with OpenDroid Quick Action Buttons -->
-                            <div class="flex items-center text-xs">
-                                <span class="w-24 text-gray-400 font-medium">Mobile</span>
-                                <span id="cd-phone-number" class="text-gray-800 font-mono text-sm font-semibold select-text flex-1">--</span>
-                                <div class="flex items-center gap-3">
-                                    <button onclick="copyCurrentContactNumber()" class="text-gray-500 hover:text-blue-600 font-medium flex items-center gap-1 transition-all" title="Copy Number">
-                                        <span class="text-xs">📋</span>
-                                        <span>Copy</span>
-                                    </button>
-                                    <button onclick="sendSmsToCurrentContact()" class="text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-all">
-                                        <span class="text-base">💬</span>
-                                        <span>Send message</span>
-                                    </button>
-                                    <button onclick="callCurrentContact()" class="text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1 transition-all">
-                                        <span class="text-base">📞</span>
-                                        <span>Call</span>
-                                    </button>
+                            <!-- Dynamic Multi-Number Section -->
+                            <div class="space-y-1.5">
+                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Phone Numbers</span>
+                                <div id="cd-phone-numbers-list" class="space-y-2">
+                                    <!-- Populated dynamically -->
                                 </div>
                             </div>
 
-                            <!-- Email Row -->
-                            <div id="cd-email-row" class="flex items-center text-xs">
-                                <span class="w-24 text-gray-400 font-medium">Email</span>
-                                <span id="cd-email" class="text-gray-800 select-text flex-1">--</span>
+                            <!-- Dynamic Multi-Email Section -->
+                            <div id="cd-emails-section" class="space-y-1.5 pt-2">
+                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider block">Email Addresses</span>
+                                <div id="cd-emails-list" class="space-y-2">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Address Row -->
+                            <div id="cd-address-row" class="hidden items-start text-xs pt-2">
+                                <span class="w-24 text-gray-400 font-medium pt-0.5">Address</span>
+                                <span id="cd-address" class="text-gray-700 select-text flex-1">--</span>
                             </div>
 
                             <!-- Notes Row -->
-                            <div id="cd-notes-row" class="flex items-start text-xs">
+                            <div id="cd-notes-row" class="flex items-start text-xs pt-2">
                                 <span class="w-24 text-gray-400 font-medium pt-0.5">Notes</span>
                                 <span id="cd-notes" class="text-gray-600 select-text flex-1 whitespace-pre-wrap">--</span>
                             </div>
@@ -1851,10 +1852,10 @@
 
                     <!-- Bottom Action Bar -->
                     <div class="pt-4 border-t border-gray-200 flex justify-between items-center">
-                        <button onclick="deleteCurrentContact()" class="px-3 py-1.5 rounded hover:bg-rose-50 text-rose-600 text-xs font-medium transition-all flex items-center gap-1">
+                        <button onclick="deleteCurrentContact()" class="px-3 py-1.5 rounded hover:bg-rose-50 text-rose-600 text-xs font-medium transition-all flex items-center gap-1 cursor-pointer">
                             <span>🗑️ Delete contact</span>
                         </button>
-                        <button onclick="openEditContactModal()" class="px-6 py-2 bg-[#108ee9] hover:bg-blue-600 text-white font-medium text-xs rounded-lg shadow-xs transition-all">
+                        <button onclick="openEditContactModal()" class="px-6 py-2 bg-[#108ee9] hover:bg-blue-600 text-white font-medium text-xs rounded-lg shadow-xs transition-all cursor-pointer">
                             Edit
                         </button>
                     </div>
@@ -2039,39 +2040,56 @@
 
     <!-- Modals for Contacts -->
     <!-- Modal: New/Edit Contact -->
-    <div id="modal-contact-form" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl shadow-2xl w-96 border border-gray-200 overflow-hidden text-xs">
-            <div class="bg-gray-900 text-white px-4 py-2.5 flex justify-between items-center font-semibold">
+    <div id="modal-contact-form" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[60]">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md border border-gray-200 overflow-hidden text-xs max-h-[85vh] flex flex-col">
+            <div class="bg-gray-900 text-white px-4 py-2.5 flex justify-between items-center font-semibold select-none shrink-0">
                 <span id="modal-contact-title">New Contact</span>
-                <button onclick="closeContactModal()" class="text-gray-400 hover:text-white">✕</button>
+                <button onclick="closeContactModal()" class="text-gray-400 hover:text-white cursor-pointer">✕</button>
             </div>
-            <div class="p-4 space-y-3">
+            <div class="p-4 space-y-3 overflow-y-auto flex-1">
                 <input type="hidden" id="cf-id">
+                
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-700 mb-1">Full Name</label>
-                    <input type="text" id="cf-name" placeholder="Contact Name" class="w-full border rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none">
+                    <label class="block text-[11px] font-medium text-gray-700 mb-1">Full Name *</label>
+                    <input type="text" id="cf-name" placeholder="Contact Name" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none">
                 </div>
-                <div class="flex gap-2">
-                    <div class="flex-1">
-                        <label class="block text-[11px] font-medium text-gray-700 mb-1">Phone Number</label>
-                        <input type="text" id="cf-number" placeholder="+123456789" class="w-full border rounded-lg px-2.5 py-1.5 font-mono focus:border-blue-500 focus:outline-none">
+
+                <!-- Dynamic Phone Numbers Container -->
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-[11px] font-medium text-gray-700">Phone Numbers *</label>
+                        <button type="button" onclick="addContactPhoneField()" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold cursor-pointer">+ Add Number</button>
                     </div>
-                    <div class="w-28">
-                        <label class="block text-[11px] font-medium text-gray-700 mb-1">Type</label>
-                        <select id="cf-type" class="w-full border rounded-lg px-2 py-1.5 focus:border-blue-500 focus:outline-none bg-white">
-                            <option value="Mobile">Mobile</option>
-                            <option value="Home">Home</option>
-                            <option value="Work">Work</option>
-                        </select>
+                    <div id="cf-numbers-container" class="space-y-2">
+                        <!-- Dynamic rows -->
                     </div>
                 </div>
+
+                <!-- Dynamic Emails Container -->
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-700 mb-1">Email (Optional)</label>
-                    <input type="email" id="cf-email" placeholder="example@email.com" class="w-full border rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-[11px] font-medium text-gray-700">Email Addresses</label>
+                        <button type="button" onclick="addContactEmailField()" class="text-blue-600 hover:text-blue-800 text-[11px] font-semibold cursor-pointer">+ Add Email</button>
+                    </div>
+                    <div id="cf-emails-container" class="space-y-2">
+                        <!-- Dynamic rows -->
+                    </div>
                 </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-700 mb-1">Company / Organization</label>
+                        <input type="text" id="cf-company" placeholder="e.g. Google" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-gray-700 mb-1">Job Title</label>
+                        <input type="text" id="cf-title" placeholder="e.g. Manager" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none">
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-[11px] font-medium text-gray-700 mb-1">Group</label>
-                    <select id="cf-group" class="w-full border rounded-lg px-2 py-1.5 focus:border-blue-500 focus:outline-none bg-white">
+                    <select id="cf-group" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 focus:border-blue-500 focus:outline-none bg-white cursor-pointer">
                         <option value="All">All Contacts</option>
                         <option value="Family">Family</option>
                         <option value="Friends">Friends</option>
@@ -2079,17 +2097,19 @@
                         <option value="VIP">VIP</option>
                     </select>
                 </div>
+
                 <div>
-                    <label class="block text-[11px] font-medium text-gray-700 mb-1">Notes (Optional)</label>
-                    <textarea id="cf-notes" rows="2" placeholder="Additional notes..." class="w-full border rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none"></textarea>
+                    <label class="block text-[11px] font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea id="cf-notes" rows="2" placeholder="Additional notes..." class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none"></textarea>
                 </div>
             </div>
-            <div class="bg-gray-50 px-4 py-2.5 border-t border-gray-100 flex justify-end gap-2">
-                <button onclick="closeContactModal()" class="px-3 py-1.5 rounded border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium">Cancel</button>
-                <button onclick="saveContactForm()" class="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs">Save Contact</button>
+            <div class="bg-gray-50 px-4 py-2.5 border-t border-gray-100 flex justify-end gap-2 shrink-0">
+                <button type="button" onclick="closeContactModal()" class="px-3.5 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 font-medium cursor-pointer">Cancel</button>
+                <button type="button" onclick="saveContactForm()" class="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-xs cursor-pointer">Save Contact</button>
             </div>
         </div>
     </div>
+
 
     <!-- Window: Apps -->
     <div id="apps-window" class="window hidden" style="display: none; width: 420px; height: 500px; top: 130px; left: 390px;">
@@ -4901,6 +4921,8 @@
                 handleSmsThreadsUpdated(data.data);
             } else if (data.type === 'SMS_THREAD_DELETED') {
                 handleSmsThreadDeleted(data);
+            } else if (data.type === 'CONTACT_DETAILS_RESULT') {
+                handleContactDetailsResult(data.data);
             } else if (data.type === 'CONTACTS_LIST') {
                 renderContacts(data.data, data.offset, data.total, data.hasMore);
                 if (data.actionStatus === 'UPDATED') {
@@ -10726,7 +10748,7 @@
             }, 1200);
         }
 
-        // --- OpenDroid Contacts Management System (Strict Bottom-Scroll On-Demand) ---
+        // --- OpenDroid Contacts Management System (Phase 19 Advanced Multi-Field Studio) ---
         let rawContacts = [];
         let selectedContact = null;
         let selectedContactIds = new Set();
@@ -10757,6 +10779,8 @@
 
             items.forEach(c => {
                 if (!c.group) c.group = 'All';
+                if (!c.numbers) c.numbers = c.number ? [{ number: c.number, type: c.type || 'Mobile' }] : [];
+                if (!c.emails) c.emails = c.email ? [{ email: c.email, type: 'Home' }] : [];
             });
 
             if (incomingOffset === 0) {
@@ -10779,8 +10803,6 @@
             isLoadingContacts = false;
 
             renderCurrentContactsView();
-            // Strictly NO background prefetch timer!
-            // Contacts only load when user scrolls all the way to the bottom.
         }
 
         function renderCurrentContactsView() {
@@ -10788,6 +10810,7 @@
             const alphaStrip = document.getElementById('contacts-alphabet-strip');
             const groupLabel = document.getElementById('contact-group-label');
             const btnDelete = document.getElementById('btn-delete-contacts');
+            const btnExportSelected = document.getElementById('btn-export-selected-contacts');
 
             if (!listScroll) return;
 
@@ -10798,11 +10821,13 @@
 
             if (contactsSearch.trim()) {
                 const q = contactsSearch.toLowerCase();
-                filtered = filtered.filter(c => 
-                    (c.name || '').toLowerCase().includes(q) || 
-                    (c.number || '').toLowerCase().includes(q) ||
-                    (c.email || '').toLowerCase().includes(q)
-                );
+                filtered = filtered.filter(c => {
+                    const nameMatch = (c.name || '').toLowerCase().includes(q);
+                    const numMatch = (c.number || '').toLowerCase().includes(q) || (c.numbers && c.numbers.some(n => (n.number || '').toLowerCase().includes(q)));
+                    const emailMatch = (c.email || '').toLowerCase().includes(q) || (c.emails && c.emails.some(e => (e.email || '').toLowerCase().includes(q)));
+                    const compMatch = (c.company || '').toLowerCase().includes(q);
+                    return nameMatch || numMatch || emailMatch || compMatch;
+                });
             }
 
             const totalDisplay = (activeContactGroup === 'all' && totalContactsCount > 0) ? totalContactsCount : filtered.length;
@@ -10811,16 +10836,21 @@
                 groupLabel.textContent = `${groupDisplay} (${totalDisplay})`;
             }
 
+            const count = selectedContactIds.size;
             if (btnDelete) {
-                const count = selectedContactIds.size;
                 btnDelete.innerHTML = `<span>Delete( ${count} )</span>`;
-                if (count > 0) {
-                    btnDelete.disabled = false;
-                    btnDelete.className = "px-2.5 py-1 bg-rose-50 border border-rose-300 text-rose-600 hover:bg-rose-100 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer";
-                } else {
-                    btnDelete.disabled = true;
-                    btnDelete.className = "px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1";
-                }
+                btnDelete.disabled = count === 0;
+                btnDelete.className = count > 0 
+                    ? "px-2.5 py-1 bg-rose-50 border border-rose-300 text-rose-600 hover:bg-rose-100 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
+                    : "px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1";
+            }
+
+            if (btnExportSelected) {
+                btnExportSelected.innerHTML = `<span>Export Selected( ${count} )</span>`;
+                btnExportSelected.disabled = count === 0;
+                btnExportSelected.className = count > 0
+                    ? "px-2.5 py-1 bg-blue-50 border border-blue-300 text-blue-600 hover:bg-blue-100 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
+                    : "px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1";
             }
 
             filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
@@ -10886,19 +10916,21 @@
 
                     const row = document.createElement('div');
                     row.className = `px-3 py-2 flex items-center justify-between cursor-pointer border-b border-gray-50 transition-colors select-none ${
-                        isSelected ? 'bg-[#eef2f6] text-blue-900' : 'hover:bg-gray-50/80 text-gray-700'
+                        isSelected ? 'bg-[#eef2f6] text-blue-900 font-medium' : 'hover:bg-gray-50/80 text-gray-700'
                     }`;
 
                     let avatarHtml = '';
                     if (contact.photo) {
                         avatarHtml = `<img src="${contact.photo}" class="w-8 h-8 rounded-full object-cover shrink-0">`;
                     } else {
-                        avatarHtml = `<div class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs font-semibold shrink-0">👤</div>`;
+                        avatarHtml = `<div class="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-400 to-blue-500 text-white flex items-center justify-center text-xs font-semibold shrink-0 shadow-2xs">${(contact.name || 'C').charAt(0).toUpperCase()}</div>`;
                     }
 
                     row.onclick = () => {
                         selectContact(contact);
                     };
+
+                    const primaryNum = (contact.numbers && contact.numbers.length > 0) ? contact.numbers[0].number : (contact.number || '');
 
                     row.innerHTML = `
                         <div class="flex items-center gap-2.5 truncate flex-1 pr-2">
@@ -10906,7 +10938,7 @@
                             ${avatarHtml}
                             <div class="truncate">
                                 <div class="font-medium text-xs text-gray-800 truncate" title="${contact.name}">${contact.name}</div>
-                                <div class="text-[10px] text-gray-400 font-mono truncate">${contact.number || ''}</div>
+                                <div class="text-[10px] text-gray-400 font-mono truncate">${primaryNum}</div>
                             </div>
                         </div>
                     `;
@@ -10914,7 +10946,6 @@
                 });
             });
 
-            // If loading more, append loader item
             if (hasMoreContacts) {
                 const loader = document.createElement('div');
                 loader.className = "p-2.5 text-center text-gray-400 text-[11px] font-mono animate-pulse bg-gray-50";
@@ -10922,7 +10953,6 @@
                 listScroll.appendChild(loader);
             }
 
-            // Setup Infinite Scroll listener - STRICTLY when scrolling all the way to bottom!
             if (!listScroll.hasInfiniteScrollSetup) {
                 listScroll.hasInfiniteScrollSetup = true;
                 listScroll.addEventListener('scroll', () => {
@@ -10945,18 +10975,34 @@
         function selectContact(contact) {
             selectedContact = contact;
             renderContactDetails(contact);
+            // Also trigger background fetch for full details if available
+            if (contact && contact.id) {
+                sendCommand({ action: 'FETCH_CONTACT_DETAILS', id: contact.id });
+            }
             const listScroll = document.getElementById('contacts-list-scroll');
             if (listScroll) {
                 const rows = listScroll.querySelectorAll('div[class*="cursor-pointer"]');
                 rows.forEach(r => {
                     const nameEl = r.querySelector('.font-medium');
                     if (nameEl && nameEl.textContent === contact.name) {
-                        r.className = r.className.replace(/hover:bg-gray-50\/80/g, '').replace(/bg-\[#eef2f6\]/g, '') + ' bg-[#eef2f6] text-blue-900';
+                        r.className = r.className.replace(/hover:bg-gray-50\/80/g, '').replace(/bg-\[#eef2f6\]/g, '') + ' bg-[#eef2f6] text-blue-900 font-medium';
                     } else {
-                        r.className = r.className.replace(/bg-\[#eef2f6\] text-blue-900/g, 'hover:bg-gray-50/80 text-gray-700');
+                        r.className = r.className.replace(/bg-\[#eef2f6\] text-blue-900 font-medium/g, 'hover:bg-gray-50/80 text-gray-700');
                     }
                 });
             }
+        }
+
+        function handleContactDetailsResult(details) {
+            if (!details || !selectedContact || String(details.id) !== String(selectedContact.id)) return;
+            // Merge details into selectedContact and re-render
+            selectedContact.numbers = details.numbers || selectedContact.numbers || [];
+            selectedContact.emails = details.emails || selectedContact.emails || [];
+            selectedContact.company = details.company || selectedContact.company || '';
+            selectedContact.title = details.title || selectedContact.title || '';
+            selectedContact.notes = details.notes || selectedContact.notes || '';
+            selectedContact.address = details.address || selectedContact.address || '';
+            renderContactDetails(selectedContact);
         }
 
         function renderContactDetails(c) {
@@ -10972,25 +11018,104 @@
             if (cardContent) cardContent.classList.remove('hidden');
 
             document.getElementById('cd-name').textContent = c.name || 'Unknown Contact';
-            document.getElementById('cd-phone-number').textContent = c.number || '--';
             document.getElementById('cd-group-badge').textContent = c.group || 'All Contacts';
 
-            const emailRow = document.getElementById('cd-email-row');
-            const emailEl = document.getElementById('cd-email');
-            if (c.email) {
-                emailRow.classList.remove('hidden');
-                emailEl.textContent = c.email;
+            const orgBadge = document.getElementById('cd-org-badge');
+            if (c.company || c.title) {
+                orgBadge.classList.remove('hidden');
+                orgBadge.textContent = `🏢 ${c.title ? c.title + ' at ' : ''}${c.company || ''}`;
             } else {
-                emailRow.classList.add('hidden');
+                orgBadge.classList.add('hidden');
             }
 
+            // Render Dynamic Phone Numbers List
+            const numbersContainer = document.getElementById('cd-phone-numbers-list');
+            if (numbersContainer) {
+                numbersContainer.innerHTML = '';
+                const numList = (c.numbers && c.numbers.length > 0) ? c.numbers : (c.number ? [{ number: c.number, type: c.type || 'Mobile' }] : []);
+                if (numList.length === 0) {
+                    numbersContainer.innerHTML = '<span class="text-xs text-gray-400 italic">No phone number added</span>';
+                } else {
+                    numList.forEach(nItem => {
+                        const num = typeof nItem === 'object' ? nItem.number : nItem;
+                        const type = typeof nItem === 'object' ? (nItem.type || 'Mobile') : 'Mobile';
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = "flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200/70 text-xs";
+                        itemDiv.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-200 text-gray-700">${type}</span>
+                                <span class="font-mono text-sm font-semibold text-gray-800 select-text">${num}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="copyContactNumberText('${num}')" class="px-2 py-1 bg-white border border-gray-200 hover:bg-gray-100 rounded text-gray-600 font-medium text-[11px] flex items-center gap-1 cursor-pointer" title="Copy Number">
+                                    <span>📋</span><span>Copy</span>
+                                </button>
+                                <button onclick="openSmsForContact('${num}', '${c.name || ''}')" class="px-2.5 py-1 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded text-emerald-700 font-medium text-[11px] flex items-center gap-1 cursor-pointer">
+                                    <span>💬</span><span>SMS</span>
+                                </button>
+                                <button onclick="callContactNumber('${num}')" class="px-2.5 py-1 bg-blue-50 border border-blue-300 hover:bg-blue-100 rounded text-blue-700 font-medium text-[11px] flex items-center gap-1 cursor-pointer">
+                                    <span>📞</span><span>Call</span>
+                                </button>
+                            </div>
+                        `;
+                        numbersContainer.appendChild(itemDiv);
+                    });
+                }
+            }
+
+            // Render Dynamic Emails List
+            const emailsSection = document.getElementById('cd-emails-section');
+            const emailsContainer = document.getElementById('cd-emails-list');
+            if (emailsContainer) {
+                emailsContainer.innerHTML = '';
+                const emList = (c.emails && c.emails.length > 0) ? c.emails : (c.email ? [{ email: c.email, type: 'Home' }] : []);
+                if (emList.length === 0) {
+                    if (emailsSection) emailsSection.classList.add('hidden');
+                } else {
+                    if (emailsSection) emailsSection.classList.remove('hidden');
+                    emList.forEach(eItem => {
+                        const em = typeof eItem === 'object' ? eItem.email : eItem;
+                        const type = typeof eItem === 'object' ? (eItem.type || 'Home') : 'Home';
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = "flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200/70 text-xs";
+                        itemDiv.innerHTML = `
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-200 text-gray-700">${type}</span>
+                                <span class="text-xs text-gray-800 select-text">${em}</span>
+                            </div>
+                            <a href="mailto:${em}" class="px-2 py-1 bg-white border border-gray-200 hover:bg-gray-100 rounded text-gray-600 font-medium text-[11px] flex items-center gap-1 cursor-pointer">
+                                <span>✉️</span><span>Send Mail</span>
+                            </a>
+                        `;
+                        emailsContainer.appendChild(itemDiv);
+                    });
+                }
+            }
+
+            // Address Row
+            const addrRow = document.getElementById('cd-address-row');
+            const addrEl = document.getElementById('cd-address');
+            if (addrRow && addrEl) {
+                if (c.address) {
+                    addrRow.classList.remove('hidden');
+                    addrRow.classList.add('flex');
+                    addrEl.textContent = c.address;
+                } else {
+                    addrRow.classList.add('hidden');
+                    addrRow.classList.remove('flex');
+                }
+            }
+
+            // Notes Row
             const notesRow = document.getElementById('cd-notes-row');
             const notesEl = document.getElementById('cd-notes');
-            if (c.notes) {
-                notesRow.classList.remove('hidden');
-                notesEl.textContent = c.notes;
-            } else {
-                notesRow.classList.add('hidden');
+            if (notesRow && notesEl) {
+                if (c.notes) {
+                    notesRow.classList.remove('hidden');
+                    notesEl.textContent = c.notes;
+                } else {
+                    notesRow.classList.add('hidden');
+                }
             }
 
             const avatar = document.getElementById('cd-avatar-circle');
@@ -10998,9 +11123,22 @@
                 if (c.photo) {
                     avatar.innerHTML = `<img src="${c.photo}" class="w-full h-full rounded-full object-cover">`;
                 } else {
-                    avatar.innerHTML = `<span class="text-3xl text-gray-400">👤</span>`;
+                    avatar.innerHTML = `<span>${(c.name || 'C').charAt(0).toUpperCase()}</span>`;
                 }
             }
+        }
+
+        function copyContactNumberText(num) {
+            if (!num) return;
+            navigator.clipboard.writeText(num).then(() => {
+                showToast(`Phone number ${num} copied! 📋`, "info");
+            });
+        }
+
+        function callContactNumber(num) {
+            if (!num) return;
+            sendCommand({ action: 'MAKE_CALL', number: num });
+            showToast(`Calling ${num} on phone... 📞`, "info");
         }
 
         function toggleContactSelection(idOrNum, checked) {
@@ -11009,18 +11147,7 @@
             } else {
                 selectedContactIds.delete(idOrNum);
             }
-            const btnDelete = document.getElementById('btn-delete-contacts');
-            if (btnDelete) {
-                const count = selectedContactIds.size;
-                btnDelete.innerHTML = `<span>Delete( ${count} )</span>`;
-                if (count > 0) {
-                    btnDelete.disabled = false;
-                    btnDelete.className = "px-2.5 py-1 bg-rose-50 border border-rose-300 text-rose-600 hover:bg-rose-100 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer";
-                } else {
-                    btnDelete.disabled = true;
-                    btnDelete.className = "px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1";
-                }
-            }
+            renderCurrentContactsView();
         }
 
         function onContactsSearch(val) {
@@ -11041,18 +11168,20 @@
             totalContactsCount = 0;
             isLoadingContacts = true;
             sendCommand({ action: 'FETCH_CONTACTS', offset: 0, limit: 150 });
-            showNotificationToast({ app: 'Contacts', title: 'Syncing', text: 'Fetching latest contacts from device...' });
+            showToast("Fetching latest contacts from device...", "info");
         }
 
         function sendSmsToCurrentContact() {
-            if (selectedContact && selectedContact.number) {
-                openSmsForContact(selectedContact.number, selectedContact.name);
+            if (selectedContact) {
+                const num = (selectedContact.numbers && selectedContact.numbers.length > 0) ? selectedContact.numbers[0].number : selectedContact.number;
+                if (num) openSmsForContact(num, selectedContact.name);
             }
         }
 
         function callCurrentContact() {
-            if (selectedContact && selectedContact.number) {
-                triggerCall(selectedContact.number);
+            if (selectedContact) {
+                const num = (selectedContact.numbers && selectedContact.numbers.length > 0) ? selectedContact.numbers[0].number : selectedContact.number;
+                if (num) callContactNumber(num);
             }
         }
 
@@ -11090,15 +11219,63 @@
             }
         }
 
+        // Phase 19: Dynamic Phone & Email Fields in Add/Edit Modal
+        function addContactPhoneField(number = '', type = 'Mobile') {
+            const container = document.getElementById('cf-numbers-container');
+            if (!container) return;
+            const div = document.createElement('div');
+            div.className = "flex gap-2 items-center cf-phone-row";
+            div.innerHTML = `
+                <input type="text" placeholder="+123456789" value="${number}" class="flex-1 border border-gray-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:border-blue-500 focus:outline-none cf-num-val">
+                <select class="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:border-blue-500 focus:outline-none bg-white cf-num-type cursor-pointer">
+                    <option value="Mobile" ${type === 'Mobile' ? 'selected' : ''}>Mobile</option>
+                    <option value="Home" ${type === 'Home' ? 'selected' : ''}>Home</option>
+                    <option value="Work" ${type === 'Work' ? 'selected' : ''}>Work</option>
+                    <option value="Other" ${type === 'Other' ? 'selected' : ''}>Other</option>
+                </select>
+                <button type="button" onclick="this.closest('.cf-phone-row').remove()" class="text-gray-400 hover:text-rose-500 px-1 font-bold text-sm cursor-pointer" title="Remove">✕</button>
+            `;
+            container.appendChild(div);
+        }
+
+        function addContactEmailField(email = '', type = 'Home') {
+            const container = document.getElementById('cf-emails-container');
+            if (!container) return;
+            const div = document.createElement('div');
+            div.className = "flex gap-2 items-center cf-email-row";
+            div.innerHTML = `
+                <input type="email" placeholder="example@email.com" value="${email}" class="flex-1 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs focus:border-blue-500 focus:outline-none cf-em-val">
+                <select class="w-24 border border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:border-blue-500 focus:outline-none bg-white cf-em-type cursor-pointer">
+                    <option value="Home" ${type === 'Home' ? 'selected' : ''}>Home</option>
+                    <option value="Work" ${type === 'Work' ? 'selected' : ''}>Work</option>
+                    <option value="Other" ${type === 'Other' ? 'selected' : ''}>Other</option>
+                </select>
+                <button type="button" onclick="this.closest('.cf-email-row').remove()" class="text-gray-400 hover:text-rose-500 px-1 font-bold text-sm cursor-pointer" title="Remove">✕</button>
+            `;
+            container.appendChild(div);
+        }
+
         function openNewContactModal() {
             document.getElementById('modal-contact-title').textContent = "New Contact";
             document.getElementById('cf-id').value = '';
             document.getElementById('cf-name').value = '';
-            document.getElementById('cf-number').value = '';
-            document.getElementById('cf-type').value = 'Mobile';
-            document.getElementById('cf-email').value = '';
+            document.getElementById('cf-company').value = '';
+            document.getElementById('cf-title').value = '';
             document.getElementById('cf-group').value = 'All';
             document.getElementById('cf-notes').value = '';
+
+            const numContainer = document.getElementById('cf-numbers-container');
+            if (numContainer) {
+                numContainer.innerHTML = '';
+                addContactPhoneField('', 'Mobile');
+            }
+
+            const emContainer = document.getElementById('cf-emails-container');
+            if (emContainer) {
+                emContainer.innerHTML = '';
+                addContactEmailField('', 'Home');
+            }
+
             document.getElementById('modal-contact-form').classList.remove('hidden');
         }
 
@@ -11107,11 +11284,33 @@
             document.getElementById('modal-contact-title').textContent = "Edit Contact";
             document.getElementById('cf-id').value = selectedContact.id || '';
             document.getElementById('cf-name').value = selectedContact.name || '';
-            document.getElementById('cf-number').value = selectedContact.number || '';
-            document.getElementById('cf-type').value = selectedContact.type || 'Mobile';
-            document.getElementById('cf-email').value = selectedContact.email || '';
+            document.getElementById('cf-company').value = selectedContact.company || '';
+            document.getElementById('cf-title').value = selectedContact.title || '';
             document.getElementById('cf-group').value = selectedContact.group || 'All';
             document.getElementById('cf-notes').value = selectedContact.notes || '';
+
+            const numContainer = document.getElementById('cf-numbers-container');
+            if (numContainer) {
+                numContainer.innerHTML = '';
+                const numList = (selectedContact.numbers && selectedContact.numbers.length > 0) ? selectedContact.numbers : (selectedContact.number ? [{ number: selectedContact.number, type: selectedContact.type || 'Mobile' }] : []);
+                if (numList.length > 0) {
+                    numList.forEach(n => addContactPhoneField(n.number || '', n.type || 'Mobile'));
+                } else {
+                    addContactPhoneField('', 'Mobile');
+                }
+            }
+
+            const emContainer = document.getElementById('cf-emails-container');
+            if (emContainer) {
+                emContainer.innerHTML = '';
+                const emList = (selectedContact.emails && selectedContact.emails.length > 0) ? selectedContact.emails : (selectedContact.email ? [{ email: selectedContact.email, type: 'Home' }] : []);
+                if (emList.length > 0) {
+                    emList.forEach(e => addContactEmailField(e.email || '', e.type || 'Home'));
+                } else {
+                    addContactEmailField('', 'Home');
+                }
+            }
+
             document.getElementById('modal-contact-form').classList.remove('hidden');
         }
 
@@ -11121,45 +11320,109 @@
 
         function saveContactForm() {
             const name = document.getElementById('cf-name').value.trim();
-            const number = document.getElementById('cf-number').value.trim();
-            const type = document.getElementById('cf-type').value;
-            const email = document.getElementById('cf-email').value.trim();
+            const company = document.getElementById('cf-company').value.trim();
+            const title = document.getElementById('cf-title').value.trim();
             const group = document.getElementById('cf-group').value;
             const notes = document.getElementById('cf-notes').value.trim();
             const id = document.getElementById('cf-id').value;
 
-            if (!name || !number) {
-                alert("Please enter both Name and Phone Number.");
+            // Gather all phone numbers
+            const numbers = [];
+            document.querySelectorAll('#cf-numbers-container .cf-phone-row').forEach(row => {
+                const numVal = row.querySelector('.cf-num-val').value.trim();
+                const typeVal = row.querySelector('.cf-num-type').value;
+                if (numVal) {
+                    numbers.push({ number: numVal, type: typeVal });
+                }
+            });
+
+            // Gather all emails
+            const emails = [];
+            document.querySelectorAll('#cf-emails-container .cf-email-row').forEach(row => {
+                const emVal = row.querySelector('.cf-em-val').value.trim();
+                const typeVal = row.querySelector('.cf-em-type').value;
+                if (emVal) {
+                    emails.push({ email: emVal, type: typeVal });
+                }
+            });
+
+            if (!name) {
+                alert("Please enter Contact Name.");
                 return;
             }
+            if (numbers.length === 0) {
+                alert("Please enter at least one phone number.");
+                return;
+            }
+
+            const primaryNum = numbers[0].number;
+            const primaryType = numbers[0].type;
+            const primaryEmail = emails.length > 0 ? emails[0].email : '';
 
             if (id) {
                 const idx = rawContacts.findIndex(c => String(c.id) === String(id));
                 if (idx !== -1) {
-                    rawContacts[idx] = { ...rawContacts[idx], name, number, type, email, group, notes };
+                    rawContacts[idx] = { 
+                        ...rawContacts[idx], 
+                        name, 
+                        number: primaryNum, 
+                        type: primaryType, 
+                        email: primaryEmail, 
+                        numbers, 
+                        emails, 
+                        company, 
+                        title, 
+                        group, 
+                        notes 
+                    };
                     selectedContact = rawContacts[idx];
                 }
-                sendCommand({ action: 'UPDATE_CONTACT', id: Number(id), name, number, email });
+                sendCommand({ 
+                    action: 'UPDATE_CONTACT', 
+                    id: Number(id), 
+                    name, 
+                    number: primaryNum, 
+                    email: primaryEmail,
+                    numbers,
+                    emails,
+                    company,
+                    title,
+                    notes
+                });
                 showToast("Updating contact on phone...", "info");
             } else {
                 const newObj = {
                     id: Date.now(),
                     name,
-                    number,
-                    type,
-                    email,
+                    number: primaryNum,
+                    type: primaryType,
+                    email: primaryEmail,
+                    numbers,
+                    emails,
+                    company,
+                    title,
                     group,
                     notes
                 };
                 rawContacts.unshift(newObj);
                 totalContactsCount++;
                 selectedContact = newObj;
-                sendCommand({ action: 'ADD_CONTACT', name, number, email });
+                sendCommand({ 
+                    action: 'ADD_CONTACT', 
+                    name, 
+                    number: primaryNum, 
+                    email: primaryEmail,
+                    numbers,
+                    emails,
+                    company,
+                    title,
+                    notes
+                });
+                showToast("Adding new contact to phone...", "info");
             }
 
             closeContactModal();
             renderCurrentContactsView();
-            showNotificationToast({ app: 'Contacts', title: 'Saved', text: `Contact ${name} saved successfully.` });
         }
 
         function toggleContactGroupDropdown() {
@@ -11195,8 +11458,8 @@
                     <span>${grp}</span>
                     <div class="flex items-center gap-2">
                         <span class="text-gray-400">(${count})</span>
-                        <button onclick="event.stopPropagation(); promptRenameGroup('${grp}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-[10px]" title="Rename">✏️</button>
-                        <button onclick="event.stopPropagation(); deleteGroup('${grp}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-600 text-[10px]" title="Delete">🗑️</button>
+                        <button onclick="event.stopPropagation(); promptRenameGroup('${grp}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-blue-600 text-[10px] cursor-pointer" title="Rename">✏️</button>
+                        <button onclick="event.stopPropagation(); deleteGroup('${grp}')" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-600 text-[10px] cursor-pointer" title="Delete">🗑️</button>
                     </div>
                 `;
                 div.onclick = () => {
@@ -11275,7 +11538,7 @@
         function dialerTriggerCall() {
             const screen = document.getElementById('dialer-screen');
             if (screen && screen.value.trim()) {
-                triggerCall(screen.value.trim());
+                callContactNumber(screen.value.trim());
             }
         }
 
@@ -11286,16 +11549,55 @@
             }
         }
 
-        function copyCurrentContactNumber() {
-            if (!selectedContact || !selectedContact.number) return;
-            navigator.clipboard.writeText(selectedContact.number).then(() => {
-                showToast("Phone number copied to clipboard! 📋", "info");
-            });
-        }
-
         function exportContactsVcf() {
             showToast("Generating full phone contacts backup (.vcf)...", "info");
             sendCommand({ action: 'EXPORT_VCF' });
+        }
+
+        function exportSelectedContactsVcf() {
+            if (selectedContactIds.size === 0) return;
+            const selectedList = rawContacts.filter(c => selectedContactIds.has(c.id || c.number));
+            if (selectedList.length === 0) return;
+
+            let vcf = "";
+            selectedList.forEach(c => {
+                vcf += "BEGIN:VCARD\r\nVERSION:3.0\r\n";
+                vcf += `FN:${(c.name || 'Unknown').replace(/\r|\n/g, ' ')}\r\n`;
+                vcf += `N:;${(c.name || 'Unknown').replace(/\r|\n/g, ' ')};;;\r\n`;
+                if (c.numbers && c.numbers.length > 0) {
+                    c.numbers.forEach(n => {
+                        const vType = (n.type || 'CELL').toUpperCase().includes('WORK') ? 'WORK' : ((n.type || 'CELL').toUpperCase().includes('HOME') ? 'HOME' : 'CELL');
+                        if (n.number) vcf += `TEL;TYPE=${vType}:${n.number}\r\n`;
+                    });
+                } else if (c.number) {
+                    vcf += `TEL;TYPE=CELL:${c.number}\r\n`;
+                }
+
+                if (c.emails && c.emails.length > 0) {
+                    c.emails.forEach(e => {
+                        const vType = (e.type || 'HOME').toUpperCase().includes('WORK') ? 'WORK' : 'HOME';
+                        if (e.email) vcf += `EMAIL;TYPE=${vType}:${e.email}\r\n`;
+                    });
+                } else if (c.email) {
+                    vcf += `EMAIL;TYPE=HOME:${c.email}\r\n`;
+                }
+
+                if (c.company) vcf += `ORG:${c.company}\r\n`;
+                if (c.title) vcf += `TITLE:${c.title}\r\n`;
+                if (c.notes) vcf += `NOTE:${c.notes.replace(/\r/g, '').replace(/\n/g, '\\n')}\r\n`;
+                vcf += "END:VCARD\r\n";
+            });
+
+            const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `OpenDroid_Selected_Contacts_${selectedList.length}_${new Date().toISOString().slice(0,10)}.vcf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`Exported ${selectedList.length} selected contacts to .vcf! 📇`, "success");
         }
 
         function handleContactsVcfExported(data) {
@@ -11376,11 +11678,22 @@
             }
         }
 
-        function makeCall() {
-            const screen = document.getElementById('dialer-screen');
-            const num = screen ? screen.value : '';
-            if(num) sendCommand({ action: 'MAKE_CALL', number: num });
+        // Bridge to Messages Window: Instant New Composer with contact number
+        function openSmsForContact(number, name) {
+            if (!number) return;
+            wm.openWindow('sms-window');
+            openNewSmsComposer();
+            const recipientInput = document.getElementById('sms-new-recipient');
+            if (recipientInput) {
+                recipientInput.value = number;
+            }
+            const msgInput = document.getElementById('sms-new-message');
+            if (msgInput) {
+                msgInput.focus();
+            }
         }
+
+
         // --- Target 5: Notification Toast System with Inline Quick Reply ---
         function showNotificationToast(notif) {
             const container = document.getElementById('toast-container');
@@ -13751,9 +14064,3 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
-
-
-
-
-
- 

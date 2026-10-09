@@ -1619,89 +1619,197 @@ fun getContactsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
     val array = JSONArray()
     var totalCount = 0
     try {
+        // Query distinct contacts from ContactsContract.Contacts
         val projection = arrayOf(
-            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-            ContactsContract.CommonDataKinds.Phone.NUMBER,
-            ContactsContract.CommonDataKinds.Phone.TYPE,
-            ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
+            ContactsContract.Contacts._ID,
+            ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+            ContactsContract.Contacts.PHOTO_THUMBNAIL_URI,
+            ContactsContract.Contacts.HAS_PHONE_NUMBER
         )
         val cursor = context.contentResolver.query(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+            ContactsContract.Contacts.CONTENT_URI,
             projection,
             null, null,
-            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC"
+            "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC"
         )
         cursor?.use {
             totalCount = it.count
             if (offset < totalCount) {
                 it.moveToPosition(offset - 1)
-                val idIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-                val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-                val numIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-                val typeIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
-                val photoIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
-                
+                val idIdx = it.getColumnIndex(ContactsContract.Contacts._ID)
+                val nameIdx = it.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+                val photoIdx = it.getColumnIndex(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI)
+
                 val pagedIds = mutableListOf<Long>()
-                val tempItems = mutableListOf<JSONObject>()
+                val contactMap = mutableMapOf<Long, JSONObject>()
                 var count = 0
+
                 while (it.moveToNext() && (limit <= 0 || count < limit)) {
                     count++
                     val contactId = if (idIdx != -1) it.getLong(idIdx) else 0L
+                    if (contactId <= 0L) continue
+
                     pagedIds.add(contactId)
-                    val phoneType = when (if (typeIdx != -1) it.getInt(typeIdx) else 0) {
-                        ContactsContract.CommonDataKinds.Phone.TYPE_HOME -> "Home"
-                        ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE -> "Mobile"
-                        ContactsContract.CommonDataKinds.Phone.TYPE_WORK -> "Work"
-                        else -> "Mobile"
-                    }
+                    val rawName = if (nameIdx != -1) it.getString(nameIdx) ?: "Unknown" else "Unknown"
+                    val photoUri = if (photoIdx != -1) it.getString(photoIdx) ?: "" else ""
+
                     val obj = JSONObject().apply {
                         put("id", contactId)
-                        put("name", if (nameIdx != -1) it.getString(nameIdx) ?: "Unknown" else "Unknown")
-                        put("number", if (numIdx != -1) it.getString(numIdx) ?: "Unknown" else "Unknown")
-                        put("type", phoneType)
-                        put("photo", if (photoIdx != -1) it.getString(photoIdx) ?: "" else "")
+                        put("name", rawName)
+                        put("number", "")
+                        put("type", "Mobile")
+                        put("photo", photoUri)
                         put("email", "")
+                        put("numbers", JSONArray())
+                        put("emails", JSONArray())
+                        put("company", "")
+                        put("title", "")
+                        put("notes", "")
                     }
-                    tempItems.add(obj)
+                    contactMap[contactId] = obj
                 }
 
-                // Batch fetch emails for paged contacts only (zero quota waste)
                 if (pagedIds.isNotEmpty()) {
+                    val inClause = pagedIds.joinToString(",")
+
+                    // 1. Batch query all Phone numbers for paged contacts
                     try {
-                        val inClause = pagedIds.joinToString(",")
-                        val emailCursor = context.contentResolver.query(
-                            ContactsContract.CommonDataKinds.Email.CONTENT_URI,
-                            arrayOf(ContactsContract.CommonDataKinds.Email.CONTACT_ID, ContactsContract.CommonDataKinds.Email.DATA),
-                            "${ContactsContract.CommonDataKinds.Email.CONTACT_ID} IN ($inClause)",
+                        val phoneCursor = context.contentResolver.query(
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                            arrayOf(
+                                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                                ContactsContract.CommonDataKinds.Phone.NUMBER,
+                                ContactsContract.CommonDataKinds.Phone.TYPE
+                            ),
+                            "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} IN ($inClause)",
                             null, null
                         )
-                        val emailMap = mutableMapOf<Long, String>()
-                        emailCursor?.use { ec ->
-                            val cIdIdx = ec.getColumnIndex(ContactsContract.CommonDataKinds.Email.CONTACT_ID)
-                            val dataIdx = ec.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA)
-                            while (ec.moveToNext()) {
-                                val cId = ec.getLong(cIdIdx)
-                                val em = ec.getString(dataIdx) ?: ""
-                                if (em.isNotEmpty() && !emailMap.containsKey(cId)) {
-                                    emailMap[cId] = em
+                        phoneCursor?.use { pc ->
+                            val cIdIdx = pc.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                            val numIdx = pc.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                            val typeIdx = pc.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
+                            while (pc.moveToNext()) {
+                                val cId = pc.getLong(cIdIdx)
+                                val num = pc.getString(numIdx) ?: ""
+                                val typeInt = if (typeIdx != -1) pc.getInt(typeIdx) else 0
+                                val typeLabel = when (typeInt) {
+                                    ContactsContract.CommonDataKinds.Phone.TYPE_HOME -> "Home"
+                                    ContactsContract.CommonDataKinds.Phone.TYPE_WORK -> "Work"
+                                    ContactsContract.CommonDataKinds.Phone.TYPE_OTHER -> "Other"
+                                    else -> "Mobile"
+                                }
+                                val contactObj = contactMap[cId]
+                                if (contactObj != null && num.isNotEmpty()) {
+                                    val numbersArr = contactObj.getJSONArray("numbers")
+                                    val numEntry = JSONObject().apply {
+                                        put("number", num)
+                                        put("type", typeLabel)
+                                    }
+                                    numbersArr.put(numEntry)
+                                    // Primary fallback for backward compatibility
+                                    if (contactObj.getString("number").isEmpty()) {
+                                        contactObj.put("number", num)
+                                        contactObj.put("type", typeLabel)
+                                    }
                                 }
                             }
                         }
-                        for (item in tempItems) {
-                            val cId = item.optLong("id", 0L)
-                            if (emailMap.containsKey(cId)) {
-                                item.put("email", emailMap[cId] ?: "")
+                    } catch (_: Exception) {}
+
+                    // 2. Batch query all Emails for paged contacts
+                    try {
+                        val emailCursor = context.contentResolver.query(
+                            ContactsContract.CommonDataKinds.Email.CONTENT_URI,
+                            arrayOf(
+                                ContactsContract.CommonDataKinds.Email.CONTACT_ID,
+                                ContactsContract.CommonDataKinds.Email.DATA,
+                                ContactsContract.CommonDataKinds.Email.TYPE
+                            ),
+                            "${ContactsContract.CommonDataKinds.Email.CONTACT_ID} IN ($inClause)",
+                            null, null
+                        )
+                        emailCursor?.use { ec ->
+                            val cIdIdx = ec.getColumnIndex(ContactsContract.CommonDataKinds.Email.CONTACT_ID)
+                            val dataIdx = ec.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA)
+                            val typeIdx = ec.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE)
+                            while (ec.moveToNext()) {
+                                val cId = ec.getLong(cIdIdx)
+                                val em = ec.getString(dataIdx) ?: ""
+                                val typeInt = if (typeIdx != -1) ec.getInt(typeIdx) else 0
+                                val typeLabel = when (typeInt) {
+                                    ContactsContract.CommonDataKinds.Email.TYPE_WORK -> "Work"
+                                    ContactsContract.CommonDataKinds.Email.TYPE_OTHER -> "Other"
+                                    else -> "Home"
+                                }
+                                val contactObj = contactMap[cId]
+                                if (contactObj != null && em.isNotEmpty()) {
+                                    val emailsArr = contactObj.getJSONArray("emails")
+                                    val emEntry = JSONObject().apply {
+                                        put("email", em)
+                                        put("type", typeLabel)
+                                    }
+                                    emailsArr.put(emEntry)
+                                    // Primary email fallback for backward compatibility
+                                    if (contactObj.getString("email").isEmpty()) {
+                                        contactObj.put("email", em)
+                                    }
+                                }
                             }
-                            array.put(item)
                         }
-                    } catch (_: Exception) {
-                        for (item in tempItems) array.put(item)
+                    } catch (_: Exception) {}
+
+                    // 3. Batch query Organization & Notes
+                    try {
+                        val dataCursor = context.contentResolver.query(
+                            ContactsContract.Data.CONTENT_URI,
+                            arrayOf(
+                                ContactsContract.Data.CONTACT_ID,
+                                ContactsContract.Data.MIMETYPE,
+                                ContactsContract.CommonDataKinds.Organization.COMPANY,
+                                ContactsContract.CommonDataKinds.Organization.TITLE,
+                                ContactsContract.CommonDataKinds.Note.NOTE
+                            ),
+                            "${ContactsContract.Data.CONTACT_ID} IN ($inClause) AND ${ContactsContract.Data.MIMETYPE} IN ('${ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE}', '${ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE}')",
+                            null, null
+                        )
+                        dataCursor?.use { dc ->
+                            val cIdIdx = dc.getColumnIndex(ContactsContract.Data.CONTACT_ID)
+                            val mimeIdx = dc.getColumnIndex(ContactsContract.Data.MIMETYPE)
+                            val compIdx = dc.getColumnIndex(ContactsContract.CommonDataKinds.Organization.COMPANY)
+                            val titleIdx = dc.getColumnIndex(ContactsContract.CommonDataKinds.Organization.TITLE)
+                            val noteIdx = dc.getColumnIndex(ContactsContract.CommonDataKinds.Note.NOTE)
+                            while (dc.moveToNext()) {
+                                val cId = dc.getLong(cIdIdx)
+                                val mime = dc.getString(mimeIdx) ?: ""
+                                val contactObj = contactMap[cId] ?: continue
+                                if (mime == ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE) {
+                                    val comp = if (compIdx != -1) dc.getString(compIdx) ?: "" else ""
+                                    val title = if (titleIdx != -1) dc.getString(titleIdx) ?: "" else ""
+                                    if (comp.isNotEmpty()) contactObj.put("company", comp)
+                                    if (title.isNotEmpty()) contactObj.put("title", title)
+                                } else if (mime == ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE) {
+                                    val note = if (noteIdx != -1) dc.getString(noteIdx) ?: "" else ""
+                                    if (note.isNotEmpty()) contactObj.put("notes", note)
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {}
+
+                    for (cId in pagedIds) {
+                        val obj = contactMap[cId]
+                        if (obj != null) {
+                            if (obj.getString("number").isEmpty()) {
+                                obj.put("number", "No Number")
+                            }
+                            array.put(obj)
+                        }
                     }
                 }
             }
         }
-    } catch (e: Exception) { e.printStackTrace() }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 
     result.put("data", array)
     result.put("offset", offset)
@@ -1849,6 +1957,114 @@ fun clearCallLogs(): Boolean {
     }
 }
 
+// Phase 19: Advanced Contacts Management & Bi-Directional VCF Cloud Engine
+
+fun getContactDetails(contactId: Long): JSONObject {
+    val result = JSONObject().apply {
+        put("id", contactId)
+        put("name", "Unknown")
+        put("numbers", JSONArray())
+        put("emails", JSONArray())
+        put("company", "")
+        put("title", "")
+        put("notes", "")
+        put("address", "")
+        put("photo", "")
+    }
+
+    try {
+        val cursor = context.contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            arrayOf(
+                ContactsContract.Data.MIMETYPE,
+                ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER,
+                ContactsContract.CommonDataKinds.Phone.TYPE,
+                ContactsContract.CommonDataKinds.Email.DATA,
+                ContactsContract.CommonDataKinds.Email.TYPE,
+                ContactsContract.CommonDataKinds.Organization.COMPANY,
+                ContactsContract.CommonDataKinds.Organization.TITLE,
+                ContactsContract.CommonDataKinds.Note.NOTE,
+                ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS
+            ),
+            "${ContactsContract.Data.CONTACT_ID} = ?",
+            arrayOf(contactId.toString()),
+            null
+        )
+
+        cursor?.use {
+            val mimeIdx = it.getColumnIndex(ContactsContract.Data.MIMETYPE)
+            val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME)
+            val numIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+            val phoneTypeIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.TYPE)
+            val emailIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA)
+            val emailTypeIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Email.TYPE)
+            val compIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Organization.COMPANY)
+            val titleIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Organization.TITLE)
+            val noteIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Note.NOTE)
+            val addrIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS)
+
+            while (it.moveToNext()) {
+                val mime = it.getString(mimeIdx) ?: ""
+                when (mime) {
+                    ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE -> {
+                        val dName = it.getString(nameIdx) ?: ""
+                        if (dName.isNotEmpty()) result.put("name", dName)
+                    }
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE -> {
+                        val num = it.getString(numIdx) ?: ""
+                        if (num.isNotEmpty()) {
+                            val typeInt = if (phoneTypeIdx != -1) it.getInt(phoneTypeIdx) else 0
+                            val typeLabel = when (typeInt) {
+                                ContactsContract.CommonDataKinds.Phone.TYPE_HOME -> "Home"
+                                ContactsContract.CommonDataKinds.Phone.TYPE_WORK -> "Work"
+                                ContactsContract.CommonDataKinds.Phone.TYPE_OTHER -> "Other"
+                                else -> "Mobile"
+                            }
+                            result.getJSONArray("numbers").put(JSONObject().apply {
+                                put("number", num)
+                                put("type", typeLabel)
+                            })
+                        }
+                    }
+                    ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE -> {
+                        val em = it.getString(emailIdx) ?: ""
+                        if (em.isNotEmpty()) {
+                            val typeInt = if (emailTypeIdx != -1) it.getInt(emailTypeIdx) else 0
+                            val typeLabel = when (typeInt) {
+                                ContactsContract.CommonDataKinds.Email.TYPE_WORK -> "Work"
+                                ContactsContract.CommonDataKinds.Email.TYPE_OTHER -> "Other"
+                                else -> "Home"
+                            }
+                            result.getJSONArray("emails").put(JSONObject().apply {
+                                put("email", em)
+                                put("type", typeLabel)
+                            })
+                        }
+                    }
+                    ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE -> {
+                        val comp = it.getString(compIdx) ?: ""
+                        val title = it.getString(titleIdx) ?: ""
+                        if (comp.isNotEmpty()) result.put("company", comp)
+                        if (title.isNotEmpty()) result.put("title", title)
+                    }
+                    ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE -> {
+                        val note = it.getString(noteIdx) ?: ""
+                        if (note.isNotEmpty()) result.put("notes", note)
+                    }
+                    ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_ITEM_TYPE -> {
+                        val addr = it.getString(addrIdx) ?: ""
+                        if (addr.isNotEmpty()) result.put("address", addr)
+                    }
+                }
+            }
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    return result
+}
+
 fun deleteContact(contactId: Long?, number: String?): Boolean {
     return try {
         if (contactId != null && contactId > 0) {
@@ -1873,7 +2089,45 @@ fun deleteContact(contactId: Long?, number: String?): Boolean {
     }
 }
 
-fun addContact(name: String, number: String, email: String? = null): Boolean {
+// Atomic Multi-Contact Batch Deletion (Ultra-Fast)
+fun bulkDeleteContacts(ids: List<Long>): Int {
+    var deletedCount = 0
+    try {
+        val ops = ArrayList<ContentProviderOperation>()
+        for (id in ids) {
+            if (id > 0) {
+                ops.add(
+                    ContentProviderOperation.newDelete(
+                        Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_URI, id.toString())
+                    ).build()
+                )
+            }
+            if (ops.size >= 50) {
+                context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
+                deletedCount += ops.size
+                ops.clear()
+            }
+        }
+        if (ops.isNotEmpty()) {
+            context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
+            deletedCount += ops.size
+            ops.clear()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+    return deletedCount
+}
+
+// Full Multi-Field Contact Creation
+fun addContactRich(
+    name: String,
+    numbers: List<Pair<String, String>>,
+    emails: List<Pair<String, String>> = emptyList(),
+    organization: String? = null,
+    jobTitle: String? = null,
+    notes: String? = null
+): Boolean {
     return try {
         val ops = ArrayList<ContentProviderOperation>()
         ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
@@ -1881,25 +2135,64 @@ fun addContact(name: String, number: String, email: String? = null): Boolean {
             .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
             .build())
 
+        // 1. Structured Name
         ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
             .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
             .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
             .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
             .build())
 
-        ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, number)
-            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
-            .build())
+        // 2. Multiple Phone Numbers
+        for ((num, typeStr) in numbers) {
+            if (num.isNotBlank()) {
+                val phoneType = when (typeStr.lowercase()) {
+                    "home" -> ContactsContract.CommonDataKinds.Phone.TYPE_HOME
+                    "work" -> ContactsContract.CommonDataKinds.Phone.TYPE_WORK
+                    "other" -> ContactsContract.CommonDataKinds.Phone.TYPE_OTHER
+                    else -> ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE
+                }
+                ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                    .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, num.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, phoneType)
+                    .build())
+            }
+        }
 
-        if (!email.isNullOrEmpty()) {
+        // 3. Multiple Emails
+        for ((em, typeStr) in emails) {
+            if (em.isNotBlank()) {
+                val emailType = when (typeStr.lowercase()) {
+                    "work" -> ContactsContract.CommonDataKinds.Email.TYPE_WORK
+                    "other" -> ContactsContract.CommonDataKinds.Email.TYPE_OTHER
+                    else -> ContactsContract.CommonDataKinds.Email.TYPE_HOME
+                }
+                ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                    .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.Email.DATA, em.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Email.TYPE, emailType)
+                    .build())
+            }
+        }
+
+        // 4. Organization & Job Title
+        if (!organization.isNullOrBlank() || !jobTitle.isNullOrBlank()) {
             ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
-                .withValue(ContactsContract.CommonDataKinds.Email.DATA, email)
-                .withValue(ContactsContract.CommonDataKinds.Email.TYPE, ContactsContract.CommonDataKinds.Email.TYPE_HOME)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, organization?.trim() ?: "")
+                .withValue(ContactsContract.CommonDataKinds.Organization.TITLE, jobTitle?.trim() ?: "")
+                .build())
+        }
+
+        // 5. Notes
+        if (!notes.isNullOrBlank()) {
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Note.NOTE, notes.trim())
                 .build())
         }
 
@@ -1911,75 +2204,126 @@ fun addContact(name: String, number: String, email: String? = null): Boolean {
     }
 }
 
-// Phase 13: Full Android ContentProvider Contact Update Engine
-fun updateContact(contactId: Long, name: String, number: String, email: String? = null): Boolean {
+// Backward-compatible Add Contact wrapper
+fun addContact(name: String, number: String, email: String? = null): Boolean {
+    val nums = if (number.isNotBlank()) listOf(Pair(number, "Mobile")) else emptyList()
+    val ems = if (!email.isNullOrBlank()) listOf(Pair(email, "Home")) else emptyList()
+    return addContactRich(name, nums, ems)
+}
+
+// Full Multi-Field Contact Update Engine
+fun updateContactRich(
+    contactId: Long,
+    name: String,
+    numbers: List<Pair<String, String>>,
+    emails: List<Pair<String, String>> = emptyList(),
+    organization: String? = null,
+    jobTitle: String? = null,
+    notes: String? = null
+): Boolean {
     return try {
+        // Resolve raw contact ID
+        var rawContactId: Long? = null
+        val rawCursor = context.contentResolver.query(
+            ContactsContract.RawContacts.CONTENT_URI,
+            arrayOf(ContactsContract.RawContacts._ID),
+            "${ContactsContract.RawContacts.CONTACT_ID} = ?",
+            arrayOf(contactId.toString()),
+            null
+        )
+        rawCursor?.use {
+            if (it.moveToFirst()) rawContactId = it.getLong(0)
+        }
+
+        if (rawContactId == null) return false
+
         val ops = ArrayList<ContentProviderOperation>()
 
-        // 1. Update Display Name in StructuredName row
+        // 1. Update Display Name
         ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
             .withSelection(
-                "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
-                arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
             )
             .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
             .build())
 
-        // 2. Update Phone Number in Phone row
-        ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
+        // 2. Clear old phones and re-insert updated list
+        ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
             .withSelection(
-                "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
-                arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-            )
-            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, number)
-            .build())
+                "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+            ).build())
 
-        // 3. Update or Insert Email row
-        if (!email.isNullOrEmpty()) {
-            var emailExists = false
-            try {
-                val emailCheck = context.contentResolver.query(
-                    ContactsContract.Data.CONTENT_URI,
-                    arrayOf(ContactsContract.Data._ID),
-                    "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
-                    arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE),
-                    null
-                )
-                emailExists = (emailCheck?.count ?: 0) > 0
-                emailCheck?.close()
-            } catch (_: Exception) {}
-
-            if (emailExists) {
-                ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
-                    .withSelection(
-                        "${ContactsContract.Data.CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
-                        arrayOf(contactId.toString(), ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
-                    )
-                    .withValue(ContactsContract.CommonDataKinds.Email.DATA, email)
-                    .build())
-            } else {
-                // Find raw contact ID to insert new email record
-                var rawId: Long? = null
-                try {
-                    val rawCursor = context.contentResolver.query(
-                        ContactsContract.RawContacts.CONTENT_URI,
-                        arrayOf(ContactsContract.RawContacts._ID),
-                        "${ContactsContract.RawContacts.CONTACT_ID} = ?",
-                        arrayOf(contactId.toString()),
-                        null
-                    )
-                    rawCursor?.use { if (it.moveToFirst()) rawId = it.getLong(0) }
-                } catch (_: Exception) {}
-
-                if (rawId != null) {
-                    ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-                        .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawId)
-                        .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
-                        .withValue(ContactsContract.CommonDataKinds.Email.DATA, email)
-                        .withValue(ContactsContract.CommonDataKinds.Email.TYPE, ContactsContract.CommonDataKinds.Email.TYPE_HOME)
-                        .build())
+        for ((num, typeStr) in numbers) {
+            if (num.isNotBlank()) {
+                val pType = when (typeStr.lowercase()) {
+                    "home" -> ContactsContract.CommonDataKinds.Phone.TYPE_HOME
+                    "work" -> ContactsContract.CommonDataKinds.Phone.TYPE_WORK
+                    "other" -> ContactsContract.CommonDataKinds.Phone.TYPE_OTHER
+                    else -> ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE
                 }
+                ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                    .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, num.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, pType)
+                    .build())
             }
+        }
+
+        // 3. Clear old emails and re-insert updated list
+        ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+            .withSelection(
+                "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+            ).build())
+
+        for ((em, typeStr) in emails) {
+            if (em.isNotBlank()) {
+                val eType = when (typeStr.lowercase()) {
+                    "work" -> ContactsContract.CommonDataKinds.Email.TYPE_WORK
+                    "other" -> ContactsContract.CommonDataKinds.Email.TYPE_OTHER
+                    else -> ContactsContract.CommonDataKinds.Email.TYPE_HOME
+                }
+                ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                    .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                    .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+                    .withValue(ContactsContract.CommonDataKinds.Email.DATA, em.trim())
+                    .withValue(ContactsContract.CommonDataKinds.Email.TYPE, eType)
+                    .build())
+            }
+        }
+
+        // 4. Update Organization
+        ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+            .withSelection(
+                "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
+            ).build())
+
+        if (!organization.isNullOrBlank() || !jobTitle.isNullOrBlank()) {
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, organization?.trim() ?: "")
+                .withValue(ContactsContract.CommonDataKinds.Organization.TITLE, jobTitle?.trim() ?: "")
+                .build())
+        }
+
+        // 5. Update Notes
+        ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
+            .withSelection(
+                "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
+                arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
+            ).build())
+
+        if (!notes.isNullOrBlank()) {
+            ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Note.NOTE, notes.trim())
+                .build())
         }
 
         context.contentResolver.applyBatch(ContactsContract.AUTHORITY, ops)
@@ -1990,80 +2334,74 @@ fun updateContact(contactId: Long, name: String, number: String, email: String? 
     }
 }
 
-// Phase 13: Batch / Bulk Delete Contacts Engine
-fun bulkDeleteContacts(ids: List<Long>): Int {
-    var deletedCount = 0
-    for (id in ids) {
-        if (id > 0 && deleteContact(id, null)) {
-            deletedCount++
-        }
-    }
-    return deletedCount
+// Backward-compatible Update Contact wrapper
+fun updateContact(contactId: Long, name: String, number: String, email: String? = null): Boolean {
+    val nums = if (number.isNotBlank()) listOf(Pair(number, "Mobile")) else emptyList()
+    val ems = if (!email.isNullOrBlank()) listOf(Pair(email, "Home")) else emptyList()
+    return updateContactRich(contactId, name, nums, ems)
 }
 
-// Phase 13: OpenDroid-Grade VCF (vCard 3.0) Export Engine
+// Full-Spectrum vCard 3.0 / 4.0 Export Engine (Multi-Number, Multi-Email, Org, Title, Notes)
 fun exportContactsToVcf(): String {
     val sb = StringBuilder()
     try {
-        val cursor = context.contentResolver.query(
-            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-            arrayOf(
-                ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                ContactsContract.CommonDataKinds.Phone.NUMBER,
-                ContactsContract.CommonDataKinds.Phone.TYPE
-            ),
+        val contactsCursor = context.contentResolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            arrayOf(ContactsContract.Contacts._ID, ContactsContract.Contacts.DISPLAY_NAME_PRIMARY),
             null, null,
-            "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} COLLATE NOCASE ASC"
+            "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC"
         )
 
-        // Email mapping for all contacts
-        val emailMap = mutableMapOf<Long, MutableList<String>>()
-        try {
-            val emailCursor = context.contentResolver.query(
-                ContactsContract.CommonDataKinds.Email.CONTENT_URI,
-                arrayOf(ContactsContract.CommonDataKinds.Email.CONTACT_ID, ContactsContract.CommonDataKinds.Email.DATA),
-                null, null, null
-            )
-            emailCursor?.use { ec ->
-                val cIdIdx = ec.getColumnIndex(ContactsContract.CommonDataKinds.Email.CONTACT_ID)
-                val dataIdx = ec.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA)
-                while (ec.moveToNext()) {
-                    val cId = ec.getLong(cIdIdx)
-                    val email = ec.getString(dataIdx) ?: ""
-                    if (email.isNotEmpty()) {
-                        emailMap.getOrPut(cId) { mutableListOf() }.add(email)
-                    }
-                }
-            }
-        } catch (_: Exception) {}
+        contactsCursor?.use { cursor ->
+            val idIdx = cursor.getColumnIndex(ContactsContract.Contacts._ID)
+            val nameIdx = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
 
-        cursor?.use {
-            val idIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
-            val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
-            val numIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
-            val processedIds = mutableSetOf<Long>()
+            while (cursor.moveToNext()) {
+                val cId = if (idIdx != -1) cursor.getLong(idIdx) else continue
+                val name = if (nameIdx != -1) cursor.getString(nameIdx) ?: "Contact" else "Contact"
 
-            while (it.moveToNext()) {
-                val id = if (idIdx != -1) it.getLong(idIdx) else 0L
-                val name = if (nameIdx != -1) it.getString(nameIdx) ?: "Contact" else "Contact"
-                val num = if (numIdx != -1) it.getString(numIdx) ?: "" else ""
+                val details = getContactDetails(cId)
+                val numbersArr = details.getJSONArray("numbers")
+                val emailsArr = details.getJSONArray("emails")
+                val company = details.optString("company", "")
+                val title = details.optString("title", "")
+                val notes = details.optString("notes", "")
 
-                if (!processedIds.contains(id)) {
-                    processedIds.add(id)
-                    sb.append("BEGIN:VCARD\r\n")
-                    sb.append("VERSION:3.0\r\n")
-                    sb.append("FN:").append(name).append("\r\n")
-                    sb.append("N:;").append(name).append(";;;\r\n")
+                sb.append("BEGIN:VCARD\r\n")
+                sb.append("VERSION:3.0\r\n")
+                sb.append("FN:").append(name.replace("\r", "").replace("\n", " ")).append("\r\n")
+                sb.append("N:;").append(name.replace("\r", "").replace("\n", " ")).append(";;;\r\n")
+
+                for (i in 0 until numbersArr.length()) {
+                    val nObj = numbersArr.getJSONObject(i)
+                    val num = nObj.optString("number", "").trim()
+                    val type = nObj.optString("type", "CELL").uppercase()
+                    val vcardType = if (type.contains("WORK")) "WORK" else if (type.contains("HOME")) "HOME" else "CELL"
                     if (num.isNotEmpty()) {
-                        sb.append("TEL;TYPE=CELL:").append(num).append("\r\n")
+                        sb.append("TEL;TYPE=").append(vcardType).append(":").append(num).append("\r\n")
                     }
-                    val emails = emailMap[id]
-                    emails?.forEach { mail ->
-                        sb.append("EMAIL;TYPE=HOME:").append(mail).append("\r\n")
-                    }
-                    sb.append("END:VCARD\r\n")
                 }
+
+                for (i in 0 until emailsArr.length()) {
+                    val eObj = emailsArr.getJSONObject(i)
+                    val em = eObj.optString("email", "").trim()
+                    val type = eObj.optString("type", "HOME").uppercase()
+                    val vcardType = if (type.contains("WORK")) "WORK" else "HOME"
+                    if (em.isNotEmpty()) {
+                        sb.append("EMAIL;TYPE=").append(vcardType).append(":").append(em).append("\r\n")
+                    }
+                }
+
+                if (company.isNotEmpty() || title.isNotEmpty()) {
+                    if (company.isNotEmpty()) sb.append("ORG:").append(company).append("\r\n")
+                    if (title.isNotEmpty()) sb.append("TITLE:").append(title).append("\r\n")
+                }
+
+                if (notes.isNotEmpty()) {
+                    sb.append("NOTE:").append(notes.replace("\r", "").replace("\n", "\\n")).append("\r\n")
+                }
+
+                sb.append("END:VCARD\r\n")
             }
         }
     } catch (e: Exception) {
@@ -2072,14 +2410,17 @@ fun exportContactsToVcf(): String {
     return sb.toString()
 }
 
-// Phase 13: OpenDroid-Grade VCF (vCard 3.0) Bulk Import Engine
+// Full-Spectrum vCard 3.0 / 4.0 Bulk Import Engine
 fun importContactsFromVcf(vcfText: String): Int {
     var importedCount = 0
     try {
         val lines = vcfText.lines()
         var currentName = ""
-        var currentNumber = ""
-        var currentEmail = ""
+        val currentNumbers = mutableListOf<Pair<String, String>>()
+        val currentEmails = mutableListOf<Pair<String, String>>()
+        var currentCompany = ""
+        var currentTitle = ""
+        var currentNote = ""
         var insideVcard = false
 
         for (rawLine in lines) {
@@ -2087,12 +2428,22 @@ fun importContactsFromVcf(vcfText: String): Int {
             if (line.equals("BEGIN:VCARD", ignoreCase = true)) {
                 insideVcard = true
                 currentName = ""
-                currentNumber = ""
-                currentEmail = ""
+                currentNumbers.clear()
+                currentEmails.clear()
+                currentCompany = ""
+                currentTitle = ""
+                currentNote = ""
             } else if (line.equals("END:VCARD", ignoreCase = true)) {
-                if (insideVcard && (currentName.isNotEmpty() || currentNumber.isNotEmpty())) {
-                    val finalName = if (currentName.isNotEmpty()) currentName else currentNumber
-                    val success = addContact(finalName, currentNumber, if (currentEmail.isNotEmpty()) currentEmail else null)
+                if (insideVcard && (currentName.isNotEmpty() || currentNumbers.isNotEmpty())) {
+                    val finalName = if (currentName.isNotEmpty()) currentName else (currentNumbers.firstOrNull()?.first ?: "Imported Contact")
+                    val success = addContactRich(
+                        name = finalName,
+                        numbers = currentNumbers,
+                        emails = currentEmails,
+                        organization = if (currentCompany.isNotEmpty()) currentCompany else null,
+                        jobTitle = if (currentTitle.isNotEmpty()) currentTitle else null,
+                        notes = if (currentNote.isNotEmpty()) currentNote else null
+                    )
                     if (success) importedCount++
                 }
                 insideVcard = false
@@ -2109,14 +2460,27 @@ fun importContactsFromVcf(vcfText: String): Int {
                         currentName = "$first $last".trim()
                     }
                     upper.startsWith("TEL") && line.contains(":") -> {
-                        if (currentNumber.isEmpty()) {
-                            currentNumber = line.substring(line.indexOf(":") + 1).trim()
-                        }
+                        val colonIdx = line.indexOf(":")
+                        val tag = line.substring(0, colonIdx).uppercase()
+                        val num = line.substring(colonIdx + 1).trim()
+                        val type = if (tag.contains("WORK")) "Work" else if (tag.contains("HOME")) "Home" else "Mobile"
+                        if (num.isNotEmpty()) currentNumbers.add(Pair(num, type))
                     }
                     upper.startsWith("EMAIL") && line.contains(":") -> {
-                        if (currentEmail.isEmpty()) {
-                            currentEmail = line.substring(line.indexOf(":") + 1).trim()
-                        }
+                        val colonIdx = line.indexOf(":")
+                        val tag = line.substring(0, colonIdx).uppercase()
+                        val em = line.substring(colonIdx + 1).trim()
+                        val type = if (tag.contains("WORK")) "Work" else "Home"
+                        if (em.isNotEmpty()) currentEmails.add(Pair(em, type))
+                    }
+                    upper.startsWith("ORG:") -> {
+                        currentCompany = line.substring(4).trim()
+                    }
+                    upper.startsWith("TITLE:") -> {
+                        currentTitle = line.substring(6).trim()
+                    }
+                    upper.startsWith("NOTE:") -> {
+                        currentNote = line.substring(5).replace("\\n", "\n").trim()
                     }
                 }
             }
@@ -4193,5 +4557,6 @@ fun getStorageStats(): JSONObject {
     }
 
 }
+
 
 
