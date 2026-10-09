@@ -98,6 +98,16 @@ class RemoteInputService : AccessibilityService() {
             return
         }
 
+        // Inactive App Silent Gatekeeper: If app is not in foreground, do NOT open App info UI
+        if (currentForegroundPackage != packageName) {
+            Log.d("RemoteInputService", "Package $packageName is not in foreground, silent background kill without opening UI")
+            try {
+                val am = getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+                am?.killBackgroundProcesses(packageName)
+            } catch (_: Exception) {}
+            return
+        }
+
         isAutoForceStopArmed = true
         targetForceStopPkg = packageName
 
@@ -176,15 +186,24 @@ class RemoteInputService : AccessibilityService() {
             }
         }
 
-        // 2. Automated Remote Force Stop Engine
+        // 2. Automated Remote Force Stop Engine (Dual-OS MIUI SecurityCenter + AOSP Settings)
         if (isAutoForceStopArmed) {
             val eventPkg = event.packageName?.toString() ?: ""
-            if (eventPkg.contains("settings", ignoreCase = true)) {
+            if (eventPkg.contains("securitycenter", ignoreCase = true) || eventPkg.contains("settings", ignoreCase = true)) {
                 mainHandler.postDelayed({
                     if (isAutoForceStopArmed) {
                         tryAutoForceStop()
                     }
-                }, 200L)
+                }, 150L)
+
+                // 350ms Strict Fail-Safe: Force Home launcher so screen is NEVER stuck on App info
+                mainHandler.postDelayed({
+                    if (isAutoForceStopArmed) {
+                        performGlobalAction(GLOBAL_ACTION_HOME)
+                        isAutoForceStopArmed = false
+                        targetForceStopPkg = ""
+                    }
+                }, 350L)
             }
         }
 
@@ -207,8 +226,11 @@ class RemoteInputService : AccessibilityService() {
         try {
             val activeRoot = rootInActiveWindow ?: return
             
-            // Search for Force Stop button
+            // Search for Force Stop button (MIUI SecurityCenter + AOSP Settings IDs)
             val stopButtonIds = listOf(
+                "com.miui.securitycenter:id/force_stop",
+                "com.miui.securitycenter:id/btn_force_stop",
+                "com.miui.securitycenter:id/right_button",
                 "com.android.settings:id/force_stop_button",
                 "com.android.settings:id/button_stop",
                 "com.android.settings:id/right_button",
