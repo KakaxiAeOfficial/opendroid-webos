@@ -3865,7 +3865,7 @@ fun getStorageStats(): JSONObject {
             // 1. Manual 1-tap ON takes immediate precedence
             if (obj.optBoolean("manualActive", false)) return true
 
-            // 2. Manual 1-tap OFF override pauses schedule for the active window
+            // 2. Schedule evaluation parameters
             val startH = obj.optInt("startHour", 22)
             val startM = obj.optInt("startMinute", 0)
             val endH = obj.optInt("endHour", 6)
@@ -3882,6 +3882,7 @@ fun getStorageStats(): JSONObject {
                 curMinutes >= startMinutes || curMinutes < endMinutes
             }
 
+            // 3. Manual 1-tap OFF override pauses schedule for the active window
             if (obj.optBoolean("manualOverrideOff", false)) {
                 if (isCurrentlyInBedtimeWindow) {
                     return false
@@ -3892,12 +3893,10 @@ fun getStorageStats(): JSONObject {
                 }
             }
 
-            // 3. If schedule is disabled, return false
+            // 4. If schedule is disabled, return false
             if (!obj.optBoolean("enabled", false)) return false
 
-            val cal = Calendar.getInstance()
             val todayDayOfWeek = cal.get(Calendar.DAY_OF_WEEK) // 1=Sunday..7=Saturday
-
             val daysArr = obj.optJSONArray("daysOfWeek")
             if (daysArr != null && daysArr.length() > 0) {
                 var dayMatch = false
@@ -3910,20 +3909,7 @@ fun getStorageStats(): JSONObject {
                 if (!dayMatch) return false
             }
 
-            val startH = obj.optInt("startHour", 22)
-            val startM = obj.optInt("startMinute", 0)
-            val endH = obj.optInt("endHour", 6)
-            val endM = obj.optInt("endMinute", 0)
-
-            val curMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-            val startMinutes = startH * 60 + startM
-            val endMinutes = endH * 60 + endM
-
-            if (startMinutes <= endMinutes) {
-                curMinutes in startMinutes until endMinutes
-            } else {
-                curMinutes >= startMinutes || curMinutes < endMinutes
-            }
+            isCurrentlyInBedtimeWindow
         } catch (_: Exception) {
             false
         }
