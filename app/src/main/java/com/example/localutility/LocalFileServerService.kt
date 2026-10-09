@@ -892,6 +892,23 @@ class LocalFileServerService : Service() {
             // --- Phase 16: Remote Power Control & Hardware Telemetry Handlers ---
             // --- Phase 17: Google Family Link-Grade Screen Time & Digital Wellbeing ---
             // --- Phase 18: Active App Limits, Bedtime & Wellbeing Controls ---
+            "REMOVE_APP_LIMIT" -> {
+                val pkg = json.optString("package", "").trim()
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.removeAppLimit(pkg)
+                        val response = JSONObject().apply {
+                            put("type", "APP_LIMIT_UPDATED")
+                            put("data", res)
+                            put("timestamp", System.currentTimeMillis())
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error removing app limit", e)
+                    }
+                }
+            }
+
             "SET_APP_LIMIT" -> {
                 val pkg = json.optString("package", "").trim()
                 val limitMins = json.optInt("limitMinutes", 0)
@@ -1057,6 +1074,21 @@ class LocalFileServerService : Service() {
                         broadcastMessage(response.toString())
                     } catch (e: Exception) {
                         Log.e("OpenDroid", "Error getting focus config", e)
+                    }
+                }
+            }
+
+            "GET_SCREEN_TIME_REMINDER" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val res = teleManager.getScreenTimeReminder()
+                        val response = JSONObject().apply {
+                            put("type", "SCREEN_TIME_REMINDER_RESULT")
+                            put("data", res)
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error getting reminder config", e)
                     }
                 }
             }
@@ -2730,6 +2762,7 @@ class LocalFileServerService : Service() {
         }
     }
 }
+
 
 
 

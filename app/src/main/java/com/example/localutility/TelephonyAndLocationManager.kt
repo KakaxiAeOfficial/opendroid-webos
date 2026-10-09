@@ -3865,8 +3865,32 @@ fun getStorageStats(): JSONObject {
             // 1. Manual 1-tap ON takes immediate precedence
             if (obj.optBoolean("manualActive", false)) return true
 
-            // 2. Manual 1-tap OFF override pauses schedule for the night
-            if (obj.optBoolean("manualOverrideOff", false)) return false
+            // 2. Manual 1-tap OFF override pauses schedule for the active window
+            val startH = obj.optInt("startHour", 22)
+            val startM = obj.optInt("startMinute", 0)
+            val endH = obj.optInt("endHour", 6)
+            val endM = obj.optInt("endMinute", 0)
+
+            val cal = Calendar.getInstance()
+            val curMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+            val startMinutes = startH * 60 + startM
+            val endMinutes = endH * 60 + endM
+
+            val isCurrentlyInBedtimeWindow = if (startMinutes <= endMinutes) {
+                curMinutes in startMinutes until endMinutes
+            } else {
+                curMinutes >= startMinutes || curMinutes < endMinutes
+            }
+
+            if (obj.optBoolean("manualOverrideOff", false)) {
+                if (isCurrentlyInBedtimeWindow) {
+                    return false
+                } else {
+                    // Window has passed, automatically reset manualOverrideOff for future routine cycles
+                    obj.put("manualOverrideOff", false)
+                    wellbeingPrefs.edit().putString("bedtime_config", obj.toString()).apply()
+                }
+            }
 
             // 3. If schedule is disabled, return false
             if (!obj.optBoolean("enabled", false)) return false
@@ -4142,8 +4166,46 @@ fun getStorageStats(): JSONObject {
             Log.e("TelephonyManager", "Error evaluating limit for $packageName", e)
         }
 
+        // 4. Check Daily Screen Time Goal (Overall Device Budget)
+        try {
+            val reminder = getScreenTimeReminder()
+            if (reminder.optBoolean("enabled", false)) {
+                val targetMinutes = reminder.optInt("targetMinutes", 180)
+                if (targetMinutes > 0) {
+                    val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+                    if (usageStatsManager != null) {
+                        val cal = Calendar.getInstance()
+                        cal.set(Calendar.HOUR_OF_DAY, 0)
+                        cal.set(Calendar.MINUTE, 0)
+                        cal.set(Calendar.SECOND, 0)
+                        cal.set(Calendar.MILLISECOND, 0)
+                        val startOfDay = cal.timeInMillis
+                        val now = System.currentTimeMillis()
+
+                        val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startOfDay, now)
+                        var totalUsageMs = 0L
+                        if (!stats.isNullOrEmpty()) {
+                            for (s in stats) {
+                                totalUsageMs += s.totalTimeInForeground
+                            }
+                        }
+                        val goalMs = targetMinutes * 60 * 1000L
+                        if (totalUsageMs >= goalMs && reminder.optBoolean("lockOnGoal", false)) {
+                            val hours = targetMinutes / 60
+                            val mins = targetMinutes % 60
+                            val goalStr = if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
+                            return Pair(true, "Daily screen time goal of $goalStr reached")
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("TelephonyManager", "Error evaluating screen time goal", e)
+        }
+
         return Pair(false, "")
     }
 
 }
+
 
