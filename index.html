@@ -926,28 +926,133 @@
         </div>
     </div>
 
-    <!-- Window: Open URL on Phone -->
-    <div id="url-window" class="window hidden" style="display: none; width: 400px; height: 260px; top: 120px; left: 380px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+    <!-- Window: Open URL on Phone (Phase 20 Smart Deep-Link & URL Studio) -->
+    <div id="url-window" class="window hidden" style="display: none; width: 560px; height: 530px; top: 90px; left: 380px; min-width: 460px; min-height: 440px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55); border-radius: 1rem; border: 1px solid rgba(75, 85, 99, 0.4); background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(20px);">
+        <!-- Title Bar -->
+        <div class="title-bar bg-gray-900/90 text-white px-3.5 py-2.5 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
-                <span class="text-xs">🌐</span>
-                <span class="font-semibold text-xs">Open URL on Phone</span>
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-teal-500 to-emerald-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">🌐</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Smart URL & Deep-Link Studio</span>
+                <span class="ml-1 text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/30 px-1.5 py-0.2 rounded font-mono">Deep-Linker</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
-                <button onclick="wm.minimizeWindow('url-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
-                <button onclick="wm.maximizeWindow('url-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
-                <button onclick="wm.closeWindow('url-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-1.5 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+                <button onclick="wm.minimizeWindow('url-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('url-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('url-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
-        <div class="flex-1 p-4 bg-gray-50 flex flex-col justify-between text-xs">
-            <div class="space-y-2">
-                <span class="text-gray-600 font-medium">Enter Website or Media Link:</span>
-                <input type="text" id="remote-url-input" placeholder="e.g. youtube.com or https://..." class="w-full border rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-teal-500 font-mono">
-                <div id="url-launch-status" class="text-[11px] text-gray-400 font-mono"></div>
-            </div>
-            <button onclick="launchRemoteUrl()" class="w-full bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold py-2 rounded-lg shadow transition-colors">
-                🚀 Open on Phone Browser
+
+        <!-- Target App Routing Selector -->
+        <div class="bg-gray-900/60 border-b border-gray-800/80 px-3.5 py-2 flex items-center gap-1.5 overflow-x-auto text-xs select-none">
+            <span class="text-gray-400 text-[11px] font-medium mr-1">Target:</span>
+            <button onclick="setSmartUrlTarget('auto')" id="target-chip-auto" class="url-target-chip px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all bg-teal-500/20 text-teal-300 border border-teal-500/40 cursor-pointer">
+                <span>⚡</span> Auto Detect
             </button>
+            <button onclick="setSmartUrlTarget('browser')" id="target-chip-browser" class="url-target-chip px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent cursor-pointer">
+                <span>🌐</span> Browser
+            </button>
+            <button onclick="setSmartUrlTarget('youtube')" id="target-chip-youtube" class="url-target-chip px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent cursor-pointer">
+                <span>🔴</span> YouTube
+            </button>
+            <button onclick="setSmartUrlTarget('playstore')" id="target-chip-playstore" class="url-target-chip px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent cursor-pointer">
+                <span>🛍️</span> Play Store
+            </button>
+            <button onclick="setSmartUrlTarget('maps')" id="target-chip-maps" class="url-target-chip px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent cursor-pointer">
+                <span>🗺️</span> Maps
+            </button>
+            <button onclick="setSmartUrlTarget('whatsapp')" id="target-chip-whatsapp" class="url-target-chip px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent cursor-pointer">
+                <span>💬</span> WhatsApp
+            </button>
+        </div>
+
+        <!-- Body Content -->
+        <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 font-sans text-xs">
+            <!-- URL Input & Intent Detection -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-300 font-medium">Website, Deep-Link, or Scheme URI:</span>
+                    <div id="url-intent-badge" class="hidden text-[11px] font-medium text-teal-400 flex items-center gap-1"></div>
+                </div>
+                <div class="relative">
+                    <input type="text" id="remote-url-input" oninput="detectSmartUrlIntent(this.value)" onkeydown="if(event.key==='Enter') launchRemoteUrl()" placeholder="e.g. youtu.be/xyz, maps.google.com, play.google.com, or https://..." class="w-full bg-gray-900/90 border border-gray-700/80 rounded-xl px-3.5 py-2.5 pr-20 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-teal-500 font-mono">
+                    <div class="absolute right-2 top-2 flex items-center gap-1">
+                        <button onclick="pasteToUrlInput()" class="text-[11px] px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-all cursor-pointer" title="Paste from PC clipboard">📋 Paste</button>
+                    </div>
+                </div>
+                <div id="url-launch-status" class="text-[11px] text-gray-400 font-mono min-h-[16px]"></div>
+            </div>
+
+            <!-- Action Button -->
+            <button onclick="launchRemoteUrl()" class="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-teal-500/20 text-xs transition-all flex items-center justify-center gap-2 cursor-pointer">
+                <span>🚀</span><span>Launch on Phone</span>
+            </button>
+
+            <!-- Quick Preset Bookmarks -->
+            <div class="pt-1 space-y-1.5 border-t border-gray-800">
+                <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                    <span>⚡ Quick Presets</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="applyUrlPreset('https://www.youtube.com', 'youtube')" class="p-2 rounded-lg bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 text-left transition-all cursor-pointer flex items-center gap-2 group">
+                        <span class="text-base group-hover:scale-110 transition-transform">🔴</span>
+                        <div class="overflow-hidden">
+                            <div class="font-semibold text-gray-200 truncate">YouTube</div>
+                            <div class="text-[10px] text-gray-500 truncate">youtube.com</div>
+                        </div>
+                    </button>
+                    <button onclick="applyUrlPreset('https://maps.google.com', 'maps')" class="p-2 rounded-lg bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 text-left transition-all cursor-pointer flex items-center gap-2 group">
+                        <span class="text-base group-hover:scale-110 transition-transform">🗺️</span>
+                        <div class="overflow-hidden">
+                            <div class="font-semibold text-gray-200 truncate">Google Maps</div>
+                            <div class="text-[10px] text-gray-500 truncate">maps.google.com</div>
+                        </div>
+                    </button>
+                    <button onclick="applyUrlPreset('https://play.google.com', 'playstore')" class="p-2 rounded-lg bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 text-left transition-all cursor-pointer flex items-center gap-2 group">
+                        <span class="text-base group-hover:scale-110 transition-transform">🛍️</span>
+                        <div class="overflow-hidden">
+                            <div class="font-semibold text-gray-200 truncate">Play Store</div>
+                            <div class="text-[10px] text-gray-500 truncate">play.google.com</div>
+                        </div>
+                    </button>
+                    <button onclick="applyUrlPreset('https://www.google.com', 'browser')" class="p-2 rounded-lg bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 text-left transition-all cursor-pointer flex items-center gap-2 group">
+                        <span class="text-base group-hover:scale-110 transition-transform">🔍</span>
+                        <div class="overflow-hidden">
+                            <div class="font-semibold text-gray-200 truncate">Google Search</div>
+                            <div class="text-[10px] text-gray-500 truncate">google.com</div>
+                        </div>
+                    </button>
+                    <button onclick="applyUrlPreset('https://fast.com', 'browser')" class="p-2 rounded-lg bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 text-left transition-all cursor-pointer flex items-center gap-2 group">
+                        <span class="text-base group-hover:scale-110 transition-transform">⚡</span>
+                        <div class="overflow-hidden">
+                            <div class="font-semibold text-gray-200 truncate">Fast Speedtest</div>
+                            <div class="text-[10px] text-gray-500 truncate">fast.com</div>
+                        </div>
+                    </button>
+                    <button onclick="applyUrlPreset('https://wa.me/', 'whatsapp')" class="p-2 rounded-lg bg-gray-800/80 hover:bg-gray-800 border border-gray-700/60 text-left transition-all cursor-pointer flex items-center gap-2 group">
+                        <span class="text-base group-hover:scale-110 transition-transform">💬</span>
+                        <div class="overflow-hidden">
+                            <div class="font-semibold text-gray-200 truncate">WhatsApp Chat</div>
+                            <div class="text-[10px] text-gray-500 truncate">wa.me/phone</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent URLs History Section -->
+            <div class="pt-1 space-y-1.5 border-t border-gray-800 flex-1 flex flex-col min-h-[120px]">
+                <div class="flex justify-between items-center">
+                    <span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                        <span>📜 Recent URL History</span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="sendCommand({action: 'FETCH_URL_HISTORY'})" class="text-[11px] text-teal-400 hover:text-teal-300 cursor-pointer">🔄 Refresh</button>
+                        <button onclick="clearUrlHistory()" class="text-[11px] text-rose-400 hover:text-rose-300 cursor-pointer">🗑️ Clear</button>
+                    </div>
+                </div>
+                <div id="url-history-list" class="flex-1 overflow-y-auto space-y-1.5 max-h-36 pr-1 custom-scrollbar">
+                    <div class="text-center py-4 text-gray-500 font-mono text-[11px]">No recent URLs launched</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1672,7 +1777,6 @@
                 </div>
             </div>
 
-
         </div>
     </div>
 
@@ -2021,7 +2125,7 @@
             </div>
             <div class="p-4 space-y-3 overflow-y-auto flex-1">
                 <input type="hidden" id="cf-id">
-                
+
                 <div>
                     <label class="block text-[11px] font-medium text-gray-700 mb-1">Full Name *</label>
                     <input type="text" id="cf-name" placeholder="Contact Name" class="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:outline-none">
@@ -2082,7 +2186,6 @@
             </div>
         </div>
     </div>
-
 
     <!-- Window: Apps -->
     <div id="apps-window" class="window hidden" style="display: none; width: 420px; height: 500px; top: 130px; left: 390px;">
@@ -2643,7 +2746,7 @@
                     </div>
                 </div>
             </div>
-        
+
             <!-- Modal: Set App Limit (Hourglass) -->
             <div id="st-limit-modal" class="hidden absolute inset-0 z-40 bg-gray-950/85 backdrop-blur-md flex items-center justify-center p-4 rounded-b-xl">
                 <div class="bg-gray-900 border border-indigo-500/50 rounded-2xl w-full max-w-sm p-5 text-gray-200 shadow-2xl flex flex-col gap-3">
@@ -2846,7 +2949,6 @@
 
         </div>
     </div>
-
 
             <div id="power-window" class="window hidden" style="display: none; width: 880px; height: 620px; top: 65px; left: 250px; min-width: 680px; min-height: 480px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45); border-radius: 0.75rem;">
         <div class="title-bar bg-gray-900 text-white px-3.5 py-2 flex justify-between items-center select-none border-b border-gray-800">
@@ -3056,27 +3158,93 @@
         </div>
     </div>
 
-    <!-- Window: Clipboard Sync -->
-    <div id="clipboard-window" class="window hidden" style="display: none; width: 380px; height: 300px; top: 150px; left: 410px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
-            <span class="font-semibold text-xs">📋 Clipboard Sync</span>
+    <!-- Window: Clipboard Sync (Phase 20 Real-Time Bi-Directional Clipboard Daemon) -->
+    <div id="clipboard-window" class="window hidden" style="display: none; width: 540px; height: 520px; top: 110px; left: 360px; min-width: 440px; min-height: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55); border-radius: 1rem; border: 1px solid rgba(75, 85, 99, 0.4); background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(20px);">
+        <!-- Title Bar -->
+        <div class="title-bar bg-gray-900/90 text-white px-3.5 py-2.5 flex justify-between items-center select-none border-b border-gray-800">
+            <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">📋</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Clipboard Sync & Real-Time Vault</span>
+                <span id="clipboard-daemon-badge" class="ml-1 text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.2 rounded font-mono">Bi-Directional</span>
+            </div>
             <div class="flex items-center gap-1.5 no-drag">
-                <button onclick="wm.minimizeWindow('clipboard-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
-                <button onclick="wm.maximizeWindow('clipboard-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
-                <button onclick="wm.closeWindow('clipboard-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-1.5 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+                <button onclick="wm.minimizeWindow('clipboard-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('clipboard-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="wm.closeWindow('clipboard-window')" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
-        <div class="flex-1 p-3 bg-gray-50 flex flex-col gap-2">
-            <div class="flex justify-between items-center text-[11px] text-gray-500">
-                <span>Phone Clipboard Text:</span>
-                <button onclick="sendCommand({action: 'FETCH_CLIPBOARD'})" class="text-blue-600 hover:underline">📥 Read from Phone</button>
+
+        <!-- Top Navigation & Controls Bar -->
+        <div class="bg-gray-900/60 border-b border-gray-800/80 px-3.5 py-2 flex items-center justify-between text-xs select-none">
+            <!-- Tabs -->
+            <div class="flex items-center gap-2">
+                <button id="btn-clip-tab-editor" onclick="switchClipboardTab('editor')" class="px-3 py-1.5 rounded-lg font-semibold transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer">
+                    <span>📝</span> Active Editor
+                </button>
+                <button id="btn-clip-tab-vault" onclick="switchClipboardTab('vault')" class="px-3 py-1.5 rounded-lg font-medium transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 flex items-center gap-1.5 cursor-pointer">
+                    <span>📜</span> History Vault (<span id="clip-history-count">0</span>)
+                </button>
             </div>
-            <textarea id="clipboard-input" placeholder="Type text here to copy to phone..." class="flex-1 border rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-blue-500 resize-none font-mono"></textarea>
-            <div class="flex gap-2">
-                <button onclick="syncClipboard()" class="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-1.5 rounded-lg text-xs shadow">📤 Send to Phone</button>
-                <button onclick="copyToPcClipboard()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold px-3 py-1.5 rounded-lg text-xs">Copy to PC</button>
+
+            <!-- Auto-Sync Toggle & Refresh -->
+            <div class="flex items-center gap-2">
+                <button id="btn-clipboard-autosync" onclick="toggleClipboardAutoSync()" class="px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 cursor-pointer" title="Auto sync clips between PC and Phone">
+                    <span id="clipboard-autosync-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="clipboard-autosync-text">Auto-Sync: ON</span>
+                </button>
+                <button onclick="fetchClipboardFromPhone()" class="px-2 py-1 rounded-lg text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all flex items-center gap-1 font-medium cursor-pointer" title="Fetch latest clipboard from phone hardware">
+                    <span>📥</span> Fetch
+                </button>
             </div>
-            <div id="clipboard-status" class="text-[10px] text-gray-400 text-center"></div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-hidden p-4 flex flex-col gap-3 font-sans text-xs">
+            <!-- TAB 1: ACTIVE EDITOR -->
+            <div id="clip-tab-editor-panel" class="flex-1 flex flex-col gap-2.5">
+                <div class="flex justify-between items-center text-[11px]">
+                    <div class="flex items-center gap-1.5 text-gray-400 font-mono">
+                        <span id="clipboard-live-indicator" class="w-2 h-2 rounded-full bg-blue-400"></span>
+                        <span id="clipboard-status" class="text-gray-300">Ready to sync</span>
+                    </div>
+                    <div id="clip-char-count" class="text-gray-400 font-mono text-[10px]">0 chars | 0 words</div>
+                </div>
+
+                <div class="relative flex-1">
+                    <textarea id="clipboard-input" oninput="updateClipboardStats()" placeholder="Type, paste, or receive synced clipboard text here..." class="w-full h-full bg-gray-900/90 border border-gray-700/80 rounded-xl p-3.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 font-mono resize-none leading-relaxed"></textarea>
+                    <button onclick="clearClipboardEditor()" class="absolute top-2.5 right-2.5 text-gray-500 hover:text-gray-300 text-xs px-2 py-1 rounded bg-gray-800/80 hover:bg-gray-800 transition-all cursor-pointer" title="Clear text">✕ Clear</button>
+                </div>
+
+                <!-- Action Buttons Toolbar -->
+                <div class="flex items-center gap-2 pt-1">
+                    <button onclick="syncClipboard()" class="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2 px-4 rounded-xl text-xs shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 justify-center cursor-pointer">
+                        <span>📤</span><span>Push to Phone Clipboard</span>
+                    </button>
+                    <button onclick="copyToPcClipboard()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-semibold py-2 px-3.5 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer" title="Copy to local PC clipboard">
+                        <span>📋</span><span>Copy to PC</span>
+                    </button>
+                    <button onclick="openClipboardInUrl()" class="bg-teal-900/50 hover:bg-teal-800/60 text-teal-300 border border-teal-700/60 font-semibold py-2 px-3.5 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer" title="Open text as URL on phone">
+                        <span>🌐</span><span>Open as URL</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 2: HISTORY VAULT -->
+            <div id="clip-tab-vault-panel" class="hidden flex-1 flex flex-col gap-2.5 overflow-hidden">
+                <div class="flex justify-between items-center gap-2">
+                    <input type="text" id="clip-vault-search" oninput="filterClipboardHistory()" placeholder="🔍 Filter clipboard clips..." class="flex-1 bg-gray-900/90 border border-gray-700/80 rounded-lg px-3 py-1.5 text-xs text-gray-100 placeholder-gray-500 focus:outline-none focus:border-blue-500 font-sans">
+                    <button onclick="clearClipboardHistory()" class="px-2.5 py-1.5 rounded-lg text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 transition-all cursor-pointer" title="Clear all history vault entries">
+                        🗑️ Clear Vault
+                    </button>
+                </div>
+
+                <div id="clip-vault-list" class="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                    <!-- History cards injected dynamically -->
+                    <div class="text-center py-10 text-gray-500 font-mono text-xs">
+                        Loading clipboard history...
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -3793,8 +3961,8 @@
 
                 const card = document.createElement('div');
                 card.className = `p-2.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                    isSelected 
-                        ? 'bg-cyan-950/40 border-cyan-500/60 shadow-[0_0_12px_rgba(6,182,212,0.25)]' 
+                    isSelected
+                        ? 'bg-cyan-950/40 border-cyan-500/60 shadow-[0_0_12px_rgba(6,182,212,0.25)]'
                         : 'bg-gray-900/80 hover:bg-gray-800/90 border-gray-800 hover:border-gray-700'
                 }`;
                 card.onclick = () => {
@@ -3818,8 +3986,8 @@
                         </div>
                     </div>
                     <div>
-                        ${isSelected 
-                            ? '<span class="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-700/50 px-2 py-0.5 rounded-full font-semibold">Active ✓</span>' 
+                        ${isSelected
+                            ? '<span class="text-[10px] bg-cyan-950 text-cyan-300 border border-cyan-700/50 px-2 py-0.5 rounded-full font-semibold">Active ✓</span>'
                             : '<span class="text-[10px] text-gray-400 hover:text-cyan-400 font-medium">Switch →</span>'
                         }
                     </div>
@@ -4245,10 +4413,10 @@
                 const battery = dev.battery !== undefined ? `${dev.battery}%` : '--%';
 
                 list.innerHTML += `
-                    <div onclick="selectAccountDevice('${id}')" 
+                    <div onclick="selectAccountDevice('${id}')"
                          class="p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                             isSelected 
-                                 ? 'bg-cyan-950/40 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)]' 
+                             isSelected
+                                 ? 'bg-cyan-950/40 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)]'
                                  : 'bg-gray-900/60 border-gray-800 hover:border-gray-700 hover:bg-gray-800/50'
                          }">
                         <div class="flex items-center gap-3">
@@ -4270,8 +4438,8 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                isOnline 
-                                    ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 flex items-center gap-1' 
+                                isOnline
+                                    ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 flex items-center gap-1'
                                     : 'bg-gray-800 text-gray-400 border border-gray-700'
                             }">
                                 ${isOnline ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Online' : 'Offline'}
@@ -4993,17 +5161,36 @@
                 allInstalledApps = data.data || [];
                 renderApps(allInstalledApps);
             } else if (data.type === 'CLIPBOARD_DATA') {
-                document.getElementById('clipboard-input').value = data.text || '';
-                document.getElementById('clipboard-status').textContent = 'Fetched from phone just now';
+                const clipText = data.text || '';
+                const clipInput = document.getElementById('clipboard-input');
+                if (clipInput) {
+                    clipInput.value = clipText;
+                    updateClipboardStats();
+                }
+                const clipStatus = document.getElementById('clipboard-status');
+                if (clipStatus) clipStatus.textContent = 'Fetched from phone just now';
             } else if (data.type === 'CLIPBOARD_SET_ACK') {
-                document.getElementById('clipboard-status').textContent = 'Copied to phone clipboard successfully!';
-                setTimeout(() => { document.getElementById('clipboard-status').textContent = ''; }, 3000);
+                const clipStatus = document.getElementById('clipboard-status');
+                if (clipStatus) {
+                    clipStatus.textContent = '✓ Copied to phone clipboard successfully!';
+                    setTimeout(() => { if (clipStatus) clipStatus.textContent = 'Ready to sync'; }, 3000);
+                }
                 const wClipStatus = document.getElementById('widget-clip-status');
                 if (wClipStatus) {
                     wClipStatus.textContent = '✓ Copied to phone clipboard!';
                     wClipStatus.className = 'text-[10px] text-center font-mono text-green-400 h-3';
                     setTimeout(() => { if (wClipStatus) wClipStatus.textContent = ''; }, 3000);
                 }
+                showToast("Pushed to phone clipboard successfully! 📋", "success");
+                sendCommand({ action: 'FETCH_CLIPBOARD_HISTORY' });
+            } else if (data.type === 'CLIPBOARD_COPIED_ON_PHONE') {
+                handleClipboardCopiedOnPhone(data);
+            } else if (data.type === 'CLIPBOARD_HISTORY_LIST') {
+                renderClipboardHistoryVault(data.data || []);
+            } else if (data.type === 'OPEN_URL_ACK') {
+                handleOpenUrlAck(data);
+            } else if (data.type === 'URL_HISTORY_LIST') {
+                renderUrlHistory(data.data || []);
             } else if (data.type === 'DIR_CONTENTS') {
                 renderDirectory(data.data);
             } else if (data.type === 'FILE_OP_RESULT') {
@@ -5090,16 +5277,156 @@
             }
         }
 
-        function launchRemoteUrl() {
+        // --- Phase 20: Smart URL & Deep-Link Studio Launcher ---
+        let activeUrlTarget = 'auto';
+        let urlHistoryList = [];
+
+        function setSmartUrlTarget(target) {
+            activeUrlTarget = target;
+            document.querySelectorAll('.url-target-chip').forEach(chip => {
+                chip.className = "url-target-chip px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1 transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent cursor-pointer";
+            });
+            const activeChip = document.getElementById(`target-chip-${target}`);
+            if (activeChip) {
+                activeChip.className = "url-target-chip px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all bg-teal-500/20 text-teal-300 border border-teal-500/40 cursor-pointer";
+            }
             const input = document.getElementById('remote-url-input');
-            const url = input.value.trim();
-            if (!url) {
-                alert("Please enter a valid website URL or video link");
+            if (input) detectSmartUrlIntent(input.value);
+        }
+
+        function detectSmartUrlIntent(url) {
+            const badge = document.getElementById('url-intent-badge');
+            if (!badge) return;
+            const clean = (url || '').trim().toLowerCase();
+            if (!clean) {
+                badge.classList.add('hidden');
+                badge.textContent = '';
                 return;
             }
-            document.getElementById('url-launch-status').textContent = "Sending URL to phone...";
-            document.getElementById('url-launch-status').className = "text-[11px] text-amber-600 font-mono";
-            sendCommand({ action: 'OPEN_URL', url: url });
+
+            let detected = null;
+            if (clean.includes('youtube.com') || clean.includes('youtu.be')) {
+                detected = { label: '🔴 YouTube Deep-Link', target: 'youtube' };
+            } else if (clean.includes('play.google.com') || clean.startsWith('market://')) {
+                detected = { label: '🛍️ Google Play Deep-Link', target: 'playstore' };
+            } else if (clean.includes('maps.google.') || clean.includes('goo.gl/maps') || clean.startsWith('geo:')) {
+                detected = { label: '🗺️ Google Maps Deep-Link', target: 'maps' };
+            } else if (clean.includes('wa.me') || clean.includes('whatsapp.com')) {
+                detected = { label: '💬 WhatsApp Direct Link', target: 'whatsapp' };
+            }
+
+            if (detected && activeUrlTarget === 'auto') {
+                badge.classList.remove('hidden');
+                badge.innerHTML = `<span>⚡ Intent Detected: ${detected.label}</span>`;
+            } else if (activeUrlTarget !== 'auto') {
+                badge.classList.remove('hidden');
+                badge.innerHTML = `<span>🎯 Target Override: ${activeUrlTarget.toUpperCase()}</span>`;
+            } else {
+                badge.classList.add('hidden');
+                badge.textContent = '';
+            }
+        }
+
+        function applyUrlPreset(url, target) {
+            const input = document.getElementById('remote-url-input');
+            if (input) input.value = url;
+            setSmartUrlTarget(target);
+            detectSmartUrlIntent(url);
+            showToast(`Preset loaded: ${url}`, "info");
+        }
+
+        function pasteToUrlInput() {
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                navigator.clipboard.readText().then(text => {
+                    const input = document.getElementById('remote-url-input');
+                    if (input && text) {
+                        input.value = text.trim();
+                        detectSmartUrlIntent(text.trim());
+                        showToast("Pasted from PC clipboard 📋", "info");
+                    }
+                }).catch(() => {
+                    showToast("Please allow clipboard access or use Ctrl+V", "info");
+                });
+            } else {
+                showToast("Clipboard access not supported in this browser", "info");
+            }
+        }
+
+        function launchRemoteUrl() {
+            const input = document.getElementById('remote-url-input');
+            const url = input ? input.value.trim() : '';
+            if (!url) {
+                showToast("Please enter a valid website URL or deep-link", "error");
+                return;
+            }
+            const status = document.getElementById('url-launch-status');
+            if (status) {
+                status.textContent = `Dispatching (${activeUrlTarget}) to phone...`;
+                status.className = "text-[11px] text-teal-400 font-mono animate-pulse";
+            }
+            sendCommand({ action: 'OPEN_URL', url: url, target: activeUrlTarget });
+        }
+
+        function handleOpenUrlAck(data) {
+            const status = document.getElementById('url-launch-status');
+            const success = data.success !== false;
+            const msg = data.message || (success ? `Opened successfully via ${data.resolvedPackage || data.target || 'device'}` : 'Failed to launch URL');
+            if (status) {
+                status.textContent = (success ? '✓ ' : '✗ ') + msg;
+                status.className = success ? "text-[11px] text-emerald-400 font-mono" : "text-[11px] text-rose-400 font-mono";
+            }
+            showToast(msg, success ? "success" : "error");
+            sendCommand({ action: 'FETCH_URL_HISTORY' });
+        }
+
+        function renderUrlHistory(list) {
+            urlHistoryList = list || [];
+            const container = document.getElementById('url-history-list');
+            if (!container) return;
+
+            if (urlHistoryList.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-gray-500 font-mono text-[11px]">No recent URLs launched</div>';
+                return;
+            }
+
+            let html = '';
+            urlHistoryList.forEach(item => {
+                const rawUrl = item.url || '';
+                const target = item.target || 'auto';
+                const timeStr = item.time || (item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+                const safeUrl = rawUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                const rawEscaped = encodeURIComponent(rawUrl);
+
+                html += `
+                    <div class="p-2 rounded-lg bg-gray-900/80 border border-gray-800 hover:border-gray-700 transition-all flex items-center justify-between gap-2 text-xs">
+                        <div class="overflow-hidden flex-1">
+                            <div class="flex items-center gap-1.5 mb-0.5">
+                                <span class="px-1.5 py-0.2 rounded text-[10px] bg-teal-500/20 text-teal-300 font-mono uppercase">${target}</span>
+                                <span class="text-gray-500 text-[10px] font-mono">${timeStr}</span>
+                            </div>
+                            <div class="text-gray-200 font-mono text-[11px] truncate" title="${safeUrl}">${safeUrl}</div>
+                        </div>
+                        <button onclick="relaunchUrlFromHistory('${rawEscaped}', '${target}')" class="px-2 py-1 rounded bg-teal-900/40 hover:bg-teal-800 text-teal-300 hover:text-white text-[11px] font-medium transition-all cursor-pointer shrink-0">
+                            🔄 Re-Launch
+                        </button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function relaunchUrlFromHistory(encodedUrl, target) {
+            const url = decodeURIComponent(encodedUrl);
+            const input = document.getElementById('remote-url-input');
+            if (input) input.value = url;
+            setSmartUrlTarget(target || 'auto');
+            launchRemoteUrl();
+        }
+
+        function clearUrlHistory() {
+            sendCommand({ action: 'CLEAR_URL_HISTORY' });
+            showToast("Recent URL history cleared 🗑️", "info");
         }
 
         // --- Remote Screen Lock (Instant 1-Click) ---
@@ -6444,8 +6771,8 @@
             parts.forEach((p, idx) => {
                 const isLast = idx === parts.length - 1;
                 const span = document.createElement('span');
-                span.className = isLast 
-                    ? "font-semibold text-gray-900 cursor-default" 
+                span.className = isLast
+                    ? "font-semibold text-gray-900 cursor-default"
                     : "text-blue-600 hover:text-blue-800 cursor-pointer hover:underline";
                 span.textContent = p.name;
                 if (!isLast) {
@@ -6558,8 +6885,8 @@
 
                 const card = document.createElement('div');
                 card.className = `group flex flex-col items-center justify-start p-2 rounded-xl cursor-pointer transition-all duration-100 border text-center select-none relative ${
-                    isSelected 
-                        ? 'bg-[#e6f4ff] border-[#91caff] shadow-xs ring-1 ring-[#91caff]' 
+                    isSelected
+                        ? 'bg-[#e6f4ff] border-[#91caff] shadow-xs ring-1 ring-[#91caff]'
                         : 'hover:bg-gray-100/70 border-transparent hover:border-gray-200'
                 }`;
 
@@ -6953,7 +7280,7 @@
         function deleteSelectedFiles() {
             if (selectedFilesMap.size === 0) return;
             const files = Array.from(selectedFilesMap.values());
-            const msg = files.length === 1 
+            const msg = files.length === 1
                 ? `Are you sure you want to permanently delete:\n\n"${files[0].name}"?`
                 : `Are you sure you want to permanently delete these ${files.length} selected items?`;
 
@@ -7059,7 +7386,7 @@
             }
             return `${pad(mins)}:${pad(secs)}`;
         }
-    
+
         function formatBytes(bytes) {
             if (!bytes || bytes === 0) return '0 B';
             const k = 1024;
@@ -8766,7 +9093,7 @@
                 player.src = '';
             }
         }
-        
+
         // --- 3. Music Player & Jukebox Engine ---
         let allMusicTracks = [];
         let filteredMusicTracks = [];
@@ -8805,7 +9132,7 @@
                 filteredMusicTracks = allMusicTracks;
             } else {
                 const q = query.toLowerCase();
-                filteredMusicTracks = allMusicTracks.filter(t => 
+                filteredMusicTracks = allMusicTracks.filter(t =>
                     (t.title && t.title.toLowerCase().includes(q)) ||
                     (t.artist && t.artist.toLowerCase().includes(q)) ||
                     (t.album && t.album.toLowerCase().includes(q))
@@ -9289,7 +9616,8 @@
                 if(id === 'settings-window') switchSettingsTab('account');
                 if(id === 'call-logs-window') { setCallLogsFilter('All'); rawCallLogs = []; isLoadingCallLogs = true; sendCommand({action: 'FETCH_CALL_LOGS', offset: 0, limit: 100}); sendCommand({action: 'FETCH_CALL_RECORDINGS'}); }
                 if(id === 'apps-window') sendCommand({action: 'FETCH_APPS'});
-                if(id === 'clipboard-window') sendCommand({action: 'FETCH_CLIPBOARD'});
+                if(id === 'clipboard-window') { sendCommand({action: 'FETCH_CLIPBOARD'}); sendCommand({action: 'FETCH_CLIPBOARD_HISTORY'}); updateClipboardAutoSyncUI(); }
+                if(id === 'url-window') { sendCommand({action: 'FETCH_URL_HISTORY'}); }
                 if(id === 'file-window') sendCommand({action: 'FETCH_DIR', path: currentDirPath});
                 if(id === 'photos-window') fetchGalleryPhotos();
                 if(id === 'music-window') fetchMusicTracks();
@@ -9457,8 +9785,8 @@
 
                     const tab = document.createElement('div');
                     tab.className = `flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs cursor-pointer transition-all border ${
-                        isActive 
-                            ? 'bg-blue-600/35 border-blue-500/70 text-white font-semibold shadow-[0_0_10px_rgba(59,130,246,0.35)]' 
+                        isActive
+                            ? 'bg-blue-600/35 border-blue-500/70 text-white font-semibold shadow-[0_0_10px_rgba(59,130,246,0.35)]'
                             : isMin
                                 ? 'bg-gray-900/60 hover:bg-gray-800/80 border-gray-800 text-gray-400 opacity-70'
                                 : 'bg-gray-800/70 hover:bg-gray-700/80 border-gray-700/60 text-gray-300'
@@ -9895,8 +10223,8 @@
 
             if (callLogsSearch.trim()) {
                 const q = callLogsSearch.toLowerCase();
-                filtered = filtered.filter(l => 
-                    (l.name || '').toLowerCase().includes(q) || 
+                filtered = filtered.filter(l =>
+                    (l.name || '').toLowerCase().includes(q) ||
                     (l.number || '').toLowerCase().includes(q)
                 );
             }
@@ -10149,21 +10477,258 @@
             renderApps(filtered);
         }
 
-        function syncClipboard() {
-            const text = document.getElementById('clipboard-input').value;
-            if (text) {
-                sendCommand({ action: 'SET_CLIPBOARD', text: text });
+        // =========================================================================
+        // --- Phase 20: Real-Time Bi-Directional Clipboard Daemon Suite ---
+        // =========================================================================
+        let clipboardAutoSyncEnabled = localStorage.getItem('opendroid_clip_autosync') !== 'false';
+        let clipboardHistoryVault = [];
+        let activeClipboardTab = 'editor';
+
+        function toggleClipboardAutoSync() {
+            clipboardAutoSyncEnabled = !clipboardAutoSyncEnabled;
+            localStorage.setItem('opendroid_clip_autosync', clipboardAutoSyncEnabled);
+            updateClipboardAutoSyncUI();
+            showToast(clipboardAutoSyncEnabled ? "Clipboard Auto-Sync: Activated ⚡" : "Clipboard Auto-Sync: Paused ⏸️", "info");
+        }
+
+        function updateClipboardAutoSyncUI() {
+            const btn = document.getElementById('btn-clipboard-autosync');
+            const dot = document.getElementById('clipboard-autosync-dot');
+            const text = document.getElementById('clipboard-autosync-text');
+            if (btn && dot && text) {
+                if (clipboardAutoSyncEnabled) {
+                    btn.className = "px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 cursor-pointer";
+                    dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                    text.textContent = "Auto-Sync: ON";
+                } else {
+                    btn.className = "px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition-all bg-gray-700/40 text-gray-400 border border-gray-600/30 hover:bg-gray-700/60 cursor-pointer";
+                    dot.className = "w-2 h-2 rounded-full bg-gray-500";
+                    text.textContent = "Auto-Sync: OFF";
+                }
             }
         }
 
-        function copyToPcClipboard() {
-            const text = document.getElementById('clipboard-input').value;
-            if (text) {
-                navigator.clipboard.writeText(text).then(() => {
-                    document.getElementById('clipboard-status').textContent = 'Copied to PC clipboard!';
-                    setTimeout(() => { document.getElementById('clipboard-status').textContent = ''; }, 2000);
-                });
+        function switchClipboardTab(tab) {
+            activeClipboardTab = tab;
+            const btnEditor = document.getElementById('btn-clip-tab-editor');
+            const btnVault = document.getElementById('btn-clip-tab-vault');
+            const panelEditor = document.getElementById('clip-tab-editor-panel');
+            const panelVault = document.getElementById('clip-tab-vault-panel');
+
+            if (tab === 'editor') {
+                if (btnEditor) btnEditor.className = "px-3 py-1.5 rounded-lg font-semibold transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer";
+                if (btnVault) btnVault.className = "px-3 py-1.5 rounded-lg font-medium transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 flex items-center gap-1.5 cursor-pointer";
+                if (panelEditor) panelEditor.classList.remove('hidden');
+                if (panelVault) panelVault.classList.add('hidden');
+            } else {
+                if (btnVault) btnVault.className = "px-3 py-1.5 rounded-lg font-semibold transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer";
+                if (btnEditor) btnEditor.className = "px-3 py-1.5 rounded-lg font-medium transition-all text-gray-400 hover:text-gray-200 hover:bg-white/5 flex items-center gap-1.5 cursor-pointer";
+                if (panelVault) panelVault.classList.remove('hidden');
+                if (panelEditor) panelEditor.classList.add('hidden');
+                sendCommand({ action: 'FETCH_CLIPBOARD_HISTORY' });
             }
+        }
+
+        function updateClipboardStats() {
+            const input = document.getElementById('clipboard-input');
+            const countEl = document.getElementById('clip-char-count');
+            if (!input || !countEl) return;
+            const text = input.value;
+            const chars = text.length;
+            const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+            countEl.textContent = `${chars} chars | ${words} words`;
+        }
+
+        function clearClipboardEditor() {
+            const input = document.getElementById('clipboard-input');
+            if (input) {
+                input.value = '';
+                updateClipboardStats();
+                const status = document.getElementById('clipboard-status');
+                if (status) status.textContent = 'Editor cleared';
+            }
+        }
+
+        function fetchClipboardFromPhone() {
+            const status = document.getElementById('clipboard-status');
+            if (status) status.textContent = 'Fetching from phone...';
+            sendCommand({ action: 'FETCH_CLIPBOARD' });
+            sendCommand({ action: 'FETCH_CLIPBOARD_HISTORY' });
+        }
+
+        function syncClipboard() {
+            const input = document.getElementById('clipboard-input');
+            const text = input ? input.value : '';
+            if (!text.trim()) {
+                showToast("Please enter some text to push to phone", "info");
+                return;
+            }
+            const status = document.getElementById('clipboard-status');
+            if (status) status.textContent = 'Pushing to phone clipboard...';
+            sendCommand({ action: 'SET_CLIPBOARD', text: text });
+        }
+
+        function copyToPcClipboard() {
+            const input = document.getElementById('clipboard-input');
+            const text = input ? input.value : '';
+            if (!text) {
+                showToast("Clipboard editor is empty", "info");
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast("Copied to PC clipboard! 📋", "success");
+                    const status = document.getElementById('clipboard-status');
+                    if (status) {
+                        status.textContent = '✓ Copied to PC clipboard!';
+                        setTimeout(() => { if (status) status.textContent = 'Ready to sync'; }, 3000);
+                    }
+                }).catch(() => {
+                    showToast("Failed to copy to PC clipboard", "error");
+                });
+            } else {
+                showToast("Clipboard write not supported", "error");
+            }
+        }
+
+        function openClipboardInUrl() {
+            const input = document.getElementById('clipboard-input');
+            const text = input ? input.value.trim() : '';
+            if (!text) {
+                showToast("Clipboard is empty", "info");
+                return;
+            }
+            const urlInput = document.getElementById('remote-url-input');
+            if (urlInput) {
+                urlInput.value = text;
+                detectSmartUrlIntent(text);
+            }
+            wm.openWindow('url-window');
+        }
+
+        function handleClipboardCopiedOnPhone(data) {
+            const text = data.text || '';
+            if (!text) return;
+
+            const input = document.getElementById('clipboard-input');
+            if (input) {
+                input.value = text;
+                updateClipboardStats();
+            }
+
+            const status = document.getElementById('clipboard-status');
+            if (status) {
+                const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                status.textContent = `⚡ Synced from Phone at ${timeStr}`;
+            }
+
+            if (clipboardAutoSyncEnabled) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).catch(() => {});
+                }
+                const preview = text.length > 30 ? text.substring(0, 30) + '...' : text;
+                showToast(`📱 Copied on Phone: "${preview}"`, "info");
+            }
+
+            // Also refresh history
+            sendCommand({ action: 'FETCH_CLIPBOARD_HISTORY' });
+        }
+
+        function renderClipboardHistoryVault(list) {
+            clipboardHistoryVault = list || [];
+            const countBadge = document.getElementById('clip-history-count');
+            if (countBadge) countBadge.textContent = clipboardHistoryVault.length;
+
+            const container = document.getElementById('clip-vault-list');
+            if (!container) return;
+
+            if (clipboardHistoryVault.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-500 font-sans text-xs">
+                        <div class="text-2xl mb-1">📋</div>
+                        <p>No clipboard history entries yet.</p>
+                        <p class="text-[10px] text-gray-600 mt-1">Copy text on your phone or PC to populate the vault.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            clipboardHistoryVault.forEach((item, index) => {
+                const clipText = item.text || '';
+                const timeStr = item.time || (item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+                const source = item.source || 'Phone';
+                const isPhone = source.toLowerCase() === 'phone';
+
+                const safeText = clipText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                const rawEscaped = encodeURIComponent(clipText);
+
+                html += `
+                    <div class="p-2.5 rounded-xl bg-gray-900/80 border border-gray-800 hover:border-gray-700 transition-all flex flex-col gap-1.5 group">
+                        <div class="flex justify-between items-center text-[10px]">
+                            <div class="flex items-center gap-1.5">
+                                <span class="px-1.5 py-0.5 rounded font-semibold ${isPhone ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'}">
+                                    ${isPhone ? '📱 Phone' : '💻 PC'}
+                                </span>
+                                <span class="text-gray-500 font-mono">${timeStr}</span>
+                            </div>
+                            <div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                <button onclick="copyVaultItemToPc('${rawEscaped}')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] transition-all cursor-pointer" title="Copy to PC">📋 Copy</button>
+                                <button onclick="pushVaultItemToPhone('${rawEscaped}')" class="px-2 py-0.5 rounded bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white text-[11px] transition-all cursor-pointer" title="Push to Phone">📤 Push</button>
+                                <button onclick="loadVaultItemToEditor('${rawEscaped}')" class="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] transition-all cursor-pointer" title="Load into Editor">📝 Edit</button>
+                            </div>
+                        </div>
+                        <div class="text-gray-200 font-mono text-xs line-clamp-3 break-all select-text leading-relaxed whitespace-pre-wrap">${safeText}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function copyVaultItemToPc(encodedText) {
+            const text = decodeURIComponent(encodedText);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast("Copied clip to PC! 📋", "success");
+                }).catch(() => {
+                    showToast("Failed to copy to PC", "error");
+                });
+            } else {
+                showToast("Clipboard write not supported", "error");
+            }
+        }
+
+        function pushVaultItemToPhone(encodedText) {
+            const text = decodeURIComponent(encodedText);
+            sendCommand({ action: 'SET_CLIPBOARD', text: text });
+            showToast("Pushing clip to phone... 📤", "info");
+        }
+
+        function loadVaultItemToEditor(encodedText) {
+            const text = decodeURIComponent(encodedText);
+            const input = document.getElementById('clipboard-input');
+            if (input) {
+                input.value = text;
+                updateClipboardStats();
+            }
+            switchClipboardTab('editor');
+            showToast("Loaded into editor 📝", "info");
+        }
+
+        function filterClipboardHistory() {
+            const query = (document.getElementById('clip-vault-search')?.value || '').toLowerCase();
+            if (!query) {
+                renderClipboardHistoryVault(clipboardHistoryVault);
+                return;
+            }
+            const filtered = clipboardHistoryVault.filter(item => (item.text || '').toLowerCase().includes(query));
+            renderClipboardHistoryVault(filtered);
+        }
+
+        function clearClipboardHistory() {
+            sendCommand({ action: 'CLEAR_CLIPBOARD_HISTORY' });
+            showToast("Clipboard history vault cleared 🗑️", "info");
         }
 
         // =========================================================================
@@ -10849,7 +11414,7 @@
             if (btnDelete) {
                 btnDelete.innerHTML = `<span>Delete( ${count} )</span>`;
                 btnDelete.disabled = count === 0;
-                btnDelete.className = count > 0 
+                btnDelete.className = count > 0
                     ? "px-2.5 py-1 bg-rose-50 border border-rose-300 text-rose-600 hover:bg-rose-100 font-medium text-xs rounded shadow-2xs transition-all flex items-center gap-1 cursor-pointer"
                     : "px-2.5 py-1 bg-white border border-gray-300 text-gray-400 font-medium text-xs rounded shadow-2xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1";
             }
@@ -11371,26 +11936,26 @@
             if (id) {
                 const idx = rawContacts.findIndex(c => String(c.id) === String(id));
                 if (idx !== -1) {
-                    rawContacts[idx] = { 
-                        ...rawContacts[idx], 
-                        name, 
-                        number: primaryNum, 
-                        type: primaryType, 
-                        email: primaryEmail, 
-                        numbers, 
-                        emails, 
-                        company, 
-                        title, 
-                        group, 
-                        notes 
+                    rawContacts[idx] = {
+                        ...rawContacts[idx],
+                        name,
+                        number: primaryNum,
+                        type: primaryType,
+                        email: primaryEmail,
+                        numbers,
+                        emails,
+                        company,
+                        title,
+                        group,
+                        notes
                     };
                     selectedContact = rawContacts[idx];
                 }
-                sendCommand({ 
-                    action: 'UPDATE_CONTACT', 
-                    id: Number(id), 
-                    name, 
-                    number: primaryNum, 
+                sendCommand({
+                    action: 'UPDATE_CONTACT',
+                    id: Number(id),
+                    name,
+                    number: primaryNum,
                     email: primaryEmail,
                     numbers,
                     emails,
@@ -11416,10 +11981,10 @@
                 rawContacts.unshift(newObj);
                 totalContactsCount++;
                 selectedContact = newObj;
-                sendCommand({ 
-                    action: 'ADD_CONTACT', 
-                    name, 
-                    number: primaryNum, 
+                sendCommand({
+                    action: 'ADD_CONTACT',
+                    name,
+                    number: primaryNum,
                     email: primaryEmail,
                     numbers,
                     emails,
@@ -11701,7 +12266,6 @@
                 msgInput.focus();
             }
         }
-
 
         // --- Target 5: Notification Toast System with Inline Quick Reply ---
         function showNotificationToast(notif) {
@@ -12490,7 +13054,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 line.className = 'text-emerald-400 font-bold border-t border-white/5 pt-1 mt-1';
                 line.textContent = text;
             } else {
-                line.className = isError 
+                line.className = isError
                     ? 'bg-rose-950/30 border border-rose-800/40 text-rose-300 p-2 rounded whitespace-pre-wrap font-mono'
                     : 'bg-gray-900/60 text-gray-200 p-2 rounded whitespace-pre-wrap font-mono select-text';
                 line.textContent = text;
@@ -12730,8 +13294,8 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
                 const card = document.createElement('div');
                 card.className = `p-3.5 rounded-xl border transition-all ${
-                    isSelected 
-                        ? 'bg-cyan-950/40 border-cyan-500/60 shadow-[0_0_15px_rgba(6,182,212,0.2)]' 
+                    isSelected
+                        ? 'bg-cyan-950/40 border-cyan-500/60 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
                         : 'bg-gray-900 border-gray-800 hover:border-gray-700'
                 }`;
 
@@ -13110,8 +13674,6 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             } catch (_) {}
         }
 
-
-
         function setScreenTimeFilter(filterType) {
             currentScreenTimeFilter = filterType;
             ['today', 'yesterday', '7days', '30days'].forEach(ft => {
@@ -13291,7 +13853,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 if (topAppNameEl) topAppNameEl.textContent = data.topApp.appName;
                 if (topAppTimeEl) topAppTimeEl.textContent = data.topApp.formattedTime || '0m';
                 if (topAppCatEl) topAppCatEl.textContent = data.topApp.category || 'Most used';
-                
+
                 const topIconB64 = data.topApp.iconBase64 || cachedAppIcons[data.topApp.packageName];
                 if (topAppBadgeEl) {
                     if (topIconB64) {
@@ -13337,7 +13899,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
                 // Bar
                 const barFill = document.createElement('div');
-                barFill.className = mins > 0 
+                barFill.className = mins > 0
                     ? 'w-full rounded-t bg-gradient-to-t from-indigo-600 via-purple-500 to-pink-500 group-hover:from-indigo-400 group-hover:to-pink-400 transition-all shadow-sm'
                     : 'w-full rounded-t bg-gray-800/50 group-hover:bg-gray-700 transition-all';
                 barFill.style.height = `${pct}%`;
@@ -13394,7 +13956,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             apps.forEach((app, idx) => {
                 const pct = Math.max(2, Math.min(100, (app.totalTimeMs / maxAppTime) * 100));
                 const letter = (app.appName || 'A')[0].toUpperCase();
-                
+
                 // Color badges according to rank/category
                 const colors = [
                     'from-indigo-600 to-purple-600',
@@ -13420,7 +13982,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                 row.className = 'bg-gray-950/70 border border-gray-800/80 hover:border-indigo-500/40 rounded-xl p-2.5 flex flex-col gap-2 transition-all hover:bg-gray-900/60';
 
                 // App icon HTML
-                const iconHtml = iconB64 
+                const iconHtml = iconB64
                     ? `<img src="data:image/png;base64,${iconB64}" class="w-8 h-8 rounded-lg object-contain shadow-sm flex-shrink-0" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-8 h-8 rounded-lg bg-gradient-to-tr ${bgGradient} flex items-center justify-center text-white font-bold text-xs\'>${letter}</div>';">`
                     : `<div class="w-8 h-8 rounded-lg bg-gradient-to-tr ${bgGradient} flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0">${letter}</div>`;
 
@@ -13833,7 +14395,7 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         function handleScreenTimeReminderResponse(data) {
             // Updated reminder config
         }
-        
+
         function handleHardwareTelemetryResponse(data) {
             const payload = data.data || data;
             if (!payload || payload.status === 'ERROR') return;

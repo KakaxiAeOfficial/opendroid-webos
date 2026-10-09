@@ -151,6 +151,43 @@ class LocalFileServerService : Service() {
         } catch (_: Exception) {}
     }
 
+    private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
+    private var lastBroadcastClipHash: String = ""
+    private var lastClipNotifyTime: Long = 0L
+
+    private fun registerClipboardObserver() {
+        try {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
+                val now = System.currentTimeMillis()
+                if (now - lastClipNotifyTime < 1000L) return@OnPrimaryClipChangedListener
+                lastClipNotifyTime = now
+
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        val text = teleManager.getClipboardText()
+                        if (text.isNotBlank()) {
+                            val hash = text.hashCode().toString()
+                            if (hash != lastBroadcastClipHash) {
+                                lastBroadcastClipHash = hash
+                                broadcastMessage(JSONObject().apply {
+                                    put("type", "CLIPBOARD_COPIED_ON_PHONE")
+                                    put("text", text)
+                                    put("timestamp", now)
+                                }.toString())
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+            }
+            cm?.addPrimaryClipChangedListener(clipboardListener)
+            Log.d("OpenDroid", "Clipboard real-time listener registered")
+        } catch (e: Exception) {
+            Log.e("OpenDroid", "Error registering clipboard listener", e)
+        }
+    }
+
+
 
     override fun onCreate() {
         super.onCreate()
@@ -1300,32 +1337,39 @@ class LocalFileServerService : Service() {
             // --- Step 1.1: Remote URL Launcher ---
             "OPEN_URL" -> {
                 val rawUrl = json.optString("url", "").trim()
+                val targetApp = json.optString("target", json.optString("targetApp", "auto")).trim()
                 if (rawUrl.isNotEmpty()) {
-                    try {
-                        val formattedUrl = if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
-                            "https://$rawUrl"
-                        } else rawUrl
-
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(formattedUrl)).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        applicationContext.startActivity(browserIntent)
-
+                    serviceScope.launch(Dispatchers.IO) {
+                        val result = teleManager.openSmartUrl(rawUrl, targetApp)
                         broadcastMessage(JSONObject().apply {
                             put("type", "OPEN_URL_ACK")
-                            put("url", formattedUrl)
-                            put("success", true)
-                        }.toString())
-                        Log.d("OpenDroid", "Opened URL on device: $formattedUrl")
-                    } catch (e: Exception) {
-                        Log.e("OpenDroid", "Failed to open URL on device", e)
-                        broadcastMessage(JSONObject().apply {
-                            put("type", "OPEN_URL_ACK")
-                            put("url", rawUrl)
-                            put("success", false)
-                            put("error", e.message)
+                            put("url", result.optString("url", rawUrl))
+                            put("target", result.optString("target", "Browser"))
+                            put("success", result.optBoolean("success", true))
+                            if (result.has("error")) put("error", result.getString("error"))
+                            put("timestamp", System.currentTimeMillis())
                         }.toString())
                     }
+                }
+            }
+
+            "FETCH_URL_HISTORY" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    val history = teleManager.getUrlHistory()
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "URL_HISTORY_LIST")
+                        put("data", history)
+                    }.toString())
+                }
+            }
+
+            "CLEAR_URL_HISTORY" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    teleManager.clearUrlHistory()
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "URL_HISTORY_LIST")
+                        put("data", JSONArray())
+                    }.toString())
                 }
             }
 
@@ -2492,19 +2536,52 @@ class LocalFileServerService : Service() {
             }
 
             "FETCH_CLIPBOARD" -> {
-                broadcastMessage(JSONObject().apply {
-                    put("type", "CLIPBOARD_DATA")
-                    put("text", teleManager.getClipboardText())
-                }.toString())
+                serviceScope.launch(Dispatchers.IO) {
+                    val clipText = teleManager.getClipboardText()
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CLIPBOARD_DATA")
+                        put("text", clipText)
+                        put("timestamp", System.currentTimeMillis())
+                    }.toString())
+                }
             }
 
             "SET_CLIPBOARD" -> {
-                val text = json.optString("text", "")
-                teleManager.setClipboardText(text)
-                broadcastMessage(JSONObject().apply {
-                    put("type", "CLIPBOARD_SET_ACK")
-                    put("success", true)
-                }.toString())
+                val textToSet = json.optString("text", "")
+                serviceScope.launch(Dispatchers.IO) {
+                    teleManager.setClipboardText(textToSet, "PC")
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CLIPBOARD_SET_ACK")
+                        put("success", true)
+                        put("text", textToSet)
+                        put("timestamp", System.currentTimeMillis())
+                    }.toString())
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CLIPBOARD_DATA")
+                        put("text", textToSet)
+                        put("timestamp", System.currentTimeMillis())
+                    }.toString())
+                }
+            }
+
+            "FETCH_CLIPBOARD_HISTORY" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    val history = teleManager.getClipboardHistory()
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CLIPBOARD_HISTORY_LIST")
+                        put("data", history)
+                    }.toString())
+                }
+            }
+
+            "CLEAR_CLIPBOARD_HISTORY" -> {
+                serviceScope.launch(Dispatchers.IO) {
+                    teleManager.clearClipboardHistory()
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CLIPBOARD_HISTORY_LIST")
+                        put("data", JSONArray())
+                    }.toString())
+                }
             }
 
             // --- Chunked File Transfer ---
@@ -2782,6 +2859,10 @@ class LocalFileServerService : Service() {
         try { WebRtcManager.getInstance(applicationContext).stopCapture() } catch (_: Exception) {}
         try { smsObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}
         try { contactsObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}
+        try {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            clipboardListener?.let { cm?.removePrimaryClipChangedListener(it) }
+        } catch (_: Exception) {}
 
         // Immortal Self-Healing Watchdog: Auto-restart service if killed or dismissed
         try {

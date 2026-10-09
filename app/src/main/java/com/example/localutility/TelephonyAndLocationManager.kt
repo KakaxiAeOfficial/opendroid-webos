@@ -2527,28 +2527,271 @@ fun getInstalledApps(): JSONArray {
 
 }
 
-fun setClipboardText(text: String) {
+// =========================================================================
+// --- Phase 20: Real-Time Bi-Directional Clipboard Daemon & Smart Deep-Link ---
+// =========================================================================
 
+private val clipboardPrefs by lazy {
+    context.getSharedPreferences("opendroid_clipboard_vault", Context.MODE_PRIVATE)
+}
+
+private val urlHistoryPrefs by lazy {
+    context.getSharedPreferences("opendroid_url_vault", Context.MODE_PRIVATE)
+}
+
+fun setClipboardText(text: String, source: String = "PC") {
     try {
-
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-
         cm.setPrimaryClip(ClipData.newPlainText("OpenDroid", text))
-
-    } catch (e: Exception) { e.printStackTrace() }
-
+        saveToClipboardHistory(text, source)
+        
+        // Show brief native feedback toast on phone screen
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            try {
+                android.widget.Toast.makeText(
+                    context,
+                    "📋 Copied from $source",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            } catch (_: Exception) {}
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 }
 
 fun getClipboardText(): String {
-
     return try {
-
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-
-        cm.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-
+        var text = cm.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
+        
+        // Fallback to active AccessibilityService context if background restricted
+        if (text.isEmpty() && RemoteInputService.instance != null) {
+            try {
+                val accCm = RemoteInputService.instance!!.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                text = accCm.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
+            } catch (_: Exception) {}
+        }
+        
+        if (text.isNotBlank()) {
+            saveToClipboardHistory(text, "Phone")
+        }
+        text
     } catch (e: Exception) { "" }
+}
 
+fun saveToClipboardHistory(text: String, source: String = "Phone"): Boolean {
+    if (text.isBlank()) return false
+    return try {
+        val jsonStr = clipboardPrefs.getString("history", "[]") ?: "[]"
+        val existingArray = JSONArray(jsonStr)
+        
+        // Prevent duplicate consecutive entries
+        if (existingArray.length() > 0) {
+            val latest = existingArray.getJSONObject(0)
+            if (latest.optString("text", "") == text.trim()) {
+                return false
+            }
+        }
+        
+        val newEntry = JSONObject().apply {
+            put("id", System.currentTimeMillis())
+            put("text", text.trim())
+            put("source", source)
+            put("timestamp", System.currentTimeMillis())
+            put("chars", text.trim().length)
+        }
+        
+        val newArray = JSONArray()
+        newArray.put(newEntry)
+        // Keep up to 20 most recent clipboard items
+        for (i in 0 until existingArray.length()) {
+            if (newArray.length() >= 20) break
+            newArray.put(existingArray.getJSONObject(i))
+        }
+        
+        clipboardPrefs.edit().putString("history", newArray.toString()).apply()
+        true
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+fun getClipboardHistory(): JSONArray {
+    return try {
+        val jsonStr = clipboardPrefs.getString("history", "[]") ?: "[]"
+        JSONArray(jsonStr)
+    } catch (e: Exception) {
+        JSONArray()
+    }
+}
+
+fun clearClipboardHistory(): Boolean {
+    return try {
+        clipboardPrefs.edit().putString("history", "[]").apply()
+        true
+    } catch (e: Exception) {
+        false
+    }
+}
+
+// Smart Deep-Link Protocol & Intent Categorizer
+fun openSmartUrl(rawUrl: String, targetApp: String = "auto"): JSONObject {
+    val result = JSONObject()
+    val cleanUrl = rawUrl.trim()
+    if (cleanUrl.isEmpty()) {
+        result.put("success", false)
+        result.put("error", "Empty URL provided")
+        return result
+    }
+
+    try {
+        var formattedUrl = if (!cleanUrl.startsWith("http://") && 
+            !cleanUrl.startsWith("https://") && 
+            !cleanUrl.startsWith("market://") && 
+            !cleanUrl.startsWith("vnd.youtube:") && 
+            !cleanUrl.startsWith("geo:") && 
+            !cleanUrl.startsWith("whatsapp://")) {
+            "https://$cleanUrl"
+        } else {
+            cleanUrl
+        }
+
+        val pm = context.packageManager
+        var targetPkg: String? = null
+        var intentUri = Uri.parse(formattedUrl)
+        var intentAction = Intent.ACTION_VIEW
+
+        val lowerUrl = formattedUrl.lowercase()
+        val requestedTarget = targetApp.lowercase()
+
+        // 1. YouTube Deep-Link
+        if (requestedTarget == "youtube" || (requestedTarget == "auto" && (lowerUrl.contains("youtube.com") || lowerUrl.contains("youtu.be")))) {
+            targetPkg = "com.google.android.youtube"
+            // If YouTube app is not installed, fallback to browser
+            if (pm.getLaunchIntentForPackage(targetPkg) == null) {
+                targetPkg = null
+            }
+        }
+        // 2. Play Store Deep-Link
+        else if (requestedTarget == "playstore" || (requestedTarget == "auto" && lowerUrl.contains("play.google.com/store/apps/details"))) {
+            targetPkg = "com.android.vending"
+            try {
+                val pkgId = intentUri.getQueryParameter("id")
+                if (!pkgId.isNullOrEmpty()) {
+                    intentUri = Uri.parse("market://details?id=$pkgId")
+                }
+            } catch (_: Exception) {}
+            if (pm.getLaunchIntentForPackage(targetPkg) == null) {
+                targetPkg = null
+            }
+        }
+        // 3. Google Maps Deep-Link
+        else if (requestedTarget == "maps" || (requestedTarget == "auto" && (lowerUrl.contains("maps.google.com") || lowerUrl.contains("google.com/maps")))) {
+            targetPkg = "com.google.android.apps.maps"
+            if (pm.getLaunchIntentForPackage(targetPkg) == null) {
+                targetPkg = null
+            }
+        }
+        // 4. WhatsApp Chat Link
+        else if (requestedTarget == "whatsapp" || (requestedTarget == "auto" && (lowerUrl.contains("wa.me") || lowerUrl.contains("api.whatsapp.com")))) {
+            targetPkg = "com.whatsapp"
+            if (pm.getLaunchIntentForPackage(targetPkg) == null) {
+                targetPkg = "com.whatsapp.w4b" // WhatsApp Business fallback
+                if (pm.getLaunchIntentForPackage(targetPkg) == null) {
+                    targetPkg = null
+                }
+            }
+        }
+
+        val launchIntent = Intent(intentAction, intentUri).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            if (targetPkg != null) {
+                setPackage(targetPkg)
+            }
+        }
+
+        val targetContext = RemoteInputService.instance ?: context
+        targetContext.startActivity(launchIntent)
+
+        // Save into recent URL history
+        saveToUrlHistory(formattedUrl, targetPkg ?: "Browser")
+
+        // Show brief native feedback toast on phone screen
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            try {
+                android.widget.Toast.makeText(
+                    context,
+                    "🌐 Opening: $formattedUrl",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            } catch (_: Exception) {}
+        }
+
+        result.put("success", true)
+        result.put("url", formattedUrl)
+        result.put("target", targetPkg ?: "Browser")
+        result.put("timestamp", System.currentTimeMillis())
+    } catch (e: Exception) {
+        result.put("success", false)
+        result.put("error", e.message ?: "Failed to launch URL")
+    }
+
+    return result
+}
+
+fun saveToUrlHistory(url: String, target: String): Boolean {
+    if (url.isBlank()) return false
+    return try {
+        val jsonStr = urlHistoryPrefs.getString("history", "[]") ?: "[]"
+        val existingArray = JSONArray(jsonStr)
+        
+        // Prevent duplicate consecutive entries
+        if (existingArray.length() > 0) {
+            val latest = existingArray.getJSONObject(0)
+            if (latest.optString("url", "") == url.trim()) {
+                return false
+            }
+        }
+        
+        val newEntry = JSONObject().apply {
+            put("id", System.currentTimeMillis())
+            put("url", url.trim())
+            put("target", target)
+            put("timestamp", System.currentTimeMillis())
+        }
+        
+        val newArray = JSONArray()
+        newArray.put(newEntry)
+        for (i in 0 until existingArray.length()) {
+            if (newArray.length() >= 20) break
+            newArray.put(existingArray.getJSONObject(i))
+        }
+        
+        urlHistoryPrefs.edit().putString("history", newArray.toString()).apply()
+        true
+    } catch (e: Exception) {
+        false
+    }
+}
+
+fun getUrlHistory(): JSONArray {
+    return try {
+        val jsonStr = urlHistoryPrefs.getString("history", "[]") ?: "[]"
+        JSONArray(jsonStr)
+    } catch (e: Exception) {
+        JSONArray()
+    }
+}
+
+fun clearUrlHistory(): Boolean {
+    return try {
+        urlHistoryPrefs.edit().putString("history", "[]").apply()
+        true
+    } catch (e: Exception) {
+        false
+    }
 }
 
 fun getStorageStats(): JSONObject {
@@ -4557,6 +4800,3 @@ fun getStorageStats(): JSONObject {
     }
 
 }
-
-
-
