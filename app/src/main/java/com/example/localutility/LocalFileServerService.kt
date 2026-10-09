@@ -56,7 +56,10 @@ import javax.net.ssl.SSLSocketFactory
 
 class LocalFileServerService : Service() {
 
-    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e("LocalFileServerService", "Unhandled coroutine error: ${throwable.message}", throwable)
+    }
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + coroutineExceptionHandler)
     private var server: ApplicationEngine? = null
     private var isServerStartingOrRunning = false
     private lateinit var baseDir: File
@@ -2517,17 +2520,63 @@ class LocalFileServerService : Service() {
         }
     }
 
+    private fun isPortAvailable(port: Int): Boolean {
+        var ss: java.net.ServerSocket? = null
+        return try {
+            ss = java.net.ServerSocket(port).apply {
+                reuseAddress = true
+            }
+            true
+        } catch (_: Exception) {
+            false
+        } finally {
+            try { ss?.close() } catch (_: Exception) {}
+        }
+    }
+
     private fun startServer() {
         if (isServerStartingOrRunning) return
         isServerStartingOrRunning = true
 
-        serviceScope.launch {
+        val serverExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+            Log.e("LocalFileServerService", "Ktor server error or BindException caught safely: ${throwable.message}", throwable)
+            isServerStartingOrRunning = false
             try {
-                server = embeddedServer(CIO, port = PORT) {
+                server?.stop(500, 1000)
+            } catch (_: Exception) {}
+            server = null
+        }
+
+        serviceScope.launch(Dispatchers.IO + serverExceptionHandler) {
+            try {
+                try {
+                    server?.stop(500, 1000)
+                } catch (_: Exception) {}
+                server = null
+
+                var targetPort = PORT
+                if (!isPortAvailable(targetPort)) {
+                    delay(1000L)
+                }
+
+                if (!isPortAvailable(targetPort)) {
+                    Log.w("LocalFileServerService", "Port $targetPort is currently in use, attempting fallback port ${targetPort + 1}")
+                    if (isPortAvailable(targetPort + 1)) {
+                        targetPort += 1
+                    } else {
+                        Log.w("LocalFileServerService", "Ports $PORT and ${PORT + 1} are occupied. Skipping local HTTP server bind without crashing.")
+                        isServerStartingOrRunning = false
+                        return@launch
+                    }
+                }
+
+                server = embeddedServer(CIO, port = targetPort, configure = {
+                    reuseAddress = true
+                }) {
                     fileServerModule(baseDir)
                 }.start(wait = true)
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("LocalFileServerService", "Failed to bind Ktor server safely: ${e.message}", e)
                 isServerStartingOrRunning = false
             }
         }
