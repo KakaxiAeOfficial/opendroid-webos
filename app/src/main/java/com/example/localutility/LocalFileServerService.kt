@@ -11,6 +11,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
@@ -186,8 +187,6 @@ class LocalFileServerService : Service() {
             Log.e("OpenDroid", "Error registering clipboard listener", e)
         }
     }
-
-
 
     override fun onCreate() {
         super.onCreate()
@@ -584,7 +583,6 @@ class LocalFileServerService : Service() {
             }
         }
     }
-
 
     // --- Phase 16: Live Hardware Telemetry Streaming Engine ---
     private var telemetryStreamJob: kotlinx.coroutines.Job? = null
@@ -2667,7 +2665,7 @@ class LocalFileServerService : Service() {
                         if (apkFile.exists()) {
                             val appLabel = packageManager.getApplicationLabel(appInfo).toString().replace(Regex("[^a-zA-Z0-9_]"), "_")
                             val cleanFilename = "${appLabel}_${packageName}.apk"
-                            
+
                             val res = JSONObject().apply {
                                 put("type", "APK_EXTRACTED")
                                 put("package", packageName)
@@ -2861,7 +2859,7 @@ class LocalFileServerService : Service() {
         try { contactsObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}
         try {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-            clipboardListener?.let { cm?.removePrimaryClipChangedListener(it) }
+            clipboardListener?.let { listener -> cm?.removePrimaryClipChangedListener(listener) }
         } catch (_: Exception) {}
 
         // Immortal Self-Healing Watchdog: Auto-restart service if killed or dismissed
