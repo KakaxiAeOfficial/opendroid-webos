@@ -4,6 +4,8 @@ import android.accessibilityservice.AccessibilityService
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
 import java.util.Locale
 
@@ -23,6 +25,8 @@ class RemoteInputService : AccessibilityService() {
     companion object {
         var instance: RemoteInputService? = null
         var isAutoUninstallArmed: Boolean = false
+        var isAutoForceStopArmed: Boolean = false
+        var targetForceStopPkg: String = ""
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -35,7 +39,7 @@ class RemoteInputService : AccessibilityService() {
     private var lastBlockedPkg: String = ""
     private var lastBlockedTime: Long = 0L
 
-    private fun isLauncherOrSystem(packageName: String): Boolean {
+    fun isLauncherOrSystem(packageName: String): Boolean {
         if (packageName.isEmpty()) return true
         if (packageName == applicationContext.packageName) return true
 
@@ -72,7 +76,51 @@ class RemoteInputService : AccessibilityService() {
             } catch (e: Exception) {
                 Log.e("RemoteInputService", "Watchdog check error", e)
             }
-            mainHandler.postDelayed(this, 5000L)
+            mainHandler.postDelayed(this, 3000L)
+        }
+    }
+
+    fun triggerImmediatePolicyCheck() {
+        mainHandler.post {
+            try {
+                if (currentForegroundPackage.isNotEmpty() && !isLauncherOrSystem(currentForegroundPackage)) {
+                    checkAndEnforcePolicy(currentForegroundPackage)
+                }
+            } catch (e: Exception) {
+                Log.e("RemoteInputService", "Immediate policy check error", e)
+            }
+        }
+    }
+
+    fun forceStopPackage(packageName: String) {
+        if (packageName.isEmpty() || isLauncherOrSystem(packageName)) {
+            Log.w("RemoteInputService", "Cannot force stop protected/system package: $packageName")
+            return
+        }
+
+        isAutoForceStopArmed = true
+        targetForceStopPkg = packageName
+
+        mainHandler.post {
+            try {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                }
+                startActivity(intent)
+
+                // Safety timeout: disarm force stop after 4 seconds if not triggered
+                mainHandler.postDelayed({
+                    if (isAutoForceStopArmed) {
+                        isAutoForceStopArmed = false
+                        targetForceStopPkg = ""
+                    }
+                }, 4000L)
+            } catch (e: Exception) {
+                Log.e("RemoteInputService", "Error launching details for force stop: $packageName", e)
+                isAutoForceStopArmed = false
+                targetForceStopPkg = ""
+            }
         }
     }
 
@@ -83,12 +131,16 @@ class RemoteInputService : AccessibilityService() {
             val blockedResult = teleManager.isPackageCurrentlyBlocked(pkg)
             if (blockedResult.first) {
                 val reason = blockedResult.second
-                // Kick out of the restricted app to Home screen
-                performGlobalAction(GLOBAL_ACTION_HOME)
+
+                // Anti-PiP & Clean Exit: Press BACK first to exit video/media playback (preventing floating PiP window), then press HOME
+                performGlobalAction(GLOBAL_ACTION_BACK)
+                mainHandler.postDelayed({
+                    performGlobalAction(GLOBAL_ACTION_HOME)
+                }, 150L)
 
                 // Debounce toast alert so child isn't spammed
                 val now = System.currentTimeMillis()
-                if (pkg != lastBlockedPkg || (now - lastBlockedTime) > 4000L) {
+                if (pkg != lastBlockedPkg || (now - lastBlockedTime) > 3500L) {
                     lastBlockedPkg = pkg
                     lastBlockedTime = now
                     mainHandler.post {
@@ -109,7 +161,7 @@ class RemoteInputService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         Log.d("RemoteInputService", "Accessibility Service Connected")
-        mainHandler.postDelayed(activeWatchdogRunnable, 5000L)
+        mainHandler.postDelayed(activeWatchdogRunnable, 3000L)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -124,7 +176,19 @@ class RemoteInputService : AccessibilityService() {
             }
         }
 
-        // 2. Auto-Uninstall Safety Gate
+        // 2. Automated Remote Force Stop Engine
+        if (isAutoForceStopArmed) {
+            val eventPkg = event.packageName?.toString() ?: ""
+            if (eventPkg.contains("settings", ignoreCase = true)) {
+                mainHandler.postDelayed({
+                    if (isAutoForceStopArmed) {
+                        tryAutoForceStop()
+                    }
+                }, 200L)
+            }
+        }
+
+        // 3. Auto-Uninstall Safety Gate
         if (isAutoUninstallArmed) {
             val pkg = event.packageName?.toString() ?: ""
             if (pkg.contains("packageinstaller", ignoreCase = true) ||
@@ -134,8 +198,87 @@ class RemoteInputService : AccessibilityService() {
                     if (isAutoUninstallArmed) {
                         tryAutoConfirmUninstall()
                     }
-                }, 350)
+                }, 350L)
             }
+        }
+    }
+
+    private fun tryAutoForceStop() {
+        try {
+            val activeRoot = rootInActiveWindow ?: return
+            
+            // Search for Force Stop button
+            val stopButtonIds = listOf(
+                "com.android.settings:id/force_stop_button",
+                "com.android.settings:id/button_stop",
+                "com.android.settings:id/right_button",
+                "android:id/button1"
+            )
+
+            var clickedStop = false
+            for (id in stopButtonIds) {
+                val list = activeRoot.findAccessibilityNodeInfosByViewId(id)
+                for (node in list) {
+                    if (node.isClickable && node.isEnabled && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                        Log.d("RemoteInputService", "Clicked Force Stop by ID: $id")
+                        clickedStop = true
+                        break
+                    }
+                }
+                if (clickedStop) break
+            }
+
+            if (!clickedStop) {
+                val stopTexts = listOf("Force stop", "Force Stop", "फ़ोर्स स्टॉप", "रोकें", "Force close", "OK", "ठीक है")
+                for (text in stopTexts) {
+                    val nodes = activeRoot.findAccessibilityNodeInfosByText(text)
+                    for (node in nodes) {
+                        if (node.isClickable && node.isEnabled && node.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                            Log.d("RemoteInputService", "Clicked Force Stop by text: $text")
+                            clickedStop = true
+                            break
+                        } else if (node.parent?.isClickable == true && node.parent.isEnabled && node.parent.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                            Log.d("RemoteInputService", "Clicked Force Stop by parent text: $text")
+                            clickedStop = true
+                            break
+                        }
+                    }
+                    if (clickedStop) break
+                }
+            }
+
+            // After clicking Force stop, handle the confirmation dialog if it pops up, then immediately press HOME
+            mainHandler.postDelayed({
+                try {
+                    val dialogRoot = rootInActiveWindow
+                    if (dialogRoot != null) {
+                        val confirmTexts = listOf("OK", "Force stop", "Force Stop", "ठीक है", "रोकें")
+                        for (txt in confirmTexts) {
+                            val confirmNodes = dialogRoot.findAccessibilityNodeInfosByText(txt)
+                            for (cNode in confirmNodes) {
+                                if (cNode.isClickable && cNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+                                    Log.d("RemoteInputService", "Confirmed Force Stop dialog: $txt")
+                                    break
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+
+                // Immediately return to Home screen and notify user
+                performGlobalAction(GLOBAL_ACTION_HOME)
+                isAutoForceStopArmed = false
+                val stopped = targetForceStopPkg
+                targetForceStopPkg = ""
+                mainHandler.post {
+                    Toast.makeText(applicationContext, "🛑 $stopped force stopped", Toast.LENGTH_SHORT).show()
+                }
+            }, 300L)
+
+        } catch (e: Exception) {
+            Log.e("RemoteInputService", "Error during tryAutoForceStop", e)
+            isAutoForceStopArmed = false
+            targetForceStopPkg = ""
         }
     }
 
@@ -163,7 +306,6 @@ class RemoteInputService : AccessibilityService() {
     }
 
     private fun processWindowForUninstall(root: AccessibilityNodeInfo): Boolean {
-        // Look for Positive Button IDs specific to package installer dialogs
         val buttonIds = listOf(
             "com.android.packageinstaller:id/ok_button",
             "com.google.android.packageinstaller:id/ok_button",
@@ -182,7 +324,6 @@ class RemoteInputService : AccessibilityService() {
             }
         }
 
-        // Look for Positive Button Texts (English & Hindi)
         val buttonTexts = listOf("OK", "Uninstall", "Delete", "अनइंस्टॉल", "ठीक है")
         for (text in buttonTexts) {
             val nodes = root.findAccessibilityNodeInfosByText(text)
@@ -270,4 +411,3 @@ class RemoteInputService : AccessibilityService() {
     }
 }
 
- 

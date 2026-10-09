@@ -4992,6 +4992,8 @@
                         containsEl.textContent = `${info.fileCount || 0} Files, ${info.dirCount || 0} Folders`;
                     }
                 }ctory(data.data);
+            } else if (data.type === 'APP_KILLED_RESULT') {
+                showToast(`🛑 ${data.package || 'App'} force stopped successfully!`, 'success');
             } else if (data.type === 'APP_LIMIT_UPDATED' || data.type === 'APP_LIMITS_RESULT') {
                 handleAppLimitsResponse(data);
             } else if (data.type === 'DND_STATUS_RESULT') {
@@ -13133,6 +13135,10 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
                             <button onclick="openAppLimitModal('${app.packageName}', '${(app.appName || app.packageName).replace(/'/g, "\\'")}', ${limitMins})" class="w-7 h-7 rounded-lg bg-gray-900 hover:bg-indigo-600/30 border border-gray-700 hover:border-indigo-500 text-gray-300 hover:text-white flex items-center justify-center text-xs transition-all cursor-pointer" title="Set daily app limit timer">
                                 ⏳
                             </button>
+                            <!-- 🛑 Remote Force Stop Button -->
+                            <button onclick="killAppRemote('${app.packageName}', '${(app.appName || app.packageName).replace(/'/g, "\\'")}')" class="px-2 h-7 rounded-lg bg-rose-950/70 hover:bg-rose-700 border border-rose-800/60 hover:border-rose-500 text-rose-300 hover:text-white flex items-center justify-center text-xs font-bold transition-all cursor-pointer shadow-sm" title="Force kill this app immediately">
+                                🛑 Kill
+                            </button>
                         </div>
                     </div>
 
@@ -13152,6 +13158,14 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
         }
 
         // --- Phase 18 Parental Controls Handlers & Modals ---
+
+        function killAppRemote(pkg, name) {
+            sendCommand({
+                action: 'KILL_APP',
+                package: pkg
+            });
+            showToast(`🛑 Force kill command sent for ${name}`, 'info');
+        }
 
         function openAppLimitModal(pkg, name, currentLimit) {
             selectedAppForLimit = { packageName: pkg, appName: name, currentLimit: currentLimit || 0 };

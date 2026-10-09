@@ -912,6 +912,24 @@ class LocalFileServerService : Service() {
                 }
             }
 
+            "KILL_APP", "FORCE_STOP_APP" -> {
+                val pkg = json.optString("package", "").trim()
+                serviceScope.launch(Dispatchers.IO) {
+                    try {
+                        RemoteInputService.instance?.forceStopPackage(pkg)
+                        val response = JSONObject().apply {
+                            put("type", "APP_KILLED_RESULT")
+                            put("package", pkg)
+                            put("status", "SUCCESS")
+                            put("timestamp", System.currentTimeMillis())
+                        }
+                        broadcastMessage(response.toString())
+                    } catch (e: Exception) {
+                        Log.e("OpenDroid", "Error force stopping app: $pkg", e)
+                    }
+                }
+            }
+
             "SET_APP_LIMIT" -> {
                 val pkg = json.optString("package", "").trim()
                 val limitMins = json.optInt("limitMinutes", 0)
@@ -924,6 +942,9 @@ class LocalFileServerService : Service() {
                             put("timestamp", System.currentTimeMillis())
                         }
                         broadcastMessage(response.toString())
+
+                        // Instant zero-delay policy check on open foreground app
+                        RemoteInputService.instance?.triggerImmediatePolicyCheck()
                     } catch (e: Exception) {
                         Log.e("OpenDroid", "Error setting app limit", e)
                     }
@@ -1021,6 +1042,9 @@ class LocalFileServerService : Service() {
                             put("type", "DND_STATUS_RESULT")
                             put("data", dndRes)
                         }.toString())
+
+                        // Instant policy check for Bedtime Mode
+                        RemoteInputService.instance?.triggerImmediatePolicyCheck()
                     } catch (e: Exception) {
                         Log.e("OpenDroid", "Error setting bedtime config", e)
                     }
@@ -1060,6 +1084,9 @@ class LocalFileServerService : Service() {
                             put("data", res)
                         }
                         broadcastMessage(response.toString())
+
+                        // Instant policy check for Focus Mode
+                        RemoteInputService.instance?.triggerImmediatePolicyCheck()
                     } catch (e: Exception) {
                         Log.e("OpenDroid", "Error setting focus config", e)
                     }
