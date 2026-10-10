@@ -39,6 +39,10 @@ class RemoteInputService : AccessibilityService() {
     private var lastBlockedPkg: String = ""
     private var lastBlockedTime: Long = 0L
 
+    // Phase 20.1: Silent Native Copy & Cut Interceptor (Zero Focus Steal, No Keyboard Dismiss, No System Toast)
+    private var lastSelectedText: String = ""
+    private var lastCandidateText: String = ""
+
     fun isLauncherOrSystem(packageName: String): Boolean {
         if (packageName.isEmpty()) return true
         if (packageName == applicationContext.packageName) return true
@@ -228,18 +232,68 @@ class RemoteInputService : AccessibilityService() {
             }
         }
 
-        // 4. Phase 20.1: Real-Time Phone Copy Interception
-        if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+        // 4. Phase 20.1: Silent Native Copy & Cut Interceptor (Zero Focus Steal, No Keyboard Dismiss, No System Toast)
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) {
+            try {
+                val source = event.source
+                val fullText = source?.text?.toString()
+                    ?: (if (!event.text.isNullOrEmpty()) event.text.joinToString("") else "")
+                if (fullText.isNotBlank()) {
+                    val start = if (source != null && source.textSelectionStart >= 0) source.textSelectionStart else event.fromIndex
+                    val end = if (source != null && source.textSelectionEnd >= 0) source.textSelectionEnd else event.toIndex
+                    if (start in 0 until end && end <= fullText.length) {
+                        val sub = fullText.substring(start, end).trim()
+                        if (sub.isNotBlank()) {
+                            lastSelectedText = sub
+                        }
+                    } else {
+                        lastSelectedText = fullText.trim()
+                    }
+                }
+            } catch (_: Exception) {}
+        } else if (event.eventType == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED ||
+                   event.eventType == AccessibilityEvent.TYPE_VIEW_SELECTED) {
+            try {
+                val nodeText = event.source?.text?.toString()
+                    ?: (if (!event.text.isNullOrEmpty()) event.text.joinToString("") else "")
+                if (nodeText.isNotBlank()) {
+                    lastCandidateText = nodeText.trim()
+                }
+            } catch (_: Exception) {}
+        } else if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
             val textList = event.text?.joinToString(" ")?.lowercase(Locale.ROOT) ?: ""
             val contentDesc = event.contentDescription?.toString()?.lowercase(Locale.ROOT) ?: ""
-            if (textList.contains("copy") || contentDesc.contains("copy") ||
-                textList.contains("cut") || contentDesc.contains("cut") ||
-                textList.contains("copiar") || textList.contains("kopieren") ||
-                textList.contains("कॉप") || contentDesc.contains("कॉप")
-            ) {
-                mainHandler.postDelayed({
-                    triggerClipboardSync()
-                }, 150L)
+            val isCopyOrCut = textList.contains("copy") || contentDesc.contains("copy") ||
+                              textList.contains("cut") || contentDesc.contains("cut") ||
+                              textList.contains("copiar") || textList.contains("kopieren") ||
+                              textList.contains("copier") || textList.contains("कॉप") ||
+                              contentDesc.contains("कॉप")
+
+            if (isCopyOrCut) {
+                var textToSync = if (lastSelectedText.isNotBlank()) lastSelectedText else lastCandidateText
+                if (textToSync.isBlank()) {
+                    try {
+                        val parent = event.source?.parent
+                        if (parent != null) {
+                            for (i in 0 until parent.childCount) {
+                                val child = parent.getChild(i)
+                                val cText = child?.text?.toString()?.trim() ?: ""
+                                if (cText.isNotBlank() && !cText.equals("copy", ignoreCase = true) && !cText.equals("cut", ignoreCase = true)) {
+                                    textToSync = cText
+                                    break
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {}
+                }
+
+                if (textToSync.isNotBlank()) {
+                    // Save to local SharedPreferences history vault (offline-proof)
+                    teleManager.saveToClipboardHistory(textToSync, "Phone")
+                    // Broadcast silently over WebSocket / MQTT without launching any Activity or triggering system toasts
+                    LocalFileServerService.instance?.broadcastPhoneCopied(textToSync)
+                    Log.d("RemoteInputService", "Silently captured and synced copied text: ${textToSync.take(30)}...")
+                }
             }
         }
     }
