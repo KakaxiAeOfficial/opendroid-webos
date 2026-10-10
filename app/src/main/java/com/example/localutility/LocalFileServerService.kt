@@ -939,10 +939,11 @@ class LocalFileServerService : Service() {
 
     fun broadcastCameraTelemetry() {
         try {
-            val telem = cameraStreamer.getCameraTelemetry()
+            val cameraStreamer = DirectCameraStreamer.getInstance(applicationContext)
+            val telem: JSONObject = cameraStreamer.getCameraTelemetry()
             val json = JSONObject().apply {
                 put("type", "CAMERA_TELEMETRY_STATUS")
-                put("data", telem)
+                put("data", telem as Any)
                 put("timestamp", System.currentTimeMillis())
             }.toString()
             broadcastMessage(json)
