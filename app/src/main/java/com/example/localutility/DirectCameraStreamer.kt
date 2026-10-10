@@ -46,13 +46,13 @@ class DirectCameraStreamer private constructor(private val context: Context) {
         private set
 
     // Phase 22: Quality Presets, Digital Zoom & Snapshot Pipeline
-    var currentQuality: String = "medium" // low (360p), medium (480p), high (720p)
+    var currentQuality: String = "medium" // low (360p Data-Saver), medium (480p), high (720p)
         private set
     var currentZoom: Float = 1.0f
         private set
     private var currentWidth = 640
     private var currentHeight = 480
-    private var targetFpsMs: Long = 66L // ~15 FPS
+    private var targetFpsMs: Long = 66L // ~15 FPS default
     private var lastFrameTime = 0L
 
     private val cameraOpenCloseLock = Semaphore(1)
@@ -69,7 +69,7 @@ class DirectCameraStreamer private constructor(private val context: Context) {
     fun stopBackgroundThread() {
         try {
             backgroundThread?.quitSafely()
-            backgroundThread?.join(500)
+            backgroundThread?.join(300)
             backgroundThread = null
             backgroundHandler = null
         } catch (e: Exception) {
@@ -133,25 +133,25 @@ class DirectCameraStreamer private constructor(private val context: Context) {
                 }, backgroundHandler)
             }
 
-            if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
-                throw RuntimeException("Time out waiting to lock camera opening.")
+            if (!cameraOpenCloseLock.tryAcquire(1500, TimeUnit.MILLISECONDS)) {
+                Log.w("DirectCamera", "Timeout waiting for camera lock, forcing open")
             }
 
             cameraManager.openCamera(cameraId, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
-                    cameraOpenCloseLock.release()
+                    try { cameraOpenCloseLock.release() } catch (_: Exception) {}
                     cameraDevice = camera
                     createCaptureSession()
                 }
 
                 override fun onDisconnected(camera: CameraDevice) {
-                    cameraOpenCloseLock.release()
+                    try { cameraOpenCloseLock.release() } catch (_: Exception) {}
                     camera.close()
                     cameraDevice = null
                 }
 
                 override fun onError(camera: CameraDevice, error: Int) {
-                    cameraOpenCloseLock.release()
+                    try { cameraOpenCloseLock.release() } catch (_: Exception) {}
                     camera.close()
                     cameraDevice = null
                     Log.e("DirectCamera", "Camera error code: $error")
@@ -166,10 +166,10 @@ class DirectCameraStreamer private constructor(private val context: Context) {
     private fun configureQualityParameters(quality: String) {
         when (quality.lowercase()) {
             "low" -> {
-                targetFpsMs = 100L // 10 FPS
+                targetFpsMs = 100L // 10 FPS for ultra data-saving
             }
             "high" -> {
-                targetFpsMs = 45L  // ~22 FPS
+                targetFpsMs = 50L  // ~20 FPS
             }
             else -> {
                 targetFpsMs = 66L  // ~15 FPS
@@ -184,9 +184,9 @@ class DirectCameraStreamer private constructor(private val context: Context) {
         try {
             val sensorOrientation = currentCharacteristics?.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 90
             val jpegQuality = when (currentQuality.lowercase()) {
-                "low" -> 45.toByte()
-                "high" -> 75.toByte()
-                else -> 58.toByte()
+                "low" -> 35.toByte()  // ultra data-saver compression
+                "high" -> 70.toByte()
+                else -> 50.toByte()
             }
 
             val previewRequestBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
@@ -265,9 +265,9 @@ class DirectCameraStreamer private constructor(private val context: Context) {
             val sensorOrientation = currentCharacteristics?.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 90
 
             val jpegQuality = when (currentQuality.lowercase()) {
-                "low" -> 45.toByte()
-                "high" -> 75.toByte()
-                else -> 58.toByte()
+                "low" -> 35.toByte()
+                "high" -> 70.toByte()
+                else -> 50.toByte()
             }
 
             val requestBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
@@ -343,19 +343,39 @@ class DirectCameraStreamer private constructor(private val context: Context) {
         }
     }
 
+    /**
+     * Instant hardware release:
+     * 1. Abort repeating requests & in-flight captures immediately so Camera2 stops sending frames.
+     * 2. Nullify ImageReader callback to drop pending frames immediately.
+     * 3. Close capture session and device without thread blocking.
+     */
     fun stopStreaming() {
+        val acquired = try {
+            cameraOpenCloseLock.tryAcquire(400, TimeUnit.MILLISECONDS)
+        } catch (_: Exception) {
+            false
+        }
+
         try {
-            cameraOpenCloseLock.acquire()
+            imageReader?.setOnImageAvailableListener(null, null)
+            try {
+                captureSession?.stopRepeating()
+                captureSession?.abortCaptures()
+            } catch (_: Exception) {}
             captureSession?.close()
             captureSession = null
+
             cameraDevice?.close()
             cameraDevice = null
+
             imageReader?.close()
             imageReader = null
         } catch (e: Exception) {
             Log.e("DirectCamera", "Error closing camera", e)
         } finally {
-            cameraOpenCloseLock.release()
+            if (acquired) {
+                try { cameraOpenCloseLock.release() } catch (_: Exception) {}
+            }
             stopBackgroundThread()
             isStreaming = false
             isTorchOn = false
@@ -374,12 +394,14 @@ class DirectCameraStreamer private constructor(private val context: Context) {
         return cameraManager.cameraIdList.firstOrNull()
     }
 
-    private fun chooseResolutionForQuality(choices: Array<Size>, quality: String): Size {
+    private fun chooseResolutionForQuality(choices: Array, quality: String): Size {
         return when (quality.lowercase()) {
             "low" -> {
-                choices.firstOrNull { it.width in 320..480 && it.height in 240..360 }
+                // Low Data-Saver: prioritize ~352x288 or 320x240 for ultra-lightweight frames (5-8 KB)
+                choices.firstOrNull { it.width in 320..384 && it.height in 240..288 }
+                    ?: choices.firstOrNull { it.width in 320..480 && it.height in 240..360 }
                     ?: choices.firstOrNull { it.width <= 480 }
-                    ?: Size(480, 360)
+                    ?: Size(352, 288)
             }
             "high" -> {
                 choices.firstOrNull { it.width in 960..1280 && it.height in 720..960 }

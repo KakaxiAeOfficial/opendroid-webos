@@ -3671,7 +3671,7 @@
         }
 
         function playPcmChunk(base64Pcm) {
-            if (!isGlobalMicActive && !isLiveCallListening) return;
+            if (!isGlobalMicActive && !isLiveCallListening && !isCameraAudioListening) return;
             initWebAudio();
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
@@ -3700,7 +3700,7 @@
                 source.connect(gainNode);
 
                 const currentTime = audioCtx.currentTime;
-                if (nextAudioStartTime < currentTime) {
+                if (nextAudioStartTime < currentTime || nextAudioStartTime > currentTime + 0.25) {
                     nextAudioStartTime = currentTime + 0.04;
                 }
                 source.start(nextAudioStartTime);
@@ -5091,7 +5091,7 @@
                 }
             }
             else if (data.type === 'AUDIO_CHUNK') {
-                playPcmChunk(data.data);
+                playPcmChunk(data.data || data.chunk);
             } else if (data.type === 'NOTIFICATION') {
                 showNotificationToast(data);
             }
@@ -5798,7 +5798,10 @@
             const hud = document.getElementById('cam-hud-overlay');
             const zoomBar = document.getElementById('cam-zoom-bar');
 
-            if (img) img.classList.add('hidden');
+            if (img) {
+                img.src = '';
+                img.classList.add('hidden');
+            }
             if (placeholder) placeholder.classList.remove('hidden');
             if (hud) hud.classList.add('hidden');
             if (zoomBar) zoomBar.classList.add('hidden');
@@ -6196,7 +6199,10 @@
             const img = document.getElementById('screen-frame-view');
             const placeholder = document.getElementById('screen-placeholder');
             if (video) video.classList.add('hidden');
-            if (img) img.classList.add('hidden');
+            if (img) {
+                img.src = '';
+                img.classList.add('hidden');
+            }
             if (placeholder) placeholder.classList.remove('hidden');
         }
 
@@ -9922,6 +9928,9 @@
                 }
                 this.openWindows = this.openWindows.filter(wId => wId !== id);
                 this.minimizedWindows.delete(id);
+                if (id === 'camera-window') {
+                    try { stopDirectCamera(); } catch (_e) {}
+                }
                 if (this.activeWindowId === id) {
                     this.activeWindowId = this.openWindows.length > 0 ? this.openWindows[this.openWindows.length - 1] : null;
                 }

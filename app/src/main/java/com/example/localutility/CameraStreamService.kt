@@ -22,6 +22,30 @@ class CameraStreamService : Service() {
         private const val NOTIFICATION_ID = 3
         private const val CHANNEL_ID = "CameraStreamChannel"
         var instance: CameraStreamService? = null
+
+        /**
+         * Safely stops the CameraStreamService, immediately clears the foreground camera status,
+         * cancels the notification, and drops the Android OS green camera privacy indicator.
+         */
+        fun stopServiceSafely(context: Context) {
+            try {
+                instance?.let { service ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        service.stopForeground(STOP_FOREGROUND_REMOVE)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        service.stopForeground(true)
+                    }
+                    val nm = service.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                    nm?.cancel(NOTIFICATION_ID)
+                    service.stopSelf()
+                }
+                val intent = Intent(context, CameraStreamService::class.java)
+                context.stopService(intent)
+            } catch (e: Exception) {
+                Log.e("CameraStreamService", "stopServiceSafely error: ${e.message}")
+            }
+        }
     }
 
     override fun onCreate() {
@@ -75,7 +99,38 @@ class CameraStreamService : Service() {
         }
     }
 
+    fun turnOffFlashlight() {
+        if (!isTorchOn) return
+        try {
+            val backCameraId = cameraManager.cameraIdList.firstOrNull { id ->
+                cameraManager.getCameraCharacteristics(id)
+                    .get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_BACK
+            }
+            backCameraId?.let {
+                cameraManager.setTorchMode(it, false)
+                isTorchOn = false
+            }
+        } catch (e: Exception) {
+            Log.e("CameraStreamService", "Failed to turn off torch", e)
+        }
+    }
+
     override fun onDestroy() {
+        try {
+            if (isTorchOn) {
+                turnOffFlashlight()
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            notificationManager?.cancel(NOTIFICATION_ID)
+        } catch (e: Exception) {
+            Log.e("CameraStreamService", "onDestroy cleanup error: ${e.message}")
+        }
         super.onDestroy()
         instance = null
     }
@@ -94,3 +149,5 @@ class CameraStreamService : Service() {
         }
     }
 }
+
+
