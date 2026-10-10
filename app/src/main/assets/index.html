@@ -1109,45 +1109,120 @@
         </div>
     </div>
 
-    <!-- Window: Remote Camera -->
-    <div id="camera-window" class="window hidden" style="display: none; width: 440px; height: 580px; top: 70px; left: 360px;">
-        <div class="title-bar bg-gray-800 text-white px-3 py-2 flex justify-between items-center">
+    <!-- Window: Advanced Remote Surveillance & Multi-Camera Fleet Studio (Phase 22) -->
+    <div id="camera-window" class="window hidden" style="display: none; width: 620px; height: 660px; top: 60px; left: 340px; min-width: 480px; min-height: 520px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55); border-radius: 1rem; border: 1px solid rgba(75, 85, 99, 0.4); background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(20px);">
+        <!-- Title Bar -->
+        <div class="title-bar bg-gray-900/90 text-white px-3.5 py-2.5 flex justify-between items-center select-none border-b border-gray-800">
             <div class="flex items-center gap-2">
-                <span class="text-xs">📷</span>
-                <span class="font-semibold text-xs">Direct Camera Stream</span>
+                <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-rose-500 to-indigo-600 flex items-center justify-center text-white text-[11px] shadow-sm font-bold">📷</div>
+                <span class="font-semibold text-xs tracking-wide text-gray-100">Remote Surveillance & Multi-Camera Studio</span>
+                <span id="cam-telemetry-badge" class="ml-1 text-[10px] bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.2 rounded font-mono">480p • Rear</span>
+                <span id="cam-fps-badge" class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">0 FPS</span>
             </div>
             <div class="flex items-center gap-1.5 no-drag">
-                <button onclick="wm.minimizeWindow('camera-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
-                <button onclick="wm.maximizeWindow('camera-window')" class="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
-                <button onclick="closeCameraRoom()" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-1.5 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
+                <button onclick="wm.minimizeWindow('camera-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Minimize">_</button>
+                <button onclick="wm.maximizeWindow('camera-window')" class="text-gray-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10 font-bold transition-all" title="Maximize / Restore">□</button>
+                <button onclick="closeCameraRoom()" class="text-gray-400 hover:text-rose-400 text-sm font-bold px-2 py-0.5 rounded hover:bg-white/10 transition-all" title="Close">✕</button>
             </div>
         </div>
+
+        <!-- Top Quality & Preset Selector Bar -->
+        <div class="bg-gray-900/60 border-b border-gray-800/80 px-3.5 py-2 flex items-center justify-between text-xs select-none">
+            <!-- Quality Presets -->
+            <div class="flex items-center gap-1.5">
+                <span class="text-gray-400 text-[11px] font-medium mr-1">Quality:</span>
+                <button onclick="setDirectCameraQuality('low')" id="cam-qual-low" class="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all cursor-pointer">
+                    ⚡ 360p Data-Saver
+                </button>
+                <button onclick="setDirectCameraQuality('medium')" id="cam-qual-medium" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-600/30 text-blue-300 border border-blue-500/40 transition-all cursor-pointer">
+                    🎥 480p Standard
+                </button>
+                <button onclick="setDirectCameraQuality('high')" id="cam-qual-high" class="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all cursor-pointer">
+                    🌟 720p HD
+                </button>
+            </div>
+
+            <!-- Quick Controls -->
+            <div class="flex items-center gap-1.5">
+                <button onclick="switchDirectCamera()" class="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-300 hover:text-white bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700 transition-all flex items-center gap-1 cursor-pointer" title="Switch between Front and Rear Camera">
+                    <span>🔄</span><span id="cam-facing-label">Front</span>
+                </button>
+                <button id="cam-torch-btn" onclick="toggleDirectCameraTorch()" class="px-2.5 py-1 rounded-lg text-xs font-medium text-gray-300 hover:text-yellow-400 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700 transition-all flex items-center gap-1 cursor-pointer" title="Toggle Flashlight / Torch">
+                    <span>💡</span><span id="cam-torch-label">Torch</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Viewport Area -->
         <div class="flex-1 relative bg-black flex flex-col overflow-hidden">
-            <div id="camera-status-bar" class="bg-gray-900/90 text-yellow-400 text-[11px] py-1.5 px-3 text-center border-b border-gray-800 font-mono">
-                Click Start Camera below
+            <!-- Status Ribbon -->
+            <div id="camera-status-bar" class="bg-gray-900/90 text-yellow-400 text-[11px] py-1 px-3 text-center border-b border-gray-800 font-mono">
+                Click "Start Camera" to initiate live surveillance stream
             </div>
 
-            <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden">
+            <!-- Main Live Stream Display -->
+            <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black overflow-hidden select-none">
                 <video id="camera-webrtc-video" class="w-full h-full object-contain hidden" autoplay playsinline muted></video>
-                <img id="camera-frame-view" class="w-full h-full object-contain hidden" alt="Camera Feed" />
-                <div id="camera-placeholder" class="text-gray-500 text-xs text-center p-4">
-                    Camera is currently stopped. Click "Start Camera" to stream.
+                <img id="camera-frame-view" class="w-full h-full object-contain hidden pointer-events-none" alt="Live Camera Stream" />
+                <div id="camera-placeholder" class="text-gray-500 text-xs text-center p-6 flex flex-col items-center gap-2">
+                    <span class="text-3xl opacity-60">📷</span>
+                    <span>Camera stream is currently inactive. Click below to begin live feed.</span>
+                </div>
+
+                <!-- HUD Overlay (Visible during active stream) -->
+                <div id="cam-hud-overlay" class="hidden absolute top-2 left-2 pointer-events-none flex flex-col gap-1 text-[10px] font-mono text-white/80 bg-black/50 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10">
+                    <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span id="cam-hud-resolution">640x480</span></div>
+                    <div id="cam-hud-zoom-text">Zoom: 1.0x</div>
+                </div>
+
+                <!-- Zoom Control Slider Overlay -->
+                <div id="cam-zoom-bar" class="hidden absolute bottom-3 left-4 right-4 bg-gray-950/80 backdrop-blur-md border border-gray-800 rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs text-gray-300">
+                    <span class="text-[11px] font-mono text-cyan-400">🔍 Zoom:</span>
+                    <input type="range" id="cam-zoom-slider" min="1.0" max="4.0" step="0.1" value="1.0" class="flex-1 accent-cyan-500 cursor-pointer" oninput="setDirectCameraZoom(this.value)">
+                    <span id="cam-zoom-val" class="font-mono text-[11px] text-cyan-300 w-10 text-right">1.0x</span>
                 </div>
             </div>
 
-            <div class="bg-gray-900 p-3 flex flex-col gap-2.5 border-t border-gray-700 z-10 text-xs">
-                <div class="flex justify-between items-center gap-2">
-                    <button id="cam-toggle-btn" onclick="startCameraStream('back')" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow transition-colors">Start Camera</button>
-                    <button onclick="saveCameraSnapshot()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 py-2 rounded-lg transition-colors flex items-center gap-1 shadow-sm" title="Capture High-Res Photo to PC">
-                        📸 Snapshot
-                    </button>
-                    <button onclick="toggleWebRtcCamera()" class="bg-gray-700 hover:bg-gray-600 text-white font-medium px-3 py-2 rounded-lg transition-colors" title="Switch Front/Back Camera">🔄 Switch</button>
-                    <button onclick="sendCommand({action: 'TOGGLE_FLASHLIGHT'})" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-3 py-2 rounded-lg transition-colors" title="Toggle Flashlight">💡 Flash</button>
+            <!-- Snapshot Drawer Preview (Visible after snapshot capture) -->
+            <div id="cam-snapshot-drawer" class="hidden bg-gray-900/95 border-t border-gray-800 p-2.5 flex items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-2.5 overflow-hidden">
+                    <img id="cam-snapshot-thumb" class="w-12 h-10 object-cover rounded-lg border border-gray-700" alt="Snapshot Thumbnail" />
+                    <div>
+                        <div class="font-semibold text-gray-200 text-xs">Snapshot Captured 📸</div>
+                        <div id="cam-snapshot-time" class="text-[10px] text-gray-400 font-mono">Just now</div>
+                    </div>
                 </div>
-                <div class="flex items-center gap-2 text-white text-[11px] pt-1">
-                    <span>🔊 Mic Audio:</span>
-                    <input type="range" id="cam-mic-volume" min="0" max="1" step="0.05" value="0" class="flex-1" oninput="adjustAudioVolume(this.value)">
-                    <span id="cam-mic-volume-label" class="w-8 font-mono text-right text-gray-300">Off</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="downloadCameraSnapshot()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow transition-all flex items-center gap-1 cursor-pointer">
+                        <span>⬇</span> Save Photo
+                    </button>
+                    <button onclick="dismissCameraSnapshot()" class="text-gray-400 hover:text-gray-200 text-xs px-2 py-1 cursor-pointer">✕</button>
+                </div>
+            </div>
+
+            <!-- Bottom Master Controls Toolbar -->
+            <div class="bg-gray-900/95 p-3 flex flex-col gap-2.5 border-t border-gray-800 z-10 text-xs">
+                <div class="flex items-center justify-between gap-2">
+                    <button id="cam-toggle-btn" onclick="startDirectCamera('back')" class="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2 rounded-xl shadow-lg shadow-blue-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5">
+                        <span>▶</span><span>Start Camera</span>
+                    </button>
+                    <button onclick="takeDirectCameraSnapshot()" class="bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 font-semibold px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer" title="Capture High-Res Photo directly to PC">
+                        <span>📸</span><span>Snapshot</span>
+                    </button>
+                </div>
+
+                <!-- Ambient Audio Listening & Waveform Visualizer -->
+                <div class="flex items-center justify-between gap-3 text-white text-[11px] pt-1 border-t border-gray-800/80">
+                    <div class="flex items-center gap-2">
+                        <button id="cam-audio-toggle-btn" onclick="toggleDirectCameraAudio()" class="px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 transition-all cursor-pointer">
+                            <span id="cam-audio-icon">🔇</span><span id="cam-audio-label">Listen Mic</span>
+                        </button>
+                    </div>
+                    <div class="flex-1 flex items-center gap-2">
+                        <span class="text-gray-400 text-[10px]">Volume:</span>
+                        <input type="range" id="cam-mic-volume" min="0" max="1" step="0.05" value="0.7" class="flex-1 accent-indigo-500 cursor-pointer" oninput="adjustAudioVolume(this.value)">
+                        <span id="cam-mic-volume-label" class="w-8 font-mono text-right text-gray-400 text-[10px]">70%</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4845,7 +4920,7 @@
             else if (data.type === 'STEALTH_CAPTURE_RESULT') {
                 handleStealthCaptureResult(data);
             }
-            // --- Camera Direct Stream ---
+            // --- Phase 22: Advanced Remote Surveillance Camera Stream ---
             else if (data.type === 'CAMERA_FRAME') {
                 const img = document.getElementById('camera-frame-view');
                 const placeholder = document.getElementById('camera-placeholder');
@@ -4854,29 +4929,18 @@
                     img.classList.remove('hidden');
                 }
                 if (placeholder) placeholder.classList.add('hidden');
-                updateCameraStatus("🟢 Live Camera Stream (30 FPS)");
+                cameraFpsCount++;
+                updateCameraStatus("🟢 Live Surveillance Stream Active");
             } else if (data.type === 'CAMERA_STREAM_STARTED') {
                 updateCameraStatus("🟢 Camera Hardware Active");
-                const btn = document.getElementById('cam-toggle-btn');
-                if (btn) {
-                    btn.textContent = "Stop Camera";
-                    btn.className = "flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg shadow transition-colors";
-                    btn.onclick = () => stopCameraStream();
-                }
-                const placeholder = document.getElementById('camera-placeholder');
-                if (placeholder) placeholder.classList.add('hidden');
+                updateCameraControlsUI(true);
             } else if (data.type === 'CAMERA_STREAM_STOPPED') {
-                updateCameraStatus("Camera Stopped");
-                const btn = document.getElementById('cam-toggle-btn');
-                if (btn) {
-                    btn.textContent = "Start Camera";
-                    btn.className = "flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow transition-colors";
-                    btn.onclick = () => startCameraStream('back');
-                }
-                const img = document.getElementById('camera-frame-view');
-                const placeholder = document.getElementById('camera-placeholder');
-                if (img) img.classList.add('hidden');
-                if (placeholder) placeholder.classList.remove('hidden');
+                updateCameraStatus("Camera Inactive");
+                updateCameraControlsUI(false);
+            } else if (data.type === 'CAMERA_SNAPSHOT_RESULT') {
+                handleCameraSnapshotResult(data);
+            } else if (data.type === 'CAMERA_TELEMETRY_STATUS') {
+                handleCameraTelemetryStatus(data);
             }
             // --- Screen Mirroring Direct Stream ---
             else if (data.type === 'SCREEN_FRAME') {
@@ -5677,50 +5741,266 @@
             }, 2000);
         }
 
-        function toggleWebRtcCamera() {
-            sendCommand({ action: 'WEBRTC_SWITCH_CAMERA', type: 'WEBRTC_SWITCH_CAMERA' });
-        }
+        // =========================================================================
+        // --- Phase 22: Advanced Remote Surveillance & Multi-Camera Fleet Studio ---
+        // =========================================================================
+        let isDirectCameraActive = false;
+        let currentCameraFacing = 'back';
+        let currentCameraQuality = 'medium';
+        let currentCameraZoom = 1.0;
+        let cameraFpsCount = 0;
+        let cameraFpsTimer = null;
+        let lastCapturedSnapshotBase64 = null;
+        let isCameraAudioListening = false;
 
-        function startCameraStream(facing) {
+        function startDirectCamera(facing, quality) {
             const screenBtn = document.getElementById('screen-toggle-btn');
             if (screenBtn && screenBtn.textContent.includes("Stop")) {
                 updateScreenStatus("Screen Mirror Paused for Camera");
                 screenBtn.textContent = "Start Screen Mirror";
                 screenBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 rounded-lg shadow text-xs transition-colors";
                 screenBtn.onclick = () => startScreenStream();
-                const screenVideo = document.getElementById('screen-webrtc-video');
                 const screenImg = document.getElementById('screen-frame-view');
                 const screenPlace = document.getElementById('screen-placeholder');
-                if (screenVideo) screenVideo.classList.add('hidden');
                 if (screenImg) screenImg.classList.add('hidden');
                 if (screenPlace) screenPlace.classList.remove('hidden');
             }
 
-            updateCameraStatus("🟡 Starting Camera Stream...");
-            sendCommand({ action: 'START_WEBRTC_CAMERA', type: 'START_WEBRTC_CAMERA', facing: facing || 'back' });
+            currentCameraFacing = facing || currentCameraFacing || 'back';
+            currentCameraQuality = quality || currentCameraQuality || 'medium';
+
+            updateCameraStatus("🟡 Connecting to Camera Hardware...");
+            sendCommand({
+                action: 'START_CAMERA_STREAM',
+                facing: currentCameraFacing,
+                front: currentCameraFacing === 'front',
+                quality: currentCameraQuality
+            });
+
+            isDirectCameraActive = true;
+            updateCameraControlsUI(true);
+            startFpsCounter();
+        }
+
+        function startCameraStream(facing) {
+            startDirectCamera(facing, currentCameraQuality);
+        }
+
+        function stopDirectCamera() {
+            isDirectCameraActive = false;
+            stopFpsCounter();
+            sendCommand({ action: 'STOP_CAMERA_STREAM' });
+            updateCameraStatus("Camera Inactive");
+            updateCameraControlsUI(false);
+
+            const img = document.getElementById('camera-frame-view');
+            const placeholder = document.getElementById('camera-placeholder');
+            const hud = document.getElementById('cam-hud-overlay');
+            const zoomBar = document.getElementById('cam-zoom-bar');
+
+            if (img) img.classList.add('hidden');
+            if (placeholder) placeholder.classList.remove('hidden');
+            if (hud) hud.classList.add('hidden');
+            if (zoomBar) zoomBar.classList.add('hidden');
+
+            if (isCameraAudioListening) {
+                toggleDirectCameraAudio();
+            }
         }
 
         function stopCameraStream() {
-            closeWebRtcPeerConnection();
-            sendCommand({ action: 'STOP_WEBRTC', type: 'STOP_WEBRTC' });
-            updateCameraStatus("Camera stopped");
-            const btn = document.getElementById('cam-toggle-btn');
-            if (btn) {
-                btn.textContent = "Start Camera";
-                btn.className = "flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg shadow transition-colors";
-                btn.onclick = () => startCameraStream('back');
-            }
-            const video = document.getElementById('camera-webrtc-video');
-            const img = document.getElementById('camera-frame-view');
-            const placeholder = document.getElementById('camera-placeholder');
-            if (video) video.classList.add('hidden');
-            if (img) img.classList.add('hidden');
-            if (placeholder) placeholder.classList.remove('hidden');
+            stopDirectCamera();
         }
 
         function closeCameraRoom() {
             wm.closeWindow('camera-window');
-            stopCameraStream();
+            stopDirectCamera();
+        }
+
+        function switchDirectCamera() {
+            currentCameraFacing = (currentCameraFacing === 'front') ? 'back' : 'front';
+            const facingLabel = document.getElementById('cam-facing-label');
+            if (facingLabel) {
+                facingLabel.textContent = (currentCameraFacing === 'front') ? 'Rear' : 'Front';
+            }
+            if (isDirectCameraActive) {
+                updateCameraStatus("Switching camera sensor...");
+                sendCommand({
+                    action: 'SWITCH_CAMERA',
+                    facing: currentCameraFacing,
+                    front: currentCameraFacing === 'front'
+                });
+            }
+        }
+
+        function setDirectCameraQuality(quality) {
+            currentCameraQuality = quality;
+            ['low', 'medium', 'high'].forEach(q => {
+                const btn = document.getElementById(`cam-qual-${q}`);
+                if (btn) {
+                    if (q === quality) {
+                        btn.className = "px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-600/30 text-blue-300 border border-blue-500/40 transition-all cursor-pointer";
+                    } else {
+                        btn.className = "px-2.5 py-1 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all cursor-pointer";
+                    }
+                }
+            });
+            if (isDirectCameraActive) {
+                sendCommand({ action: 'SET_CAMERA_QUALITY', quality: quality });
+                showToast(`Stream Quality: ${quality.toUpperCase()}`, "info");
+            }
+        }
+
+        function setDirectCameraZoom(zoomVal) {
+            currentCameraZoom = parseFloat(zoomVal) || 1.0;
+            const valLabel = document.getElementById('cam-zoom-val');
+            const hudZoom = document.getElementById('cam-hud-zoom-text');
+            if (valLabel) valLabel.textContent = `${currentCameraZoom.toFixed(1)}x`;
+            if (hudZoom) hudZoom.textContent = `Zoom: ${currentCameraZoom.toFixed(1)}x`;
+
+            if (isDirectCameraActive) {
+                sendCommand({ action: 'SET_CAMERA_ZOOM', zoom: currentCameraZoom });
+            }
+        }
+
+        function toggleDirectCameraTorch() {
+            sendCommand({ action: 'TOGGLE_FLASHLIGHT' });
+        }
+
+        function takeDirectCameraSnapshot() {
+            if (!isDirectCameraActive) {
+                showToast("Please start the camera stream first", "info");
+                return;
+            }
+            showToast("Capturing high-resolution snapshot... 📸", "info");
+            sendCommand({ action: 'CAPTURE_CAMERA_SNAPSHOT' });
+        }
+
+        function handleCameraSnapshotResult(data) {
+            const base64 = data.image || '';
+            if (!base64) {
+                showToast("Failed to capture snapshot", "error");
+                return;
+            }
+            lastCapturedSnapshotBase64 = base64;
+            const drawer = document.getElementById('cam-snapshot-drawer');
+            const thumb = document.getElementById('cam-snapshot-thumb');
+            const timeEl = document.getElementById('cam-snapshot-time');
+
+            if (thumb) thumb.src = 'data:image/jpeg;base64,' + base64;
+            if (timeEl) timeEl.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (drawer) drawer.classList.remove('hidden');
+
+            showToast("Snapshot ready to save! 📸", "success");
+        }
+
+        function downloadCameraSnapshot() {
+            if (!lastCapturedSnapshotBase64) return;
+            const a = document.createElement('a');
+            a.href = 'data:image/jpeg;base64,' + lastCapturedSnapshotBase64;
+            a.download = `OpenDroid_Snapshot_${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast("Photo saved to PC downloads! 💾", "success");
+        }
+
+        function dismissCameraSnapshot() {
+            const drawer = document.getElementById('cam-snapshot-drawer');
+            if (drawer) drawer.classList.add('hidden');
+        }
+
+        function toggleDirectCameraAudio() {
+            isCameraAudioListening = !isCameraAudioListening;
+            const btn = document.getElementById('cam-audio-toggle-btn');
+            const icon = document.getElementById('cam-audio-icon');
+            const label = document.getElementById('cam-audio-label');
+
+            if (isCameraAudioListening) {
+                if (btn) btn.className = "px-2.5 py-1 rounded-lg bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer";
+                if (icon) icon.textContent = "🔊";
+                if (label) label.textContent = "Listening";
+                sendCommand({ action: 'START_AUDIO_STREAM' });
+                showToast("Live mic audio listening activated 🎙️", "info");
+            } else {
+                if (btn) btn.className = "px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-medium border border-gray-700 flex items-center gap-1.5 transition-all cursor-pointer";
+                if (icon) icon.textContent = "🔇";
+                if (label) label.textContent = "Listen Mic";
+                sendCommand({ action: 'STOP_AUDIO_STREAM' });
+                showToast("Audio listening stopped", "info");
+            }
+        }
+
+        function handleCameraTelemetryStatus(data) {
+            const telem = data.data || {};
+            const badge = document.getElementById('cam-telemetry-badge');
+            const resHud = document.getElementById('cam-hud-resolution');
+            const facingLabel = document.getElementById('cam-facing-label');
+            const torchBtn = document.getElementById('cam-torch-btn');
+            const torchLabel = document.getElementById('cam-torch-label');
+            const slider = document.getElementById('cam-zoom-slider');
+
+            const isFront = telem.isFrontCamera === true;
+            const qual = (telem.quality || 'medium').toUpperCase();
+            const w = telem.width || 640;
+            const h = telem.height || 480;
+
+            if (badge) badge.textContent = `${qual} (${w}x${h}) • ${isFront ? 'Front' : 'Rear'}`;
+            if (resHud) resHud.textContent = `${w}x${h}`;
+            if (facingLabel) facingLabel.textContent = isFront ? 'Rear' : 'Front';
+
+            if (telem.isTorchOn) {
+                if (torchBtn) torchBtn.className = "px-2.5 py-1 rounded-lg text-xs font-semibold text-yellow-300 bg-yellow-500/20 border border-yellow-500/40 transition-all flex items-center gap-1 cursor-pointer";
+                if (torchLabel) torchLabel.textContent = "Torch: ON";
+            } else {
+                if (torchBtn) torchBtn.className = "px-2.5 py-1 rounded-lg text-xs font-medium text-gray-300 hover:text-yellow-400 bg-gray-800/80 hover:bg-gray-700/80 border border-gray-700 transition-all flex items-center gap-1 cursor-pointer";
+                if (torchLabel) torchLabel.textContent = "Torch";
+            }
+
+            if (slider && telem.maxZoom) {
+                slider.max = telem.maxZoom;
+            }
+        }
+
+        function startFpsCounter() {
+            stopFpsCounter();
+            cameraFpsCount = 0;
+            cameraFpsTimer = setInterval(() => {
+                const fpsBadge = document.getElementById('cam-fps-badge');
+                if (fpsBadge) fpsBadge.textContent = `${cameraFpsCount} FPS`;
+                cameraFpsCount = 0;
+            }, 1000);
+        }
+
+        function stopFpsCounter() {
+            if (cameraFpsTimer) {
+                clearInterval(cameraFpsTimer);
+                cameraFpsTimer = null;
+            }
+            const fpsBadge = document.getElementById('cam-fps-badge');
+            if (fpsBadge) fpsBadge.textContent = "0 FPS";
+        }
+
+        function updateCameraControlsUI(isActive) {
+            const btn = document.getElementById('cam-toggle-btn');
+            const hud = document.getElementById('cam-hud-overlay');
+            const zoomBar = document.getElementById('cam-zoom-bar');
+
+            if (btn) {
+                if (isActive) {
+                    btn.innerHTML = '<span>⏹</span><span>Stop Camera</span>';
+                    btn.className = "flex-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-bold py-2 rounded-xl shadow-lg shadow-red-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5";
+                    btn.onclick = () => stopDirectCamera();
+                    if (hud) hud.classList.remove('hidden');
+                    if (zoomBar) zoomBar.classList.remove('hidden');
+                } else {
+                    btn.innerHTML = '<span>▶</span><span>Start Camera</span>';
+                    btn.className = "flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2 rounded-xl shadow-lg shadow-blue-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5";
+                    btn.onclick = () => startDirectCamera('back');
+                    if (hud) hud.classList.add('hidden');
+                    if (zoomBar) zoomBar.classList.add('hidden');
+                }
+            }
         }
 
         // --- Phase 3: Two-Way Audio (Walkie-Talkie Engine) ---

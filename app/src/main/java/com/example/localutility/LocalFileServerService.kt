@@ -937,6 +937,20 @@ class LocalFileServerService : Service() {
         }
     }
 
+    fun broadcastCameraTelemetry() {
+        try {
+            val telem = cameraStreamer.getCameraTelemetry()
+            val json = JSONObject().apply {
+                put("type", "CAMERA_TELEMETRY_STATUS")
+                put("data", telem)
+                put("timestamp", System.currentTimeMillis())
+            }.toString()
+            broadcastMessage(json)
+        } catch (e: Exception) {
+            Log.e("LocalFileServerService", "Error broadcasting camera telemetry: ${e.message}")
+        }
+    }
+
     fun sendDirectScreenFrame(base64Frame: String) {
         val json = JSONObject().apply {
             put("type", "SCREEN_FRAME")
@@ -1583,10 +1597,11 @@ class LocalFileServerService : Service() {
                 }
 
                 val facing = json.optString("facing", "back")
-                val isFront = (facing == "front")
+                val isFront = (facing == "front") || json.optBoolean("front", false)
+                val quality = json.optString("quality", "medium")
 
                 val camServiceIntent = Intent(this@LocalFileServerService, CameraStreamService::class.java).apply {
-                    putExtra("facing", facing)
+                    putExtra("facing", if (isFront) "front" else "back")
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     startForegroundService(camServiceIntent)
@@ -1594,12 +1609,15 @@ class LocalFileServerService : Service() {
                     startService(camServiceIntent)
                 }
 
-                cameraStreamer.startStreaming(isFront) { frameBase64 ->
+                cameraStreamer.startStreaming(isFront, quality) { frameBase64 ->
                     sendDirectCameraFrame(frameBase64)
                 }
                 broadcastMessage(JSONObject().apply {
                     put("type", "CAMERA_STREAM_STARTED")
+                    put("isFront", isFront)
+                    put("quality", quality)
                 }.toString())
+                broadcastCameraTelemetry()
             }
 
             "STOP_CAMERA_STREAM" -> {
@@ -1609,6 +1627,7 @@ class LocalFileServerService : Service() {
                 broadcastMessage(JSONObject().apply {
                     put("type", "CAMERA_STREAM_STOPPED")
                 }.toString())
+                broadcastCameraTelemetry()
             }
 
             // --- Phase 1: Step 1.3 Standalone Flashlight / Torch Toggle ---
@@ -1653,8 +1672,47 @@ class LocalFileServerService : Service() {
                 }
             }
 
-            "SWITCH_CAMERA" -> cameraStreamer.switchCamera()
-            "TOGGLE_FLASHLIGHT" -> cameraStreamer.toggleTorch()
+            "SWITCH_CAMERA" -> {
+                cameraStreamer.switchCamera { frameBase64 ->
+                    sendDirectCameraFrame(frameBase64)
+                }
+                broadcastCameraTelemetry()
+            }
+
+            "SET_CAMERA_QUALITY" -> {
+                val q = json.optString("quality", "medium")
+                cameraStreamer.setQuality(q)
+                broadcastCameraTelemetry()
+            }
+
+            "SET_CAMERA_ZOOM" -> {
+                val zoom = json.optDouble("zoom", 1.0).toFloat()
+                cameraStreamer.setZoom(zoom)
+                broadcastCameraTelemetry()
+            }
+
+            "CAPTURE_CAMERA_SNAPSHOT" -> {
+                cameraStreamer.captureSnapshot { snapshotBase64 ->
+                    broadcastMessage(JSONObject().apply {
+                        put("type", "CAMERA_SNAPSHOT_RESULT")
+                        put("image", snapshotBase64)
+                        put("timestamp", System.currentTimeMillis())
+                    }.toString())
+                }
+            }
+
+            "FETCH_CAMERA_TELEMETRY" -> {
+                broadcastCameraTelemetry()
+            }
+
+            "TOGGLE_FLASHLIGHT" -> {
+                val isOn = cameraStreamer.toggleTorch()
+                broadcastMessage(JSONObject().apply {
+                    put("type", "TORCH_STATUS")
+                    put("isOn", isOn)
+                }.toString())
+                broadcastCameraTelemetry()
+            }
 
             // --- Screen Mirror Stream ---
             "START_SCREEN_STREAM" -> {
