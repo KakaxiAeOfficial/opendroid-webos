@@ -394,7 +394,7 @@ class DirectCameraStreamer private constructor(private val context: Context) {
         return cameraManager.cameraIdList.firstOrNull()
     }
 
-    private fun chooseResolutionForQuality(choices: Array, quality: String): Size {
+    private fun chooseResolutionForQuality(choices: Array<Size>, quality: String): Size {
         return when (quality.lowercase()) {
             "low" -> {
                 // Low Data-Saver: prioritize ~352x288 or 320x240 for ultra-lightweight frames (5-8 KB)
@@ -416,4 +416,5 @@ class DirectCameraStreamer private constructor(private val context: Context) {
         }
     }
 }
+
 
