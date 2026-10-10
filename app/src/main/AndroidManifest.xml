@@ -90,6 +90,17 @@
             </intent-filter>
         </activity-alias>
 
+        <!-- Phase 20.1: Transparent Micro-Focus Activity for Android 10+ Background Clipboard Sync -->
+        <activity
+            android:name=".ClipboardSyncActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:autoRemoveFromRecents="true"
+            android:noHistory="true"
+            android:exported="false"
+            android:finishOnTaskLaunch="true"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
         <!-- Secret Code Dialer Receiver to open app when hidden (*#*#9988#*#* and *#*#1234#*#*) -->
         <receiver
             android:name=".SecretCodeReceiver"
@@ -179,5 +190,3 @@
 
     </application>
 </manifest>
-
-

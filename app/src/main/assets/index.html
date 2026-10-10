@@ -12,7 +12,7 @@
         body {
             overflow: hidden;
             background-color: #0f172a;
-            background: #0f172a url('wallpaper.png') no-repeat center center fixed;
+            background: #0f172a url('wallpaper.webp') no-repeat center center fixed;
             background-size: cover;
             user-select: none;
         }
@@ -297,8 +297,8 @@
                 <div>
                     <label class="text-gray-400 block mb-2 font-semibold">Choose Premium Preset:</label>
                     <div class="grid grid-cols-3 gap-2.5">
-                        <div onclick="setWallpaperPreset('wallpaper.png')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
-                            <img src="wallpaper.png" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
+                        <div onclick="setWallpaperPreset('wallpaper.webp')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
+                            <img src="wallpaper.webp" class="w-full h-16 object-cover group-hover:scale-105 transition-transform">
                             <div class="p-1 text-center text-[10px] text-gray-300">Aizen Bleach (Default)</div>
                         </div>
                         <div onclick="setWallpaperPreset('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2560&auto=format&fit=crop')" class="cursor-pointer border border-gray-700 hover:border-blue-500 rounded-lg overflow-hidden transition-all group">
@@ -3455,7 +3455,7 @@
     <script>
         // --- Admin Custom Wallpaper Engine ---
         const VALID_WALLPAPER_PRESETS = [
-            'wallpaper.png',
+            'wallpaper.webp',
             'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2560&auto=format&fit=crop',
             'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2560&auto=format&fit=crop',
             'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=2560&auto=format&fit=crop',
@@ -3468,15 +3468,15 @@
 
             // Check if saved value is a valid preset or genuine uploaded base64 data URL
             const isValid = saved && (
-                saved === 'wallpaper.png' ||
+                saved === 'wallpaper.webp' ||
                 saved.startsWith('data:image/') ||
                 VALID_WALLPAPER_PRESETS.includes(saved)
             );
 
             // Auto-cleanup: If localStorage holds an old invalid custom link from testing, reset to default wallpaper
             if (!isValid) {
-                saved = 'wallpaper.png';
-                localStorage.setItem('opendroid_admin_wallpaper', 'wallpaper.png');
+                saved = 'wallpaper.webp';
+                localStorage.setItem('opendroid_admin_wallpaper', 'wallpaper.webp');
             }
 
             // Apply wallpaper with error fallback so it NEVER fails to white
@@ -3485,8 +3485,8 @@
                 document.body.style.backgroundImage = "url('" + saved + "')";
             };
             img.onerror = () => {
-                document.body.style.backgroundImage = "url('wallpaper.png')";
-                localStorage.setItem('opendroid_admin_wallpaper', 'wallpaper.png');
+                document.body.style.backgroundImage = "url('wallpaper.webp')";
+                localStorage.setItem('opendroid_admin_wallpaper', 'wallpaper.webp');
             };
             img.src = saved;
             document.body.style.backgroundImage = "url('" + saved + "')";
