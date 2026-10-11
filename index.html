@@ -1399,7 +1399,7 @@
             <div class="flex items-center gap-1.5 flex-wrap">
                 <!-- Search Box -->
                 <div class="relative flex items-center mr-1">
-                    <input type="text" id="file-search-input" oninput="onFileSearchInput(this.value)" placeholder="Search" class="w-36 lg:w-44 pl-7 pr-5 py-1 text-xs bg-white border border-gray-300 rounded shadow-xs focus:outline-none focus:border-blue-500 transition-all text-gray-800 placeholder-gray-400">
+                    <input type="text" id="file-search-input" oninput="onFileSearchInput(this.value)" onkeydown="if(event.key==='Enter') searchFilesRemote(this.value)" placeholder="Search (Enter for deep search)" class="w-36 lg:w-44 pl-7 pr-5 py-1 text-xs bg-white border border-gray-300 rounded shadow-xs focus:outline-none focus:border-blue-500 transition-all text-gray-800 placeholder-gray-400">
                     <span class="absolute left-2 text-gray-400 text-[11px] pointer-events-none">🔍</span>
                     <button id="file-search-clear" onclick="clearFileSearch()" class="hidden absolute right-1.5 text-gray-400 hover:text-gray-600 text-[10px] font-bold">✕</button>
                 </div>
@@ -1466,6 +1466,26 @@
             <div id="file-breadcrumbs-container" class="flex-1 flex items-center gap-1 overflow-x-auto whitespace-nowrap text-gray-600 text-[11px] font-medium py-0.5">
                 <span class="text-blue-600 font-semibold cursor-pointer hover:underline" onclick="navigateToDir('/storage/emulated/0')">SD Card</span>
                 <span class="text-gray-400">/</span>
+            </div>
+        </div>
+
+        <!-- Phase 23: Storage Vault Analytics Ribbon -->
+        <div id="file-storage-ribbon" class="bg-[#f0f4f8] border-b border-gray-200 px-3 py-1 flex items-center justify-between text-[11px] text-gray-600 select-none">
+            <div class="flex items-center gap-2 overflow-x-auto flex-1 mr-2" id="file-storage-categories-bar">
+                <span class="font-medium text-gray-500">Storage Vault:</span>
+                <span id="vault-used-stat" class="font-semibold text-gray-800">-- / --</span>
+                <div class="w-28 sm:w-40 bg-gray-200 rounded-full h-1.5 overflow-hidden flex" id="vault-progress-bar" title="Vault Categories Breakdown">
+                    <div class="bg-cyan-500 h-full" style="width: 0%" id="vault-bar-images" title="Images"></div>
+                    <div class="bg-indigo-500 h-full" style="width: 0%" id="vault-bar-videos" title="Videos"></div>
+                    <div class="bg-amber-500 h-full" style="width: 0%" id="vault-bar-audio" title="Audio"></div>
+                    <div class="bg-emerald-500 h-full" style="width: 0%" id="vault-bar-docs" title="Documents"></div>
+                    <div class="bg-rose-500 h-full" style="width: 0%" id="vault-bar-apks" title="APKs"></div>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+                <button onclick="requestStorageVaultAnalytics()" class="px-2 py-0.5 rounded bg-white hover:bg-gray-100 border border-gray-300 text-gray-700 text-[10px] font-medium shadow-2xs flex items-center gap-1 cursor-pointer transition-all" title="Open Deep Storage Vault Audit">
+                    <span>📊 Audit Vault</span>
+                </button>
             </div>
         </div>
 
@@ -1682,6 +1702,63 @@
             </div>
             <div class="mt-4 pt-3 flex justify-end border-t border-gray-100">
                 <button onclick="toggleFileHotkeysModal()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-xs">Close</button>
+            </div>
+        </div>
+    </div>
+    <!-- Phase 23: Storage Vault Audit Modal -->
+    <div id="storage-vault-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[120] flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 text-gray-200 rounded-2xl shadow-2xl p-5 max-w-2xl w-full text-xs animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl">📊</span>
+                    <span class="font-bold text-sm text-gray-100">Storage Vault Analytics & Deep Audit</span>
+                </div>
+                <button onclick="closeStorageVaultModal()" class="text-gray-400 hover:text-white text-lg font-bold">✕</button>
+            </div>
+            <!-- Vault Tabs -->
+            <div class="flex items-center gap-2 mt-3 pb-2 border-b border-gray-800 text-xs">
+                <button id="btn-vault-tab-overview" onclick="switchVaultTab('overview')" class="px-3 py-1 rounded-lg bg-blue-600 text-white font-medium">Categories Overview</button>
+                <button id="btn-vault-tab-large" onclick="switchVaultTab('large')" class="px-3 py-1 rounded-lg text-gray-400 hover:bg-gray-800 font-medium">Large Files (>25MB)</button>
+                <button id="btn-vault-tab-dupes" onclick="switchVaultTab('dupes')" class="px-3 py-1 rounded-lg text-gray-400 hover:bg-gray-800 font-medium">Duplicate Candidates</button>
+                <button onclick="requestStorageVaultAnalytics()" class="ml-auto px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-cyan-400 rounded-lg text-[11px] font-medium flex items-center gap-1 cursor-pointer">
+                    <span>🔄 Rescan</span>
+                </button>
+            </div>
+            <!-- Vault Tab 1: Overview -->
+            <div id="vault-tab-overview" class="flex-1 overflow-y-auto py-3 space-y-3">
+                <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/60">
+                    <div class="flex justify-between items-center mb-1 text-xs">
+                        <span class="text-gray-400">Total Storage Utilization</span>
+                        <span id="vault-tab-usage-txt" class="font-bold text-gray-200">Loading...</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden flex" id="vault-tab-progress">
+                        <div class="bg-cyan-500 h-full" style="width: 0%" id="vault-cat-bar-images"></div>
+                        <div class="bg-indigo-500 h-full" style="width: 0%" id="vault-cat-bar-videos"></div>
+                        <div class="bg-amber-500 h-full" style="width: 0%" id="vault-cat-bar-audio"></div>
+                        <div class="bg-emerald-500 h-full" style="width: 0%" id="vault-cat-bar-docs"></div>
+                        <div class="bg-rose-500 h-full" style="width: 0%" id="vault-cat-bar-apks"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5" id="vault-categories-grid">
+                    <!-- Categorical cards injected dynamically -->
+                </div>
+            </div>
+            <!-- Vault Tab 2: Large Files -->
+            <div id="vault-tab-large" class="hidden flex-1 overflow-y-auto py-2 space-y-1.5">
+                <div class="text-[11px] text-gray-400 mb-1">Top storage consumers found on phone:</div>
+                <div id="vault-large-files-list" class="space-y-1">
+                    <div class="text-center py-8 text-gray-500 text-xs">No large files scanned yet. Click Rescan.</div>
+                </div>
+            </div>
+            <!-- Vault Tab 3: Duplicates -->
+            <div id="vault-tab-dupes" class="hidden flex-1 overflow-y-auto py-2 space-y-2">
+                <div class="text-[11px] text-gray-400 mb-1">Files sharing identical byte length & verified hash:</div>
+                <div id="vault-dupes-list" class="space-y-2">
+                    <div class="text-center py-8 text-gray-500 text-xs">No duplicate candidates found.</div>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 flex justify-end border-t border-gray-800">
+                <button onclick="closeStorageVaultModal()" class="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium rounded-lg">Close</button>
             </div>
         </div>
     </div>
@@ -2035,7 +2112,7 @@
                     <div class="grid grid-cols-3 gap-2.5 text-center">
                         <button onclick="dialerPress('1')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
                             <div class="text-base font-bold">1</div>
-                            <div class="text-[9px] text-gray-400">&nbsp;</div>
+                            <div class="text-[9px] text-gray-400"> </div>
                         </button>
                         <button onclick="dialerPress('2')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
                             <div class="text-base font-bold">2</div>
@@ -2071,7 +2148,7 @@
                         </button>
                         <button onclick="dialerPress('*')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
                             <div class="text-base font-bold">*</div>
-                            <div class="text-[9px] text-gray-400">&nbsp;</div>
+                            <div class="text-[9px] text-gray-400"> </div>
                         </button>
                         <button onclick="dialerPress('0')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
                             <div class="text-base font-bold">0</div>
@@ -2079,7 +2156,7 @@
                         </button>
                         <button onclick="dialerPress('#')" class="bg-gray-800 hover:bg-gray-700 active:scale-95 py-3 rounded-xl transition-all">
                             <div class="text-base font-bold">#</div>
-                            <div class="text-[9px] text-gray-400">&nbsp;</div>
+                            <div class="text-[9px] text-gray-400"> </div>
                         </button>
                     </div>
                 </div>
@@ -5255,6 +5332,18 @@
                 handleOpenUrlAck(data);
             } else if (data.type === 'URL_HISTORY_LIST') {
                 renderUrlHistory(data.data || []);
+            } else if (data.type === 'CHUNKED_DOWNLOAD_START') {
+                handleChunkedDownloadStart(data);
+            } else if (data.type === 'CHUNKED_DOWNLOAD_PART') {
+                handleChunkedDownloadPart(data);
+            } else if (data.type === 'CHUNKED_DOWNLOAD_COMPLETE') {
+                handleChunkedDownloadComplete(data);
+            } else if (data.type === 'CHUNKED_DOWNLOAD_ERROR') {
+                handleChunkedDownloadError(data);
+            } else if (data.type === 'STORAGE_VAULT_ANALYTICS') {
+                renderStorageVaultAnalytics(data.data);
+            } else if (data.type === 'SEARCH_FILES_RESULT') {
+                renderSearchFilesResult(data.query, data.data);
             } else if (data.type === 'DIR_CONTENTS') {
                 renderDirectory(data.data);
             } else if (data.type === 'FILE_OP_RESULT') {
@@ -5458,7 +5547,7 @@
                 const rawUrl = item.url || '';
                 const target = item.target || 'auto';
                 const timeStr = item.time || (item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
-                const safeUrl = rawUrl.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                const safeUrl = rawUrl.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
                 const rawEscaped = encodeURIComponent(rawUrl);
 
                 html += `
@@ -6705,14 +6794,36 @@
 
         // --- File Download & Chunks Router ---
         function triggerFileDownload(filePath, fileName) {
-            activeDownload = {
-                path: filePath,
+            // Priority 1: High-Speed Direct LAN HTTP Download if reachable
+            if (isLocalMode && localServerIp) {
+                const directUrl = `http://${localServerIp}:8888/api/files/download?path=${encodeURIComponent(filePath)}`;
+                const a = document.createElement('a');
+                a.href = directUrl;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => document.body.removeChild(a), 500);
+                showToast(`Downloading ${fileName} via Fast Local Wi-Fi...`, "info");
+                return;
+            }
+
+            // Priority 2: Non-Blocking Coroutine Sequential Streamer over WAN
+            const downloadId = 'dl_' + Date.now();
+            activeChunkedDownloads[downloadId] = {
+                id: downloadId,
                 name: fileName,
+                path: filePath,
                 chunks: [],
+                receivedBytes: 0,
                 totalSize: 0
             };
-            showTransferToast(`Downloading ${fileName}`, 0);
-            sendCommand({ action: 'DOWNLOAD_FILE_CHUNK', path: filePath, offset: 0 });
+            showTransferToast(`Initiating stream for ${fileName}...`, 0);
+            sendCommand({
+                action: 'START_CHUNKED_DOWNLOAD',
+                path: filePath,
+                downloadId: downloadId,
+                chunkSize: 65536
+            });
         }
 
         function handleDownloadChunk(chunk) {
@@ -7439,6 +7550,12 @@
             updateFileStatusBar();
         }
 
+        function searchFilesRemote(query) {
+            if (!query || query.trim().length < 2) return;
+            showToast(`Searching files on phone for "${query}"...`, "info");
+            sendCommand({ action: 'SEARCH_FILES', query: query.trim(), rootPath: currentDirPath });
+        }
+
         function clearFileSearch() {
             const input = document.getElementById('file-search-input');
             if (input) input.value = '';
@@ -7651,11 +7768,21 @@
                 });
             } else {
                 if (confirm(`No files selected. Download ENTIRE current folder as ZIP:\n\n"${currentDirPath}"?`)) {
-                    showToast("Compressing folder to ZIP on phone...", "info");
-                    sendCommand({
-                        action: 'ZIP_AND_DOWNLOAD',
-                        paths: [currentDirPath]
-                    });
+                    if (isLocalMode && localServerIp) {
+                        const directUrl = `http://${localServerIp}:8888/api/files/download_zip?path=${encodeURIComponent(currentDirPath)}`;
+                        const a = document.createElement('a');
+                        a.href = directUrl;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => document.body.removeChild(a), 500);
+                        showToast("Streaming folder ZIP via Fast Local Wi-Fi...", "info");
+                    } else {
+                        showToast("Compressing folder to ZIP on phone...", "info");
+                        sendCommand({
+                            action: 'ZIP_AND_DOWNLOAD',
+                            paths: [currentDirPath]
+                        });
+                    }
                 }
             }
         }
@@ -10949,7 +11076,7 @@
                 const source = item.source || 'Phone';
                 const isPhone = source.toLowerCase() === 'phone';
 
-                const safeText = clipText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                const safeText = clipText.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
                 const rawEscaped = encodeURIComponent(clipText);
 
                 html += `
@@ -11193,7 +11320,7 @@
 
         function linkifyText(text) {
             if (!text) return '';
-            const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const escaped = text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
             const urlRegex = /(https?:\/\/[^\s<]+)/g;
             return escaped.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline break-all font-medium">$1</a>');
         }
@@ -14894,7 +15021,244 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
             }
         }
 
-</script>
+        // ==========================================
+        // Phase 23: High-Speed Chunked Downloader & Storage Vault 2.0
+        // ==========================================
+        let activeChunkedDownloads = {};
+        let currentVaultData = null;
+
+        function requestStorageVaultAnalytics() {
+            showToast("Scanning storage vault on phone...", "info");
+            const modal = document.getElementById('storage-vault-modal');
+            if (modal) modal.classList.remove('hidden');
+            sendCommand({ action: 'FETCH_STORAGE_VAULT_ANALYTICS' });
+        }
+
+        function closeStorageVaultModal() {
+            const modal = document.getElementById('storage-vault-modal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function switchVaultTab(tab) {
+            ['overview', 'large', 'dupes'].forEach(t => {
+                const el = document.getElementById(`vault-tab-${t}`);
+                const btn = document.getElementById(`btn-vault-tab-${t}`);
+                if (el) el.classList.toggle('hidden', t !== tab);
+                if (btn) {
+                    if (t === tab) {
+                        btn.className = "px-3 py-1 rounded-lg bg-blue-600 text-white font-medium";
+                    } else {
+                        btn.className = "px-3 py-1 rounded-lg text-gray-400 hover:bg-gray-800 font-medium";
+                    }
+                }
+            });
+        }
+
+        function renderStorageVaultAnalytics(data) {
+            if (!data) return;
+            currentVaultData = data;
+            const total = data.totalBytes || 0;
+            const used = data.usedBytes || 0;
+            const free = data.freeBytes || 0;
+
+            const usedStat = document.getElementById('vault-used-stat');
+            if (usedStat) usedStat.textContent = `${formatBytes(used)} / ${formatBytes(total)} (${formatBytes(free)} free)`;
+
+            const cats = data.categories || {};
+            const imgBytes = cats.images?.bytes || 0;
+            const vidBytes = cats.videos?.bytes || 0;
+            const audBytes = cats.audio?.bytes || 0;
+            const docBytes = cats.documents?.bytes || 0;
+            const apkBytes = cats.apks?.bytes || 0;
+
+            if (total > 0) {
+                const pImg = ((imgBytes / total) * 100).toFixed(1) + '%';
+                const pVid = ((vidBytes / total) * 100).toFixed(1) + '%';
+                const pAud = ((audBytes / total) * 100).toFixed(1) + '%';
+                const pDoc = ((docBytes / total) * 100).toFixed(1) + '%';
+                const pApk = ((apkBytes / total) * 100).toFixed(1) + '%';
+
+                ['vault-bar-images', 'vault-cat-bar-images'].forEach(id => { const el = document.getElementById(id); if (el) el.style.width = pImg; });
+                ['vault-bar-videos', 'vault-cat-bar-videos'].forEach(id => { const el = document.getElementById(id); if (el) el.style.width = pVid; });
+                ['vault-bar-audio', 'vault-cat-bar-audio'].forEach(id => { const el = document.getElementById(id); if (el) el.style.width = pAud; });
+                ['vault-bar-docs', 'vault-cat-bar-docs'].forEach(id => { const el = document.getElementById(id); if (el) el.style.width = pDoc; });
+                ['vault-bar-apks', 'vault-cat-bar-apks'].forEach(id => { const el = document.getElementById(id); if (el) el.style.width = pApk; });
+            }
+
+            const usageTxt = document.getElementById('vault-tab-usage-txt');
+            if (usageTxt) usageTxt.textContent = `${formatBytes(used)} used of ${formatBytes(total)}`;
+
+            const grid = document.getElementById('vault-categories-grid');
+            if (grid) {
+                grid.innerHTML = `
+                    <div class="bg-gray-800 p-2.5 rounded-xl border border-cyan-500/30 flex flex-col">
+                        <span class="text-cyan-400 font-bold text-xs flex items-center gap-1">🖼️ Images</span>
+                        <span class="text-sm font-semibold text-gray-100 mt-1">${formatBytes(imgBytes)}</span>
+                        <span class="text-[10px] text-gray-400">${cats.images?.count || 0} files</span>
+                    </div>
+                    <div class="bg-gray-800 p-2.5 rounded-xl border border-indigo-500/30 flex flex-col">
+                        <span class="text-indigo-400 font-bold text-xs flex items-center gap-1">🎬 Videos</span>
+                        <span class="text-sm font-semibold text-gray-100 mt-1">${formatBytes(vidBytes)}</span>
+                        <span class="text-[10px] text-gray-400">${cats.videos?.count || 0} files</span>
+                    </div>
+                    <div class="bg-gray-800 p-2.5 rounded-xl border border-amber-500/30 flex flex-col">
+                        <span class="text-amber-400 font-bold text-xs flex items-center gap-1">🎵 Audio</span>
+                        <span class="text-sm font-semibold text-gray-100 mt-1">${formatBytes(audBytes)}</span>
+                        <span class="text-[10px] text-gray-400">${cats.audio?.count || 0} files</span>
+                    </div>
+                    <div class="bg-gray-800 p-2.5 rounded-xl border border-emerald-500/30 flex flex-col">
+                        <span class="text-emerald-400 font-bold text-xs flex items-center gap-1">📄 Documents</span>
+                        <span class="text-sm font-semibold text-gray-100 mt-1">${formatBytes(docBytes)}</span>
+                        <span class="text-[10px] text-gray-400">${cats.documents?.count || 0} files</span>
+                    </div>
+                    <div class="bg-gray-800 p-2.5 rounded-xl border border-rose-500/30 flex flex-col">
+                        <span class="text-rose-400 font-bold text-xs flex items-center gap-1">🤖 APKs</span>
+                        <span class="text-sm font-semibold text-gray-100 mt-1">${formatBytes(apkBytes)}</span>
+                        <span class="text-[10px] text-gray-400">${cats.apks?.count || 0} files</span>
+                    </div>
+                    <div class="bg-gray-800 p-2.5 rounded-xl border border-purple-500/30 flex flex-col">
+                        <span class="text-purple-400 font-bold text-xs flex items-center gap-1">📦 Archives</span>
+                        <span class="text-sm font-semibold text-gray-100 mt-1">${formatBytes(cats.archives?.bytes || 0)}</span>
+                        <span class="text-[10px] text-gray-400">${cats.archives?.count || 0} files</span>
+                    </div>
+                `;
+            }
+
+            const largeList = document.getElementById('vault-large-files-list');
+            if (largeList) {
+                const lf = data.largeFiles || [];
+                if (lf.length === 0) {
+                    largeList.innerHTML = '<div class="text-center py-6 text-gray-500 text-xs">No heavy files (>25MB) found.</div>';
+                } else {
+                    largeList.innerHTML = lf.map(f => `
+                        <div class="bg-gray-800/80 p-2 rounded-lg border border-gray-700/60 flex items-center justify-between gap-2 text-xs hover:bg-gray-800 transition-colors">
+                            <div class="flex items-center gap-2 truncate flex-1">
+                                <span class="text-base">${getFileIcon(f.name, false)}</span>
+                                <div class="truncate">
+                                    <div class="font-medium text-gray-200 truncate">${f.name}</div>
+                                    <div class="text-[10px] text-gray-400 truncate">${f.path}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <span class="font-bold text-cyan-300 text-xs">${formatBytes(f.size)}</span>
+                                <button onclick="triggerFileDownload('${f.path.replace(/'/g, "\\'")}', '${f.name.replace(/'/g, "\\'")}')" class="px-2 py-0.5 bg-blue-600/80 hover:bg-blue-600 text-white rounded text-[11px] font-medium cursor-pointer" title="Download">⬇</button>
+                                <button onclick="deleteSingleFilePath('${f.path.replace(/'/g, "\\'")}')" class="px-2 py-0.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-[11px] font-medium cursor-pointer" title="Delete">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            const dupesList = document.getElementById('vault-dupes-list');
+            if (dupesList) {
+                const dupes = data.duplicates || [];
+                if (dupes.length === 0) {
+                    dupesList.innerHTML = '<div class="text-center py-6 text-gray-500 text-xs">No duplicate files detected. Storage is clean!</div>';
+                } else {
+                    dupesList.innerHTML = dupes.map((grp, gIdx) => `
+                        <div class="bg-gray-800/80 p-2.5 rounded-xl border border-amber-500/30 text-xs space-y-1.5">
+                            <div class="flex justify-between items-center text-amber-300 font-bold text-[11px]">
+                                <span>Duplicate Group #${gIdx + 1} (${formatBytes(grp.size)} each)</span>
+                            </div>
+                            <div class="space-y-1">
+                                ${(grp.files || []).map((df, fIdx) => `
+                                    <div class="bg-gray-900/80 p-1.5 rounded flex items-center justify-between text-[11px] text-gray-300">
+                                        <span class="truncate max-w-[340px] font-mono">${df.path}</span>
+                                        ${fIdx > 0 ? `<button onclick="deleteSingleFilePath('${df.path.replace(/'/g, "\\'")}')" class="text-rose-400 hover:text-rose-300 font-bold text-[10px] px-1.5 py-0.5 rounded bg-rose-950 border border-rose-800/60 cursor-pointer">Delete Duplicate</button>` : `<span class="text-emerald-400 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-950/80">Original</span>`}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+
+        function deleteSingleFilePath(path) {
+            if (confirm(`Permanently delete this file from phone:\n\n${path}?`)) {
+                sendCommand({ action: 'DELETE_FILE', path: path });
+                setTimeout(requestStorageVaultAnalytics, 800);
+            }
+        }
+
+        // ==========================================
+        // Phase 23: Non-Blocking Sequential Chunked Downloader
+        // ==========================================
+        function handleChunkedDownloadStart(data) {
+            activeChunkedDownloads[data.downloadId] = {
+                id: data.downloadId,
+                name: data.fileName,
+                totalSize: data.totalSize,
+                totalChunks: data.totalChunks,
+                chunkSize: data.chunkSize,
+                receivedBytes: 0,
+                chunks: new Array(data.totalChunks)
+            };
+            showTransferToast(`Downloading ${data.fileName}...`, 0);
+        }
+
+        function handleChunkedDownloadPart(data) {
+            const dl = activeChunkedDownloads[data.downloadId];
+            if (!dl) return;
+            try {
+                const raw = atob(data.data);
+                const bytes = new Uint8Array(raw.length);
+                for (let i = 0; i < raw.length; i++) {
+                    bytes[i] = raw.charCodeAt(i);
+                }
+                dl.chunks[data.chunkIndex] = bytes;
+                dl.receivedBytes += data.bytesRead;
+                const pct = dl.totalSize > 0 ? Math.min(99, Math.round((dl.receivedBytes / dl.totalSize) * 100)) : 50;
+                showTransferToast(`Downloading ${dl.name} (${pct}%)`, pct);
+            } catch(e) {
+                console.error("Chunk decode error", e);
+            }
+        }
+
+        function handleChunkedDownloadComplete(data) {
+            const dl = activeChunkedDownloads[data.downloadId];
+            if (!dl) return;
+            try {
+                const validChunks = dl.chunks.filter(Boolean);
+                const blob = new Blob(validChunks, { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = dl.name;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 1000);
+                showToast(`Download complete: ${dl.name} (${formatBytes(data.totalBytes)})`, "success");
+            } catch(e) {
+                showToast(`Download failed: ${e.message}`, "error");
+            } finally {
+                hideTransferToast();
+                delete activeChunkedDownloads[data.downloadId];
+            }
+        }
+
+        function handleChunkedDownloadError(data) {
+            showToast(`Download failed: ${data.error || 'Aborted'}`, "error");
+            hideTransferToast();
+            if (data.downloadId) delete activeChunkedDownloads[data.downloadId];
+        }
+
+        function renderSearchFilesResult(query, results) {
+            if (!results || results.length === 0) {
+                showToast(`No files found matching "${query}"`, "info");
+                return;
+            }
+            showToast(`Found ${results.length} files matching "${query}"`, "success");
+            currentRawFilesList = results;
+            filteredFilesList = [...results];
+            renderCurrentFilesView();
+            updateFileStatusBar();
+        }
+
+    </script>
 
     <!-- OpenDroid Bottom Taskbar Dock (Open & Minimized Tabs) -->
     <div id="webos-taskbar" class="fixed bottom-0 left-0 right-0 h-11 bg-gray-950/85 backdrop-blur-xl border-t border-gray-800/80 z-40 flex items-center justify-between px-3 select-none">
@@ -14924,3 +15288,5 @@ Google Maps: https://www.google.com/maps?q=${lat},${lng}`;
 
 </body>
 </html>
+
+

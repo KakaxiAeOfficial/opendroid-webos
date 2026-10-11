@@ -2,7 +2,6 @@ package com.example.localutility
 import android.accessibilityservice.AccessibilityService
 import android.content.ComponentName
 import android.util.Log
-
 import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
 import android.content.IntentFilter
@@ -11,11 +10,15 @@ import android.os.PowerManager
 import android.os.SystemClock
 import java.io.BufferedReader
 import java.io.FileReader
-
 import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ContentProviderOperation
 import java.util.ArrayList
+import java.io.BufferedOutputStream
+import java.security.MessageDigest
+import java.util.ArrayDeque
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -65,7 +68,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-
 data class GeofenceZone(
 val id: String,
 val name: String,
@@ -75,311 +77,181 @@ val radiusMeters: Float
 )
 
 class TelephonyAndLocationManager(private val context: Context) {var onLocationUpdated: ((JSONObject) -> Unit)? = null
-
 var onGeofenceEvent: ((JSONObject) -> Unit)? = null
-
 private var locationManager: LocationManager? = null
-
 // Safe-Zones & Location History State
-
 private val prefs: SharedPreferences = context.getSharedPreferences("opendroid_geofences", Context.MODE_PRIVATE)
-
 private val activeGeofences = mutableListOf<GeofenceZone>()
-
 private val insideGeofenceIds = mutableSetOf<String>()
-
 private val locationHistory = mutableListOf<JSONObject>()
-
 private val maxHistoryPoints = 150
-
 init {
-
     loadSavedGeofences()
-
     initLocationListener()
-
 }
 
 private fun loadSavedGeofences() {
-
     try {
-
         val jsonStr = prefs.getString("geofences_list", "[]") ?: "[]"
-
         val array = JSONArray(jsonStr)
-
         activeGeofences.clear()
-
         for (i in 0 until array.length()) {
-
             val obj = array.getJSONObject(i)
-
             activeGeofences.add(
-
                 GeofenceZone(
-
                     id = obj.optString("id", "geo_$i"),
-
                     name = obj.optString("name", "Safe Zone"),
-
                     lat = obj.getDouble("lat"),
-
                     lng = obj.getDouble("lng"),
-
                     radiusMeters = obj.optDouble("radius", 500.0).toFloat()
-
                 )
-
             )
-
         }
 
     } catch (e: Exception) {
-
         e.printStackTrace()
-
     }
 
 }
 
 private fun saveGeofencesToPrefs() {
-
     try {
-
         val array = JSONArray()
-
         for (zone in activeGeofences) {
-
             val obj = JSONObject().apply {
-
                 put("id", zone.id)
-
                 put("name", zone.name)
-
                 put("lat", zone.lat)
-
                 put("lng", zone.lng)
-
                 put("radius", zone.radiusMeters)
-
             }
 
             array.put(obj)
-
         }
 
         prefs.edit().putString("geofences_list", array.toString()).apply()
-
     } catch (e: Exception) {
-
         e.printStackTrace()
-
     }
 
 }
 
 fun setGeofences(jsonArray: JSONArray) {
-
     activeGeofences.clear()
-
     for (i in 0 until jsonArray.length()) {
-
         val obj = jsonArray.getJSONObject(i)
-
         activeGeofences.add(
-
             GeofenceZone(
-
                 id = obj.optString("id", "geo_${System.currentTimeMillis()}_$i"),
-
                 name = obj.optString("name", "Zone ${i + 1}"),
-
                 lat = obj.getDouble("lat"),
-
                 lng = obj.getDouble("lng"),
-
                 radiusMeters = obj.optDouble("radius", 500.0).toFloat()
-
             )
-
         )
-
     }
 
     saveGeofencesToPrefs()
-
 }
 
 fun addGeofence(id: String, name: String, lat: Double, lng: Double, radius: Float): JSONObject {
-
     val cleanId = if (id.isNotEmpty()) id else "geo_${System.currentTimeMillis()}"
-
     activeGeofences.removeAll { it.id == cleanId }
-
     val newZone = GeofenceZone(cleanId, name, lat, lng, radius)
-
     activeGeofences.add(newZone)
-
     saveGeofencesToPrefs()
-
     return JSONObject().apply {
-
         put("id", newZone.id)
-
         put("name", newZone.name)
-
         put("lat", newZone.lat)
-
         put("lng", newZone.lng)
-
         put("radius", newZone.radiusMeters)
-
     }
 
 }
 
 fun removeGeofence(id: String): Boolean {
-
     val removed = activeGeofences.removeAll { it.id == id }
-
     insideGeofenceIds.remove(id)
-
     if (removed) saveGeofencesToPrefs()
-
     return removed
-
 }
 
 fun getGeofences(): JSONArray {
-
     val array = JSONArray()
-
     for (zone in activeGeofences) {
-
         val obj = JSONObject().apply {
-
             put("id", zone.id)
-
             put("name", zone.name)
-
             put("lat", zone.lat)
-
             put("lng", zone.lng)
-
             put("radius", zone.radiusMeters)
-
             put("isInside", insideGeofenceIds.contains(zone.id))
-
         }
 
         array.put(obj)
-
     }
 
     return array
-
 }
 
 fun getLocationHistory(): JSONArray {
-
     val array = JSONArray()
-
     synchronized(locationHistory) {
-
         for (item in locationHistory) {
-
             array.put(item)
-
         }
 
     }
 
     return array
-
 }
 
 private fun checkGeofenceTransitions(location: Location) {
-
     val currentLoc = Location("temp").apply {
-
         latitude = location.latitude
-
         longitude = location.longitude
-
     }
 
     for (zone in activeGeofences) {
-
         val zoneLoc = Location("zone").apply {
-
             latitude = zone.lat
-
             longitude = zone.lng
-
         }
 
         val distance = currentLoc.distanceTo(zoneLoc)
-
         val isInsideNow = distance <= zone.radiusMeters
-
         val wasInside = insideGeofenceIds.contains(zone.id)
-
         if (isInsideNow && !wasInside) {
-
             // Entered Zone
-
             insideGeofenceIds.add(zone.id)
-
             val alert = JSONObject().apply {
-
                 put("type", "GEOFENCE_ALERT")
-
                 put("event", "ENTER")
-
                 put("geofenceId", zone.id)
-
                 put("geofenceName", zone.name)
-
                 put("lat", location.latitude)
-
                 put("lng", location.longitude)
-
                 put("distance", distance)
-
                 put("timestamp", location.time)
-
             }
 
             onGeofenceEvent?.invoke(alert)
-
         } else if (!isInsideNow && wasInside) {
-
             // Exited Zone
-
             insideGeofenceIds.remove(zone.id)
-
             val alert = JSONObject().apply {
-
                 put("type", "GEOFENCE_ALERT")
-
                 put("event", "EXIT")
-
                 put("geofenceId", zone.id)
-
                 put("geofenceName", zone.name)
-
                 put("lat", location.latitude)
-
                 put("lng", location.longitude)
-
                 put("distance", distance)
-
                 put("timestamp", location.time)
-
             }
 
             onGeofenceEvent?.invoke(alert)
-
         }
 
     }
@@ -389,51 +261,32 @@ private fun checkGeofenceTransitions(location: Location) {
 @SuppressLint("MissingPermission")
 
 private fun initLocationListener() {
-
     try {
-
         locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-
         val listener = object : LocationListener {
 
             override fun onLocationChanged(location: Location) {
-
                 val pointJson = JSONObject().apply {
-
                     put("type", "LOCATION")
-
                     put("lat", location.latitude)
-
                     put("lng", location.longitude)
-
                     put("accuracy", location.accuracy)
-
                     put("timestamp", location.time)
-
                 }
 
                 // Append to sliding location trail history
-
                 synchronized(locationHistory) {
-
                     locationHistory.add(pointJson)
-
                     if (locationHistory.size > maxHistoryPoints) {
-
                         locationHistory.removeAt(0)
-
                     }
 
                 }
 
                 // Check enter/exit transitions
-
                 checkGeofenceTransitions(location)
-
                 // Dispatch location update to listeners
-
                 onLocationUpdated?.invoke(pointJson)
-
             }
 
             @Deprecated("Deprecated in Java")
@@ -443,25 +296,18 @@ private fun initLocationListener() {
             override fun onProviderEnabled(provider: String) {}
 
             override fun onProviderDisabled(provider: String) {}
-
         }
 
         if (locationManager?.isProviderEnabled(LocationManager.GPS_PROVIDER) == true) {
-
             locationManager?.requestLocationUpdates(LocationManager.GPS_PROVIDER, 5000L, 5f, listener)
-
         }
 
         if (locationManager?.isProviderEnabled(LocationManager.NETWORK_PROVIDER) == true) {
-
             locationManager?.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 5000L, 5f, listener)
-
         }
 
     } catch (e: Exception) {
-
         e.printStackTrace()
-
     }
 
 }
@@ -469,87 +315,51 @@ private fun initLocationListener() {
 // --- Phase 1: Step 1.2 Remote App Launch & Uninstall ---
 
 fun launchApp(packageName: String): Boolean {
-
     return try {
-
         val pm = context.packageManager
-
         val launchIntent = pm.getLaunchIntentForPackage(packageName)
-
         if (launchIntent != null) {
-
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-
             val targetContext = RemoteInputService.instance ?: context
-
             targetContext.startActivity(launchIntent)
-
             true
-
         } else {
-
             false
-
         }
 
     } catch (e: Exception) {
-
         e.printStackTrace()
-
         false
-
     }
 
 }
 
 fun requestUninstallApp(packageName: String): Boolean {
-
     return try {
-
         val intent = Intent(Intent.ACTION_DELETE).apply {
-
             data = Uri.fromParts("package", packageName, null)
-
             putExtra(Intent.EXTRA_RETURN_RESULT, true)
-
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-
         }
 
         val targetContext = RemoteInputService.instance ?: context
-
         targetContext.startActivity(intent)
-
         true
-
     } catch (e: Exception) {
-
         e.printStackTrace()
-
         try {
-
             val settingsIntent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-
                 data = Uri.fromParts("package", packageName, null)
-
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
             }
 
             val targetContext = RemoteInputService.instance ?: context
-
             targetContext.startActivity(settingsIntent)
-
             true
-
         } catch (e2: Exception) {
-
             e2.printStackTrace()
-
             false
-
         }
 
     }
@@ -559,95 +369,51 @@ fun requestUninstallApp(packageName: String): Boolean {
 // --- Target 7A: Remote Audio Tracks Discovery ---
 
 fun getAudioTracks(): JSONArray {
-
     val array = JSONArray()
-
     try {
-
         val projection = arrayOf(
-
             MediaStore.Audio.Media._ID,
-
             MediaStore.Audio.Media.TITLE,
-
             MediaStore.Audio.Media.ARTIST,
-
             MediaStore.Audio.Media.DURATION,
-
             MediaStore.Audio.Media.DATA,
-
             MediaStore.Audio.Media.SIZE,
-
             MediaStore.Audio.Media.DISPLAY_NAME
-
         )
-
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
-
         val cursor = context.contentResolver.query(
-
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-
             projection,
-
             selection,
-
             null,
-
             "${MediaStore.Audio.Media.TITLE} ASC"
-
         )
-
         cursor?.use {
-
             val titleIdx = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-
             val artistIdx = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-
             val durationIdx = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-
             val dataIdx = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-
             val sizeIdx = it.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
-
             val nameIdx = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DISPLAY_NAME)
-
             var count = 0
-
             while (it.moveToNext() && count < 200) {
-
                 val path = it.getString(dataIdx)
-
                 if (path != null && File(path).exists()) {
-
                     val durationMs = it.getLong(durationIdx)
-
                     val minutes = (durationMs / 1000) / 60
-
                     val seconds = (durationMs / 1000) % 60
-
                     val durationFormatted = String.format("%02d:%02d", minutes, seconds)
-
                     val track = JSONObject().apply {
-
                         put("title", it.getString(titleIdx) ?: "Unknown Title")
-
                         put("artist", it.getString(artistIdx) ?: "Unknown Artist")
-
                         put("name", it.getString(nameIdx) ?: File(path).name)
-
                         put("duration", durationFormatted)
-
                         put("path", path)
-
                         put("size", it.getLong(sizeIdx))
-
                     }
 
                     array.put(track)
-
                     count++
-
                 }
 
             }
@@ -655,99 +421,56 @@ fun getAudioTracks(): JSONArray {
         }
 
     } catch (e: Exception) {
-
         e.printStackTrace()
-
     }
 
     return array
-
 }
 
 // --- Target 7B: Remote Video Tracks Discovery ---
 
 fun getVideoTracks(): JSONArray {
-
     val array = JSONArray()
-
     try {
-
         val projection = arrayOf(
-
             MediaStore.Video.Media._ID,
-
             MediaStore.Video.Media.TITLE,
-
             MediaStore.Video.Media.DURATION,
-
             MediaStore.Video.Media.DATA,
-
             MediaStore.Video.Media.SIZE,
-
             MediaStore.Video.Media.DISPLAY_NAME
-
         )
-
         val cursor = context.contentResolver.query(
-
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-
             projection,
-
             null,
-
             null,
-
             "${MediaStore.Video.Media.DATE_ADDED} DESC"
-
         )
-
         cursor?.use {
-
             val titleIdx = it.getColumnIndexOrThrow(MediaStore.Video.Media.TITLE)
-
             val durationIdx = it.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-
             val dataIdx = it.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-
             val sizeIdx = it.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
-
             val nameIdx = it.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-
             var count = 0
-
             while (it.moveToNext() && count < 100) {
-
                 val path = it.getString(dataIdx)
-
                 if (path != null && File(path).exists()) {
-
                     val durationMs = it.getLong(durationIdx)
-
                     val minutes = (durationMs / 1000) / 60
-
                     val seconds = (durationMs / 1000) % 60
-
                     val durationFormatted = String.format("%02d:%02d", minutes, seconds)
-
                     val track = JSONObject().apply {
-
                         put("title", it.getString(titleIdx) ?: "Unknown Video")
-
                         put("name", it.getString(nameIdx) ?: File(path).name)
-
                         put("duration", durationFormatted)
-
                         put("path", path)
-
                         put("size", it.getLong(sizeIdx))
-
                     }
 
                     array.put(track)
-
                     count++
-
                 }
 
             }
@@ -755,238 +478,166 @@ fun getVideoTracks(): JSONArray {
         }
 
     } catch (e: Exception) {
-
         e.printStackTrace()
-
     }
 
     return array
-
 }
 
 // --- Target 2: Chunked Download ---
 
 fun readFileChunk(filePath: String, offset: Long, chunkSize: Int = 48 * 1024): JSONObject {
-
     val json = JSONObject()
-
     val file = File(filePath)
-
     if (!file.exists() || !file.canRead()
-
 ) {
-
-
         return json
-
     }
 
     json.put("filePath", filePath)
-
     json.put("fileName", file.name)
-
     json.put("totalSize", file.length())
-
     json.put("offset", offset)
-
     RandomAccessFile(file, "r").use { raf ->
-
         raf.seek(offset)
-
         val buffer = ByteArray(chunkSize)
-
         val bytesRead = raf.read(buffer)
-
         if (bytesRead > 0) {
-
             val chunk = if (bytesRead < chunkSize) buffer.copyOf(bytesRead) else buffer
-
             json.put("data", Base64.encodeToString(chunk, Base64.NO_WRAP))
-
             json.put("isLast", (offset + bytesRead) >= file.length())
-
         } else {
-
             json.put("data", "")
-
             json.put("isLast", true)
-
         }
 
     }
 
     return json
-
 }
 
 // --- Target 1: Chunked Upload ---
 
 fun saveUploadedChunk(targetDirPath: String, fileName: String, base64Data: String, isFirst: Boolean, isLast: Boolean): Boolean {
-
     return try {
-
         val dir = if (targetDirPath.isNotEmpty()) File(targetDirPath) else Environment.getExternalStorageDirectory()
-
         if (!dir.exists()) dir.mkdirs()
-
         val file = File(dir, fileName)
-
         val mode = "rw"
-
         RandomAccessFile(file, mode).use { raf ->
-
             if (isFirst) {
-
                 raf.setLength(0)
-
             } else {
-
                 raf.seek(raf.length())
-
             }
 
             val bytes = Base64.decode(base64Data, Base64.NO_WRAP)
-
             raf.write(bytes)
-
         }
 
         true
-
     } catch (e: Exception) {
-
         e.printStackTrace()
-
         false
-
     }
 
 }
 
-fun getDirectoryContents(path: String?): JSONObject {
-
-    val result = JSONObject()
-
-    val targetDir = if (path.isNullOrEmpty()) Environment.getExternalStorageDirectory() else File(path)
-
-    
-
-    result.put("currentPath", targetDir.absolutePath)
-
-    result.put("parentPath", targetDir.parent ?: targetDir.absolutePath)
-
-    val filesArray = JSONArray()
-
-    val list = targetDir.listFiles()
-
-    if (list != null) {
-
-        list.sortBy { !it.isDirectory }
-
-        for (f in list) {
-
-            if (f.name.startsWith(".")) continue
-
-            val fileObj = JSONObject().apply {
-
-                put("name", f.name)
-
-                put("path", f.absolutePath)
-
-                put("isDirectory", f.isDirectory)
-
-                put("size", if (f.isFile) f.length() else 0L)
-
-                put("lastModified", f.lastModified())
-
+fun getDirectoryContents(path: String?, sortBy: String? = null, sortOrder: String? = null): JSONObject {
+        val result = JSONObject()
+        val targetDir = if (path.isNullOrEmpty()) Environment.getExternalStorageDirectory() else File(path)
+        result.put("currentPath", targetDir.absolutePath)
+        result.put("parentPath", targetDir.parent ?: targetDir.absolutePath)
+        result.put("canWrite", targetDir.canWrite())
+        result.put("canRead", targetDir.canRead())
+        val filesArray = JSONArray()
+        val list = targetDir.listFiles()
+        if (list != null) {
+            val fileList = list.filter { !it.name.startsWith(".") }.toMutableList()
+            when (sortBy?.lowercase()) {
+                "name" -> {
+                    if (sortOrder.equals("desc", ignoreCase = true)) fileList.sortByDescending { it.name.lowercase() }
+                    else fileList.sortBy { it.name.lowercase() }
+                }
+                "size" -> {
+                    if (sortOrder.equals("desc", ignoreCase = true)) fileList.sortByDescending { it.length() }
+                    else fileList.sortBy { it.length() }
+                }
+                "date", "lastmodified" -> {
+                    if (sortOrder.equals("desc", ignoreCase = true)) fileList.sortByDescending { it.lastModified() }
+                    else fileList.sortBy { it.lastModified() }
+                }
+                "type", "extension" -> {
+                    if (sortOrder.equals("desc", ignoreCase = true)) fileList.sortByDescending { it.extension.lowercase() }
+                    else fileList.sortBy { it.extension.lowercase() }
+                }
+                else -> {
+                    fileList.sortWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
+                }
             }
 
-            filesArray.put(fileObj)
-
+            for (f in fileList) {
+                val fileObj = JSONObject().apply {
+                    put("name", f.name)
+                    put("path", f.absolutePath)
+                    put("isDirectory", f.isDirectory)
+                    put("size", if (f.isFile) f.length() else 0L)
+                    put("lastModified", f.lastModified())
+                    put("extension", f.extension.lowercase())
+                    put("canWrite", f.canWrite())
+                    put("canRead", f.canRead())
+                    if (f.isDirectory) {
+                        val children = f.list()
+                        put("itemCount", children?.size ?: 0)
+                    }
+                }
+                filesArray.put(fileObj)
+            }
         }
-
+        result.put("files", filesArray)
+        return result
     }
 
-    result.put("files", filesArray)
+    // --- Phase 4 & Phase 23: Advanced File & Directory Operations ---
 
-    return result
-
-}
-
-// --- Phase 4: Advanced File & Directory Operations ---
-
-fun deleteFileOrFolder(path: String): Boolean {
-
-    return try {
-
-        val target = File(path)
-
-        if (!target.exists()) return false
-
-        if (target.isDirectory) {
-
-            target.deleteRecursively()
-
-        } else {
-
-            target.delete()
-
+    fun deleteFileOrFolder(path: String): Boolean {
+        return try {
+            val target = File(path)
+            if (!target.exists()) return false
+            if (target.isDirectory) {
+                target.deleteRecursively()
+            } else {
+                target.delete()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
-
-    } catch (e: Exception) {
-
-        e.printStackTrace()
-
-        false
-
     }
 
-}
-
-fun renameFileOrFolder(oldPath: String, newName: String): Boolean {
-
-    return try {
-
-        val target = File(oldPath)
-
-        if (!target.exists()) return false
-
-        val dest = File(target.parentFile, newName)
-
-        target.renameTo(dest)
-
-    } catch (e: Exception) {
-
-        e.printStackTrace()
-
-        false
-
+    fun renameFileOrFolder(oldPath: String, newName: String): Boolean {
+        return try {
+            val target = File(oldPath)
+            if (!target.exists()) return false
+            val dest = File(target.parentFile, newName)
+            target.renameTo(dest)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 
-}
-
-fun createFolder(parentPath: String, folderName: String): Boolean {
-
-    return try {
-
-        val parent = if (parentPath.isEmpty()) Environment.getExternalStorageDirectory() else File(parentPath)
-
-        val newDir = File(parent, folderName)
-
-        if (newDir.exists()) return false
-
-        newDir.mkdirs()
-
-    } catch (e: Exception) {
-
-        e.printStackTrace()
-
-        false
-
+    fun createFolder(parentPath: String, folderName: String): Boolean {
+        return try {
+            val parent = if (parentPath.isEmpty()) Environment.getExternalStorageDirectory() else File(parentPath)
+            val newDir = File(parent, folderName)
+            if (newDir.exists()) return false
+            newDir.mkdirs()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
-
-}
-
 
     fun copyFileOrFolder(sourcePath: String, destDirPath: String): Boolean {
         return try {
@@ -1084,157 +735,363 @@ fun createFolder(parentPath: String, folderName: String): Boolean {
         val result = JSONObject()
         var successCount = 0
         var failCount = 0
+        val successList = JSONArray()
+        val failedList = JSONArray()
         for (p in paths) {
-            if (deleteFileOrFolder(p)) successCount++ else failCount++
+            if (deleteFileOrFolder(p)) {
+                successCount++
+                successList.put(p)
+            } else {
+                failCount++
+                failedList.put(p)
+            }
         }
         result.put("successCount", successCount)
         result.put("failCount", failCount)
+        result.put("successList", successList)
+        result.put("failedList", failedList)
         result.put("total", paths.size)
         return result
     }
 
-fun createZipArchive(paths: List<String>): String? {
+    fun batchMoveFiles(sourcePaths: List<String>, destDirPath: String): JSONObject {
+        val result = JSONObject()
+        val successList = JSONArray()
+        val failedList = JSONArray()
+        for (src in sourcePaths) {
+            if (moveFileOrFolder(src, destDirPath)) {
+                successList.put(src)
+            } else {
+                failedList.put(src)
+            }
+        }
+        result.put("successList", successList)
+        result.put("failedList", failedList)
+        result.put("successCount", successList.length())
+        result.put("failedCount", failedList.length())
+        result.put("total", sourcePaths.size)
+        return result
+    }
 
-    return try {
-
-        val cacheDir = context.cacheDir
-
-        val zipFile = File(cacheDir, "OpenDroid_Archive_${System.currentTimeMillis()}.zip")
-
-        java.util.zip.ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
-
-            for (path in paths) {
-
-                val file = File(path)
-
-                if (file.exists()) {
-
-                    addFileToZip(file, file.name, zos)
-
+    fun createZipArchive(paths: List<String>): String? {
+        return try {
+            val cacheDir = context.cacheDir
+            val zipFile = File(cacheDir, "OpenDroid_Archive_${System.currentTimeMillis()}.zip")
+            ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
+                for (path in paths) {
+                    val file = File(path)
+                    if (file.exists()) {
+                        addFileToZip(file, file.name, zos)
+                    }
                 }
-
             }
-
+            zipFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
-
-        zipFile.absolutePath
-
-    } catch (e: Exception) {
-
-        e.printStackTrace()
-
-        null
-
     }
 
-}
-
-private fun addFileToZip(file: File, baseName: String, zos: java.util.zip.ZipOutputStream) {
-
-    if (file.isDirectory) {
-
-        val children = file.listFiles() ?: return
-
-        for (child in children) {
-
-            addFileToZip(child, "$baseName/${child.name}", zos)
-
+    private fun addFileToZip(file: File, baseName: String, zos: ZipOutputStream) {
+        if (file.isDirectory) {
+            val children = file.listFiles() ?: return
+            for (child in children) {
+                addFileToZip(child, "$baseName/${child.name}", zos)
+            }
+        } else {
+            val entry = ZipEntry(baseName)
+            zos.putNextEntry(entry)
+            FileInputStream(file).use { fis ->
+                val buffer = ByteArray(8192)
+                var read: Int
+                while (fis.read(buffer).also { read = it } != -1) {
+                    zos.write(buffer, 0, read)
+                }
+            }
+            zos.closeEntry()
         }
+    }
 
-    } else {
+    // --- Phase 23: Live Piped ZipOutputStream & Storage Vault Analytics Engine ---
 
-        val entry = java.util.zip.ZipEntry(baseName)
+    fun zipFolderToStream(folderPath: String, outputStream: java.io.OutputStream): Boolean {
+        return try {
+            val root = File(folderPath)
+            if (!root.exists()) return false
+            ZipOutputStream(BufferedOutputStream(outputStream, 64 * 1024)).use { zos ->
+                if (root.isDirectory) {
+                    val rootLen = root.absolutePath.length + 1
+                    val queue = ArrayDeque<File>()
+                    queue.add(root)
+                    while (!queue.isEmpty()) {
+                        val dir = queue.poll() ?: break
+                        val files = dir.listFiles() ?: continue
+                        for (file in files) {
+                            if (file.isDirectory) {
+                                queue.add(file)
+                            } else {
+                                val relPath = file.absolutePath.substring(rootLen)
+                                val entry = ZipEntry(relPath)
+                                zos.putNextEntry(entry)
+                                FileInputStream(file).use { fis ->
+                                    val buffer = ByteArray(32 * 1024)
+                                    var read: Int
+                                    while (fis.read(buffer).also { read = it } != -1) {
+                                        zos.write(buffer, 0, read)
+                                    }
+                                }
+                                zos.closeEntry()
+                            }
+                        }
+                    }
+                } else {
+                    val entry = ZipEntry(root.name)
+                    zos.putNextEntry(entry)
+                    FileInputStream(root).use { fis ->
+                        val buffer = ByteArray(32 * 1024)
+                        var read: Int
+                        while (fis.read(buffer).also { read = it } != -1) {
+                            zos.write(buffer, 0, read)
+                        }
+                    }
+                    zos.closeEntry()
+                }
+                zos.finish()
+            }
+            true
+        } catch (e: Exception) {
+            Log.e("TelephonyAndLocationManager", "Error streaming zip", e)
+            false
+        }
+    }
 
-        zos.putNextEntry(entry)
+    fun getStorageVaultAnalytics(): JSONObject {
+        val result = JSONObject()
+        try {
+            val stat = StatFs(Environment.getExternalStorageDirectory().path)
+            val totalBytes = stat.blockCountLong * stat.blockSizeLong
+            val freeBytes = stat.availableBlocksLong * stat.blockSizeLong
+            val usedBytes = totalBytes - freeBytes
+            result.put("totalBytes", totalBytes)
+            result.put("freeBytes", freeBytes)
+            result.put("usedBytes", usedBytes)
+            var imageBytes = 0L; var imageCount = 0
+            var videoBytes = 0L; var videoCount = 0
+            var audioBytes = 0L; var audioCount = 0
+            var docBytes = 0L; var docCount = 0
+            var apkBytes = 0L; var apkCount = 0
+            var archiveBytes = 0L; var archiveCount = 0
+            var otherBytes = 0L; var otherCount = 0
+            val largeFiles = mutableListOf<JSONObject>()
+            val sizeMap = mutableMapOf<Long, MutableList<File>>()
+            val root = Environment.getExternalStorageDirectory()
+            val queue = ArrayDeque<File>()
+            queue.add(root)
+            var scannedFiles = 0
+            while (!queue.isEmpty() && scannedFiles < 15000) {
+                val current = queue.poll() ?: break
+                val files = current.listFiles() ?: continue
+                for (f in files) {
+                    if (f.name.startsWith(".")) continue
+                    if (f.isDirectory) {
+                        if (!f.absolutePath.contains("/Android/data") && !f.absolutePath.contains("/Android/obb")) {
+                            queue.add(f)
+                        }
+                    } else {
+                        scannedFiles++
+                        val length = f.length()
+                        val ext = f.extension.lowercase()
+                        when (ext) {
+                            "jpg", "jpeg", "png", "webp", "gif", "bmp", "heic" -> {
+                                imageBytes += length; imageCount++
+                            }
+                            "mp4", "mkv", "avi", "mov", "webm", "3gp", "flv" -> {
+                                videoBytes += length; videoCount++
+                            }
+                            "mp3", "m4a", "wav", "aac", "ogg", "flac" -> {
+                                audioBytes += length; audioCount++
+                            }
+                            "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv", "epub" -> {
+                                docBytes += length; docCount++
+                            }
+                            "apk" -> {
+                                apkBytes += length; apkCount++
+                            }
+                            "zip", "rar", "7z", "tar", "gz", "bz2" -> {
+                                archiveBytes += length; archiveCount++
+                            }
+                            else -> {
+                                otherBytes += length; otherCount++
+                            }
+                        }
 
-        FileInputStream(file).use { fis ->
+                        if (length > 25 * 1024 * 1024L) {
+                            largeFiles.add(JSONObject().apply {
+                                put("name", f.name)
+                                put("path", f.absolutePath)
+                                put("size", length)
+                                put("lastModified", f.lastModified())
+                                put("extension", ext)
+                            })
+                        }
 
+                        if (length > 512 * 1024L) {
+                            val list = sizeMap.getOrPut(length) { mutableListOf() }
+                            if (list.size < 5) list.add(f)
+                        }
+                    }
+                }
+            }
+
+            result.put("categories", JSONObject().apply {
+                put("images", JSONObject().apply { put("bytes", imageBytes); put("count", imageCount) })
+                put("videos", JSONObject().apply { put("bytes", videoBytes); put("count", videoCount) })
+                put("audio", JSONObject().apply { put("bytes", audioBytes); put("count", audioCount) })
+                put("documents", JSONObject().apply { put("bytes", docBytes); put("count", docCount) })
+                put("apks", JSONObject().apply { put("bytes", apkBytes); put("count", apkCount) })
+                put("archives", JSONObject().apply { put("bytes", archiveBytes); put("count", archiveCount) })
+                put("others", JSONObject().apply { put("bytes", otherBytes); put("count", otherCount) })
+            })
+            largeFiles.sortByDescending { it.optLong("size", 0L) }
+            val topLarge = JSONArray()
+            largeFiles.take(30).forEach { topLarge.put(it) }
+            result.put("largeFiles", topLarge)
+            val duplicatesArray = JSONArray()
+            for ((size, list) in sizeMap) {
+                if (list.size >= 2) {
+                    val hashGroups = mutableMapOf<String, MutableList<File>>()
+                    for (file in list) {
+                        try {
+                            val hash = getQuickFileHash(file)
+                            if (hash.isNotEmpty()) {
+                                hashGroups.getOrPut(hash) { mutableListOf() }.add(file)
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    for ((_, dupeList) in hashGroups) {
+                        if (dupeList.size >= 2) {
+                            val groupObj = JSONObject()
+                            groupObj.put("size", size)
+                            val filesInGroup = JSONArray()
+                            for (df in dupeList) {
+                                filesInGroup.put(JSONObject().apply {
+                                    put("name", df.name)
+                                    put("path", df.absolutePath)
+                                    put("lastModified", df.lastModified())
+                                })
+                            }
+                            groupObj.put("files", filesInGroup)
+                            duplicatesArray.put(groupObj)
+                            if (duplicatesArray.length() >= 20) break
+                        }
+                    }
+                }
+                if (duplicatesArray.length() >= 20) break
+            }
+            result.put("duplicates", duplicatesArray)
+        } catch (e: Exception) {
+            Log.e("TelephonyAndLocationManager", "Storage analytics error", e)
+            result.put("error", e.message ?: "Storage scan failed")
+        }
+        return result
+    }
+
+    private fun getQuickFileHash(file: File): String {
+        return try {
+            val md = MessageDigest.getInstance("MD5")
             val buffer = ByteArray(8192)
-
-            var read: Int
-
-            while (fis.read(buffer).also { read = it } != -1) {
-
-                zos.write(buffer, 0, read)
-
+            FileInputStream(file).use { fis ->
+                val read = fis.read(buffer)
+                if (read > 0) {
+                    md.update(buffer, 0, read)
+                }
             }
-
+            val digest = md.digest()
+            val sb = java.lang.StringBuilder()
+            for (b in digest) {
+                sb.append(String.format("%02x", b))
+            }
+            sb.toString()
+        } catch (e: Exception) {
+            ""
         }
-
-        zos.closeEntry()
-
     }
 
-}
-
-fun getRecentPhotos(): JSONArray {
-
-    val array = JSONArray()
-
-    try {
-
-        val projection = arrayOf(
-
-            MediaStore.Images.Media._ID,
-
-            MediaStore.Images.Media.DISPLAY_NAME,
-
-            MediaStore.Images.Media.DATA,
-
-            MediaStore.Images.Media.DATE_ADDED,
-
-            MediaStore.Images.Media.SIZE
-
-        )
-
-        val cursor = context.contentResolver.query(
-
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-
-            projection,
-
-            null,
-
-            null,
-
-            "${MediaStore.Images.Media.DATE_ADDED} DESC"
-
-        )
-
-        cursor?.use {
-
-            val nameCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-
-            val dataCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
-
-            val dateCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
-
-            val sizeCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
-
+    fun searchFiles(query: String, rootPath: String? = null, maxResults: Int = 100): JSONArray {
+        val results = JSONArray()
+        val trimmed = query.trim().lowercase()
+        if (trimmed.isEmpty()) return results
+        try {
+            val root = if (rootPath.isNullOrEmpty()) Environment.getExternalStorageDirectory() else File(rootPath)
+            if (!root.exists() || !root.canRead()) return results
+            val queue = ArrayDeque<File>()
+            queue.add(root)
             var count = 0
+            while (!queue.isEmpty() && count < maxResults) {
+                val dir = queue.poll() ?: break
+                val files = dir.listFiles() ?: continue
+                for (file in files) {
+                    if (file.name.startsWith(".")) continue
+                    if (file.isDirectory) {
+                        if (!file.absolutePath.contains("/Android/data") && !file.absolutePath.contains("/Android/obb")) {
+                            queue.add(file)
+                        }
+                    }
+                    if (file.name.lowercase().contains(trimmed)) {
+                        results.put(JSONObject().apply {
+                            put("name", file.name)
+                            put("path", file.absolutePath)
+                            put("isDirectory", file.isDirectory)
+                            put("size", if (file.isFile) file.length() else 0L)
+                            put("lastModified", file.lastModified())
+                            put("extension", file.extension.lowercase())
+                        })
+                        count++
+                        if (count >= maxResults) break
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("TelephonyAndLocationManager", "Error searching files", e)
+        }
+        return results
+    }
 
+    fun getRecentPhotos(): JSONArray {
+    val array = JSONArray()
+    try {
+        val projection = arrayOf(
+            MediaStore.Images.Media._ID,
+            MediaStore.Images.Media.DISPLAY_NAME,
+            MediaStore.Images.Media.DATA,
+            MediaStore.Images.Media.DATE_ADDED,
+            MediaStore.Images.Media.SIZE
+        )
+        val cursor = context.contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            "${MediaStore.Images.Media.DATE_ADDED} DESC"
+        )
+        cursor?.use {
+            val nameCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
+            val dataCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+            val dateCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
+            val sizeCol = it.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
+            var count = 0
             while (it.moveToNext() && count < 60) {
-
                 val path = it.getString(dataCol)
-
                 if (path != null && File(path).exists()) {
-
                     val obj = JSONObject().apply {
-
                         put("name", it.getString(nameCol) ?: File(path).name)
-
                         put("path", path)
-
                         put("date", it.getLong(dateCol))
-
                         put("size", it.getLong(sizeCol))
-
                     }
 
                     array.put(obj)
-
                     count++
-
                 }
 
             }
@@ -1242,129 +1099,77 @@ fun getRecentPhotos(): JSONArray {
         }
 
     } catch (e: Exception) { e.printStackTrace() }
-
     return array
-
 }
 
 fun getLocation(): JSONObject {
-
     val json = JSONObject().apply { put("type", "LOCATION") }
-
     try {
-
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-
         val loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-
             ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-
             ?: lm.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER)
-
         if (loc != null) {
-
             json.put("lat", loc.latitude)
-
             json.put("lng", loc.longitude)
-
             json.put("accuracy", loc.accuracy)
-
             json.put("timestamp", loc.time)
-
         } else {
-
             json.put("error", "Searching GPS Satellite Signal...")
-
         }
 
     } catch (e: Exception) {
-
         json.put("error", e.message)
-
     }
 
     return json
-
 }
 
 fun getRecentSms(): JSONArray {
-
     val array = JSONArray()
-
     try {
-
         val uri = Uri.parse("content://sms")
-
         val cursor = context.contentResolver.query(uri, null, null, null, "date DESC LIMIT 50")
-
         cursor?.use {
-
             val addressCol = it.getColumnIndex("address")
-
             val bodyCol = it.getColumnIndex("body")
-
             val dateCol = it.getColumnIndex("date")
-
             val typeCol = it.getColumnIndex("type")
-
             while (it.moveToNext()) {
-
                 val obj = JSONObject().apply {
-
                     put("address", if (addressCol != -1) it.getString(addressCol) else "Unknown")
-
                     put("body", if (bodyCol != -1) it.getString(bodyCol) else "")
-
                     put("date", if (dateCol != -1) it.getLong(dateCol) else 0L)
-
                     put("type", if (typeCol != -1) it.getInt(typeCol) else 1)
-
                 }
 
                 array.put(obj)
-
             }
 
         }
 
     } catch (e: Exception) { e.printStackTrace() }
-
     return array
-
 }
 
 fun sendSms(to: String, message: String): Boolean {
-
     return try {
-
         val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-
             context.getSystemService(SmsManager::class.java)
-
         } else {
-
             @Suppress("DEPRECATION")
-
             SmsManager.getDefault()
-
         }
 
         val parts = smsManager.divideMessage(message)
-
         if (parts.size > 1) {
-
             smsManager.sendMultipartTextMessage(to, null, parts, null, null)
-
         } else {
-
             smsManager.sendTextMessage(to, null, message, null, null)
-
         }
 
         true
-
     } catch (e: Exception) { false }
-
 }
 
     // --- Phase 9: High-Speed Paginated SMS Conversations & Threads Engine ---
@@ -1373,7 +1178,6 @@ fun sendSms(to: String, message: String): Boolean {
     fun resolveContactName(phoneNumber: String): String {
         if (phoneNumber.isBlank() || phoneNumber == "Unknown") return phoneNumber
         contactNameCache[phoneNumber]?.let { return it }
-
         var resolvedName = phoneNumber
         try {
             val uri = Uri.withAppendedPath(
@@ -1399,7 +1203,6 @@ fun sendSms(to: String, message: String): Boolean {
                 }
             }
         } catch (_: Exception) {}
-
         contactNameCache[phoneNumber] = resolvedName
         return resolvedName
     }
@@ -1425,7 +1228,6 @@ fun sendSms(to: String, message: String): Boolean {
                 null,
                 "date DESC"
             )
-
             cursor?.use {
                 val threadIdIdx = it.getColumnIndex("thread_id")
                 val addrIdx = it.getColumnIndex("address")
@@ -1443,9 +1245,7 @@ fun sendSms(to: String, message: String): Boolean {
                     var unreadCount: Int = 0,
                     var messageCount: Int = 0
                 )
-
                 val threadMap = LinkedHashMap<String, ThreadSummary>()
-
                 while (it.moveToNext()) {
                     val tId = if (threadIdIdx != -1) it.getLong(threadIdIdx) else 0L
                     val rawAddr = if (addrIdx != -1) it.getString(addrIdx) ?: "Unknown" else "Unknown"
@@ -1453,7 +1253,6 @@ fun sendSms(to: String, message: String): Boolean {
                     val date = if (dateIdx != -1) it.getLong(dateIdx) else 0L
                     val type = if (typeIdx != -1) it.getInt(typeIdx) else 1
                     val read = if (readIdx != -1) it.getInt(readIdx) else 1
-
                     val key = if (tId > 0) "tid_$tId" else "addr_$rawAddr"
                     val existing = threadMap[key]
                     if (existing == null) {
@@ -1479,7 +1278,6 @@ fun sendSms(to: String, message: String): Boolean {
                 val totalCount = allThreads.size
                 val startIndex = Math.min(offset, totalCount)
                 val endIndex = Math.min(startIndex + limit, totalCount)
-
                 for (i in startIndex until endIndex) {
                     val t = allThreads[i]
                     val obj = JSONObject().apply {
@@ -1529,7 +1327,6 @@ fun sendSms(to: String, message: String): Boolean {
                 "type",
                 "read"
             )
-
             val selection: String?
             val selectionArgs: Array<String>?
             if (threadId > 0) {
@@ -1550,7 +1347,6 @@ fun sendSms(to: String, message: String): Boolean {
                 selectionArgs,
                 "date DESC"
             )
-
             cursor?.use {
                 totalMessages = it.count
                 if (offset < totalMessages) {
@@ -1561,7 +1357,6 @@ fun sendSms(to: String, message: String): Boolean {
                     val dateCol = it.getColumnIndex("date")
                     val typeCol = it.getColumnIndex("type")
                     val readCol = it.getColumnIndex("read")
-
                     var count = 0
                     val pageList = mutableListOf<JSONObject>()
                     while (it.moveToNext() && (limit <= 0 || count < limit)) {
@@ -1613,7 +1408,6 @@ fun sendSms(to: String, message: String): Boolean {
         }
     }
 
-
 fun getContactsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
     val result = JSONObject()
     val array = JSONArray()
@@ -1639,20 +1433,16 @@ fun getContactsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
                 val idIdx = it.getColumnIndex(ContactsContract.Contacts._ID)
                 val nameIdx = it.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
                 val photoIdx = it.getColumnIndex(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI)
-
                 val pagedIds = mutableListOf<Long>()
                 val contactMap = mutableMapOf<Long, JSONObject>()
                 var count = 0
-
                 while (it.moveToNext() && (limit <= 0 || count < limit)) {
                     count++
                     val contactId = if (idIdx != -1) it.getLong(idIdx) else 0L
                     if (contactId <= 0L) continue
-
                     pagedIds.add(contactId)
                     val rawName = if (nameIdx != -1) it.getString(nameIdx) ?: "Unknown" else "Unknown"
                     val photoUri = if (photoIdx != -1) it.getString(photoIdx) ?: "" else ""
-
                     val obj = JSONObject().apply {
                         put("id", contactId)
                         put("name", rawName)
@@ -1671,7 +1461,6 @@ fun getContactsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
 
                 if (pagedIds.isNotEmpty()) {
                     val inClause = pagedIds.joinToString(",")
-
                     // 1. Batch query all Phone numbers for paged contacts
                     try {
                         val phoneCursor = context.contentResolver.query(
@@ -1715,7 +1504,6 @@ fun getContactsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
                             }
                         }
                     } catch (_: Exception) {}
-
                     // 2. Batch query all Emails for paged contacts
                     try {
                         val emailCursor = context.contentResolver.query(
@@ -1757,7 +1545,6 @@ fun getContactsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
                             }
                         }
                     } catch (_: Exception) {}
-
                     // 3. Batch query Organization & Notes
                     try {
                         val dataCursor = context.contentResolver.query(
@@ -1794,7 +1581,6 @@ fun getContactsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
                             }
                         }
                     } catch (_: Exception) {}
-
                     for (cId in pagedIds) {
                         val obj = contactMap[cId]
                         if (obj != null) {
@@ -1891,7 +1677,6 @@ fun getCallLogsPaged(offset: Int = 0, limit: Int = 100): JSONObject {
             }
         }
     } catch (e: Exception) { e.printStackTrace() }
-
     result.put("data", array)
     result.put("offset", offset)
     result.put("limit", limit)
@@ -1907,7 +1692,6 @@ fun getCallLogs(limit: Int = 1000): JSONArray {
 fun deleteCallLog(callId: Long?, number: String?, date: Long?): Boolean {
     return try {
         var deletedCount = 0
-
         // 1. Primary: Delete by ID using direct ContentResolver where clause
         if (callId != null && callId > 0) {
             deletedCount = context.contentResolver.delete(
@@ -1991,7 +1775,6 @@ fun getContactDetails(contactId: Long): JSONObject {
             arrayOf(contactId.toString()),
             null
         )
-
         cursor?.use {
             val mimeIdx = it.getColumnIndex(ContactsContract.Data.MIMETYPE)
             val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME)
@@ -2003,7 +1786,6 @@ fun getContactDetails(contactId: Long): JSONObject {
             val titleIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Organization.TITLE)
             val noteIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Note.NOTE)
             val addrIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS)
-
             while (it.moveToNext()) {
                 val mime = it.getString(mimeIdx) ?: ""
                 when (mime) {
@@ -2134,14 +1916,12 @@ fun addContactRich(
             .withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null)
             .withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null)
             .build())
-
         // 1. Structured Name
         ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
             .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
             .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
             .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
             .build())
-
         // 2. Multiple Phone Numbers
         for ((num, typeStr) in numbers) {
             if (num.isNotBlank()) {
@@ -2236,9 +2016,7 @@ fun updateContactRich(
         }
 
         if (rawContactId == null) return false
-
         val ops = ArrayList<ContentProviderOperation>()
-
         // 1. Update Display Name
         ops.add(ContentProviderOperation.newUpdate(ContactsContract.Data.CONTENT_URI)
             .withSelection(
@@ -2247,14 +2025,12 @@ fun updateContactRich(
             )
             .withValue(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
             .build())
-
         // 2. Clear old phones and re-insert updated list
         ops.add(ContentProviderOperation.newDelete(ContactsContract.Data.CONTENT_URI)
             .withSelection(
                 "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
                 arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
             ).build())
-
         for ((num, typeStr) in numbers) {
             if (num.isNotBlank()) {
                 val pType = when (typeStr.lowercase()) {
@@ -2278,7 +2054,6 @@ fun updateContactRich(
                 "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
                 arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
             ).build())
-
         for ((em, typeStr) in emails) {
             if (em.isNotBlank()) {
                 val eType = when (typeStr.lowercase()) {
@@ -2301,7 +2076,6 @@ fun updateContactRich(
                 "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
                 arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
             ).build())
-
         if (!organization.isNullOrBlank() || !jobTitle.isNullOrBlank()) {
             ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
@@ -2317,7 +2091,6 @@ fun updateContactRich(
                 "${ContactsContract.Data.RAW_CONTACT_ID} = ? AND ${ContactsContract.Data.MIMETYPE} = ?",
                 arrayOf(rawContactId.toString(), ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
             ).build())
-
         if (!notes.isNullOrBlank()) {
             ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
                 .withValue(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
@@ -2351,27 +2124,22 @@ fun exportContactsToVcf(): String {
             null, null,
             "${ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} COLLATE NOCASE ASC"
         )
-
         contactsCursor?.use { cursor ->
             val idIdx = cursor.getColumnIndex(ContactsContract.Contacts._ID)
             val nameIdx = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
-
             while (cursor.moveToNext()) {
                 val cId = if (idIdx != -1) cursor.getLong(idIdx) else continue
                 val name = if (nameIdx != -1) cursor.getString(nameIdx) ?: "Contact" else "Contact"
-
                 val details = getContactDetails(cId)
                 val numbersArr = details.getJSONArray("numbers")
                 val emailsArr = details.getJSONArray("emails")
                 val company = details.optString("company", "")
                 val title = details.optString("title", "")
                 val notes = details.optString("notes", "")
-
                 sb.append("BEGIN:VCARD\r\n")
                 sb.append("VERSION:3.0\r\n")
                 sb.append("FN:").append(name.replace("\r", "").replace("\n", " ")).append("\r\n")
                 sb.append("N:;").append(name.replace("\r", "").replace("\n", " ")).append(";;;\r\n")
-
                 for (i in 0 until numbersArr.length()) {
                     val nObj = numbersArr.getJSONObject(i)
                     val num = nObj.optString("number", "").trim()
@@ -2422,7 +2190,6 @@ fun importContactsFromVcf(vcfText: String): Int {
         var currentTitle = ""
         var currentNote = ""
         var insideVcard = false
-
         for (rawLine in lines) {
             val line = rawLine.trim()
             if (line.equals("BEGIN:VCARD", ignoreCase = true)) {
@@ -2492,45 +2259,30 @@ fun importContactsFromVcf(vcfText: String): Int {
 }
 
 fun getInstalledApps(): JSONArray {
-
     val array = JSONArray()
-
     try {
-
         val pm = context.packageManager
-
         val apps = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-
         for (app in apps) {
-
             if (pm.getLaunchIntentForPackage(app.packageName) != null) {
-
                 val obj = JSONObject().apply {
-
                     put("name", pm.getApplicationLabel(app).toString())
-
                     put("package", app.packageName)
-
                     put("isSystem", (app.flags and ApplicationInfo.FLAG_SYSTEM) != 0)
-
                 }
 
                 array.put(obj)
-
             }
 
         }
 
     } catch (e: Exception) { e.printStackTrace() }
-
     return array
-
 }
 
 // =========================================================================
 // --- Phase 20: Real-Time Bi-Directional Clipboard Daemon & Smart Deep-Link ---
 // =========================================================================
-
 private val clipboardPrefs by lazy {
     context.getSharedPreferences("opendroid_clipboard_vault", Context.MODE_PRIVATE)
 }
@@ -2544,7 +2296,6 @@ fun setClipboardText(text: String, source: String = "PC") {
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText("OpenDroid", text))
         saveToClipboardHistory(text, source)
-        
         // Show brief native feedback toast on phone screen
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             try {
@@ -2564,7 +2315,6 @@ fun getClipboardText(): String {
     return try {
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         var text = cm.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
-        
         // Fallback to active AccessibilityService context if background restricted
         if (text.isEmpty() && RemoteInputService.instance != null) {
             try {
@@ -2572,7 +2322,7 @@ fun getClipboardText(): String {
                 text = accCm.primaryClip?.getItemAt(0)?.text?.toString() ?: ""
             } catch (_: Exception) {}
         }
-        
+
         if (text.isNotBlank()) {
             saveToClipboardHistory(text, "Phone")
         }
@@ -2585,7 +2335,6 @@ fun saveToClipboardHistory(text: String, source: String = "Phone"): Boolean {
     return try {
         val jsonStr = clipboardPrefs.getString("history", "[]") ?: "[]"
         val existingArray = JSONArray(jsonStr)
-        
         // Prevent duplicate consecutive entries
         if (existingArray.length() > 0) {
             val latest = existingArray.getJSONObject(0)
@@ -2593,7 +2342,7 @@ fun saveToClipboardHistory(text: String, source: String = "Phone"): Boolean {
                 return false
             }
         }
-        
+
         val newEntry = JSONObject().apply {
             put("id", System.currentTimeMillis())
             put("text", text.trim())
@@ -2601,7 +2350,7 @@ fun saveToClipboardHistory(text: String, source: String = "Phone"): Boolean {
             put("timestamp", System.currentTimeMillis())
             put("chars", text.trim().length)
         }
-        
+
         val newArray = JSONArray()
         newArray.put(newEntry)
         // Keep up to 20 most recent clipboard items
@@ -2609,7 +2358,7 @@ fun saveToClipboardHistory(text: String, source: String = "Phone"): Boolean {
             if (newArray.length() >= 20) break
             newArray.put(existingArray.getJSONObject(i))
         }
-        
+
         clipboardPrefs.edit().putString("history", newArray.toString()).apply()
         true
     } catch (e: Exception) {
@@ -2647,11 +2396,11 @@ fun openSmartUrl(rawUrl: String, targetApp: String = "auto"): JSONObject {
     }
 
     try {
-        var formattedUrl = if (!cleanUrl.startsWith("http://") && 
-            !cleanUrl.startsWith("https://") && 
-            !cleanUrl.startsWith("market://") && 
-            !cleanUrl.startsWith("vnd.youtube:") && 
-            !cleanUrl.startsWith("geo:") && 
+        var formattedUrl = if (!cleanUrl.startsWith("http://") &&
+            !cleanUrl.startsWith("https://") &&
+            !cleanUrl.startsWith("market://") &&
+            !cleanUrl.startsWith("vnd.youtube:") &&
+            !cleanUrl.startsWith("geo:") &&
             !cleanUrl.startsWith("whatsapp://")) {
             "https://$cleanUrl"
         } else {
@@ -2662,10 +2411,8 @@ fun openSmartUrl(rawUrl: String, targetApp: String = "auto"): JSONObject {
         var targetPkg: String? = null
         var intentUri = Uri.parse(formattedUrl)
         var intentAction = Intent.ACTION_VIEW
-
         val lowerUrl = formattedUrl.lowercase()
         val requestedTarget = targetApp.lowercase()
-
         // 1. YouTube Deep-Link
         if (requestedTarget == "youtube" || (requestedTarget == "auto" && (lowerUrl.contains("youtube.com") || lowerUrl.contains("youtu.be")))) {
             targetPkg = "com.google.android.youtube"
@@ -2714,10 +2461,8 @@ fun openSmartUrl(rawUrl: String, targetApp: String = "auto"): JSONObject {
 
         val targetContext = RemoteInputService.instance ?: context
         targetContext.startActivity(launchIntent)
-
         // Save into recent URL history
         saveToUrlHistory(formattedUrl, targetPkg ?: "Browser")
-
         // Show brief native feedback toast on phone screen
         android.os.Handler(android.os.Looper.getMainLooper()).post {
             try {
@@ -2746,7 +2491,6 @@ fun saveToUrlHistory(url: String, target: String): Boolean {
     return try {
         val jsonStr = urlHistoryPrefs.getString("history", "[]") ?: "[]"
         val existingArray = JSONArray(jsonStr)
-        
         // Prevent duplicate consecutive entries
         if (existingArray.length() > 0) {
             val latest = existingArray.getJSONObject(0)
@@ -2754,21 +2498,21 @@ fun saveToUrlHistory(url: String, target: String): Boolean {
                 return false
             }
         }
-        
+
         val newEntry = JSONObject().apply {
             put("id", System.currentTimeMillis())
             put("url", url.trim())
             put("target", target)
             put("timestamp", System.currentTimeMillis())
         }
-        
+
         val newArray = JSONArray()
         newArray.put(newEntry)
         for (i in 0 until existingArray.length()) {
             if (newArray.length() >= 20) break
             newArray.put(existingArray.getJSONObject(i))
         }
-        
+
         urlHistoryPrefs.edit().putString("history", newArray.toString()).apply()
         true
     } catch (e: Exception) {
@@ -2795,59 +2539,33 @@ fun clearUrlHistory(): Boolean {
 }
 
 fun getStorageStats(): JSONObject {
-
     val json = JSONObject()
-
     try {
-
         val path = context.filesDir?.absolutePath ?: Environment.getDataDirectory().path
-
         val stat = StatFs(path)
-
         val blockSize = stat.blockSizeLong
-
         val totalBlocks = stat.blockCountLong
-
         val availableBlocks = stat.availableBlocksLong
-
         val totalBytes = totalBlocks * blockSize
-
         val freeBytes = availableBlocks * blockSize
-
         val usedBytes = (totalBytes - freeBytes).coerceAtLeast(0L)
-
         val totalGB = String.format(java.util.Locale.US, "%.1f GB", totalBytes / (1024.0 * 1024 * 1024))
-
         val usedGB = String.format(java.util.Locale.US, "%.1f GB", usedBytes / (1024.0 * 1024 * 1024))
-
         val freeGB = String.format(java.util.Locale.US, "%.1f GB", freeBytes / (1024.0 * 1024 * 1024))
-
         val usedPercent = if (totalBytes > 0) ((usedBytes.toDouble() / totalBytes) * 100).toInt() else 0
-
         json.put("totalBytes", totalBytes)
-
         json.put("freeBytes", freeBytes)
-
         json.put("usedBytes", usedBytes)
-
         json.put("totalGB", totalGB)
-
         json.put("usedGB", usedGB)
-
         json.put("freeGB", freeGB)
-
         json.put("usedPercent", usedPercent)
-
     } catch (e: Exception) {
-
         e.printStackTrace()
-
     }
 
     return json
-
 }
-
 
     // =========================================================================
     // --- Phase 15: Remote Media Gallery & High-Speed Streamer Engine ---
@@ -2858,7 +2576,6 @@ fun getStorageStats(): JSONObject {
         val photosArray = JSONArray()
         val bucketsMap = mutableMapOf<String, Int>()
         var totalCount = 0
-
         try {
             val projection = arrayOf(
                 MediaStore.Images.Media._ID,
@@ -2872,7 +2589,6 @@ fun getStorageStats(): JSONObject {
                 MediaStore.Images.Media.HEIGHT,
                 MediaStore.Images.Media.BUCKET_DISPLAY_NAME
             )
-
             val cursor = context.contentResolver.query(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 projection,
@@ -2880,7 +2596,6 @@ fun getStorageStats(): JSONObject {
                 null,
                 "${MediaStore.Images.Media.DATE_MODIFIED} DESC"
             )
-
             cursor?.use {
                 val idCol = it.getColumnIndex(MediaStore.Images.Media._ID)
                 val nameCol = it.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
@@ -2892,16 +2607,12 @@ fun getStorageStats(): JSONObject {
                 val widthCol = it.getColumnIndex(MediaStore.Images.Media.WIDTH)
                 val heightCol = it.getColumnIndex(MediaStore.Images.Media.HEIGHT)
                 val bucketCol = it.getColumnIndex(MediaStore.Images.Media.BUCKET_DISPLAY_NAME)
-
                 var matchedIndex = 0
-
                 while (it.moveToNext()) {
                     val id = if (idCol >= 0) it.getLong(idCol) else 0L
                     if (id <= 0L) continue
-
                     val path = if (dataCol >= 0) it.getString(dataCol) ?: "" else ""
                     val contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id).toString()
-
                     val rawBucket = if (bucketCol >= 0) it.getString(bucketCol) else null
                     val bucket = if (!rawBucket.isNullOrBlank()) {
                         rawBucket
@@ -2913,16 +2624,13 @@ fun getStorageStats(): JSONObject {
 
                     bucketsMap[bucket] = (bucketsMap[bucket] ?: 0) + 1
                     bucketsMap["All"] = (bucketsMap["All"] ?: 0) + 1
-
                     val matchesFilter = bucketName.isNullOrEmpty() ||
                             bucketName.equals("All", ignoreCase = true) ||
                             bucket.equals(bucketName, ignoreCase = true)
-
                     if (matchesFilter) {
                         if (matchedIndex >= offset && photosArray.length() < limit) {
                             val name = if (nameCol >= 0) it.getString(nameCol) else null
                             val finalName = if (!name.isNullOrBlank()) name else if (path.isNotBlank()) File(path).name else "IMG_$id.jpg"
-
                             val timestampSec = if (dateCol >= 0 && it.getLong(dateCol) > 0) {
                                 it.getLong(dateCol)
                             } else if (dateAddedCol >= 0 && it.getLong(dateAddedCol) > 0) {
@@ -3006,13 +2714,11 @@ fun getStorageStats(): JSONObject {
 
     private fun resolvePhotoBitmap(pathOrUri: String, maxDim: Int): Bitmap? {
         if (pathOrUri.isBlank()) return null
-
         val parsedUri: Uri? = if (pathOrUri.startsWith("content://")) {
             Uri.parse(pathOrUri)
         } else if (pathOrUri.all { it.isDigit() }) {
             ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, pathOrUri.toLong())
         } else null
-
         // 1. Android 10+ (API 29+) loadThumbnail via ContentResolver
         if (parsedUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
@@ -3053,7 +2759,6 @@ fun getStorageStats(): JSONObject {
             if (file.exists()) {
                 val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeFile(file.absolutePath, boundsOptions)
-
                 var sampleSize = 1
                 val origWidth = boundsOptions.outWidth
                 val origHeight = boundsOptions.outHeight
@@ -3072,7 +2777,6 @@ fun getStorageStats(): JSONObject {
                 return BitmapFactory.decodeFile(file.absolutePath, decodeOptions)
             }
         } catch (_: Exception) {}
-
         // 4. Query MediaStore by DATA path to get ContentUri on Scoped Storage
         try {
             val proj = arrayOf(MediaStore.Images.Media._ID)
@@ -3093,7 +2797,6 @@ fun getStorageStats(): JSONObject {
                 }
             }
         } catch (_: Exception) {}
-
         return null
     }
 
@@ -3110,7 +2813,6 @@ fun getStorageStats(): JSONObject {
             val wallpaperManager = WallpaperManager.getInstance(context)
             wallpaperManager.setBitmap(bitmap)
             bitmap.recycle()
-
             result.put("status", "SUCCESS")
             result.put("message", "Wallpaper updated successfully")
         } catch (e: Exception) {
@@ -3125,7 +2827,6 @@ fun getStorageStats(): JSONObject {
         val videosArray = JSONArray()
         val bucketsMap = mutableMapOf<String, Int>()
         var totalCount = 0
-
         try {
             val projection = arrayOf(
                 MediaStore.Video.Media._ID,
@@ -3140,7 +2841,6 @@ fun getStorageStats(): JSONObject {
                 MediaStore.Video.Media.HEIGHT,
                 MediaStore.Video.Media.BUCKET_DISPLAY_NAME
             )
-
             val cursor = context.contentResolver.query(
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                 projection,
@@ -3148,7 +2848,6 @@ fun getStorageStats(): JSONObject {
                 null,
                 "${MediaStore.Video.Media.DATE_MODIFIED} DESC"
             )
-
             cursor?.use {
                 val idCol = it.getColumnIndex(MediaStore.Video.Media._ID)
                 val nameCol = it.getColumnIndex(MediaStore.Video.Media.DISPLAY_NAME)
@@ -3161,15 +2860,12 @@ fun getStorageStats(): JSONObject {
                 val widthCol = it.getColumnIndex(MediaStore.Video.Media.WIDTH)
                 val heightCol = it.getColumnIndex(MediaStore.Video.Media.HEIGHT)
                 val bucketCol = it.getColumnIndex(MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-
                 var matchedIndex = 0
                 while (it.moveToNext()) {
                     val id = if (idCol >= 0) it.getLong(idCol) else 0L
                     if (id <= 0L) continue
-
                     val path = if (dataCol >= 0) it.getString(dataCol) ?: "" else ""
                     val contentUri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id).toString()
-
                     val rawBucket = if (bucketCol >= 0) it.getString(bucketCol) else null
                     val bucket = if (!rawBucket.isNullOrBlank()) {
                         rawBucket
@@ -3181,11 +2877,9 @@ fun getStorageStats(): JSONObject {
 
                     bucketsMap[bucket] = (bucketsMap[bucket] ?: 0) + 1
                     bucketsMap["All"] = (bucketsMap["All"] ?: 0) + 1
-
                     val matchesFilter = bucketName.isNullOrEmpty() ||
                             bucketName.equals("All", ignoreCase = true) ||
                             bucket.equals(bucketName, ignoreCase = true)
-
                     if (matchesFilter) {
                         if (matchedIndex >= offset && videosArray.length() < limit) {
                             val durationMs = if (durCol >= 0) it.getLong(durCol) else 0L
@@ -3276,13 +2970,11 @@ fun getStorageStats(): JSONObject {
 
     private fun resolveVideoBitmap(pathOrUri: String, maxDim: Int): Bitmap? {
         if (pathOrUri.isBlank()) return null
-
         val parsedUri: Uri? = if (pathOrUri.startsWith("content://")) {
             Uri.parse(pathOrUri)
         } else if (pathOrUri.all { it.isDigit() }) {
             ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, pathOrUri.toLong())
         } else null
-
         // 1. Android 10+ (API 29+) loadThumbnail via ContentResolver
         if (parsedUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
@@ -3320,7 +3012,6 @@ fun getStorageStats(): JSONObject {
                 }
             }
         } catch (_: Exception) {}
-
         // 4. Query MediaStore by DATA path to get ID on Scoped Storage
         try {
             val proj = arrayOf(MediaStore.Video.Media._ID)
@@ -3347,7 +3038,6 @@ fun getStorageStats(): JSONObject {
                 }
             }
         } catch (_: Exception) {}
-
         return null
     }
 
@@ -3355,7 +3045,6 @@ fun getStorageStats(): JSONObject {
         val result = JSONObject()
         val tracksArray = JSONArray()
         var totalCount = 0
-
         try {
             val projection = arrayOf(
                 MediaStore.Audio.Media._ID,
@@ -3368,9 +3057,7 @@ fun getStorageStats(): JSONObject {
                 MediaStore.Audio.Media.DISPLAY_NAME,
                 MediaStore.Audio.Media.DATE_MODIFIED
             )
-
             val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
-
             val cursor = context.contentResolver.query(
                 MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                 projection,
@@ -3378,7 +3065,6 @@ fun getStorageStats(): JSONObject {
                 null,
                 "${MediaStore.Audio.Media.TITLE} ASC"
             )
-
             cursor?.use {
                 val idCol = it.getColumnIndex(MediaStore.Audio.Media._ID)
                 val titleCol = it.getColumnIndex(MediaStore.Audio.Media.TITLE)
@@ -3389,12 +3075,10 @@ fun getStorageStats(): JSONObject {
                 val sizeCol = it.getColumnIndex(MediaStore.Audio.Media.SIZE)
                 val nameCol = it.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
                 val dateCol = it.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED)
-
                 var idx = 0
                 while (it.moveToNext()) {
                     val path = if (dataCol >= 0) it.getString(dataCol) else null
                     if (path == null || !File(path).exists()) continue
-
                     if (idx >= offset && tracksArray.length() < limit) {
                         val durMs = if (durCol >= 0) it.getLong(durCol) else 0L
                         val obj = JSONObject().apply {
@@ -3441,14 +3125,11 @@ fun getStorageStats(): JSONObject {
         val ringtonesArray = JSONArray()
         val notificationsArray = JSONArray()
         val alarmsArray = JSONArray()
-
         try {
             val ringtoneManager = RingtoneManager(context)
-
             val currentRingtoneUri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_RINGTONE)?.toString() ?: ""
             val currentNotifUri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_NOTIFICATION)?.toString() ?: ""
             val currentAlarmUri = RingtoneManager.getActualDefaultRingtoneUri(context, RingtoneManager.TYPE_ALARM)?.toString() ?: ""
-
             // 1. Phone Ringtones
             ringtoneManager.setType(RingtoneManager.TYPE_RINGTONE)
             ringtoneManager.cursor?.use { cursor ->
@@ -3539,7 +3220,6 @@ fun getStorageStats(): JSONObject {
         return result
     }
 
-
     // =========================================================================
     // --- Phase 16: Remote Power Control & Hardware Sensor Telemetry Hub ---
     // =========================================================================
@@ -3581,7 +3261,6 @@ fun getStorageStats(): JSONObject {
                     else -> "Normal"
                 }
                 val tech = batteryStatus.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY) ?: "Li-ion"
-
                 batteryObj.put("percent", batteryPct)
                 batteryObj.put("isCharging", isCharging)
                 batteryObj.put("plugType", plugType)
@@ -3592,7 +3271,6 @@ fun getStorageStats(): JSONObject {
                 batteryObj.put("technology", tech)
             }
             result.put("battery", batteryObj)
-
             // 2. Real-Time RAM (Memory) Utilization
             val memoryObj = JSONObject()
             val actManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
@@ -3606,7 +3284,6 @@ fun getStorageStats(): JSONObject {
                 val totalGb = String.format(java.util.Locale.US, "%.1f GB", totalBytes / (1024.0 * 1024 * 1024))
                 val availGb = String.format(java.util.Locale.US, "%.1f GB", availBytes / (1024.0 * 1024 * 1024))
                 val usedGb = String.format(java.util.Locale.US, "%.1f GB", usedBytes / (1024.0 * 1024 * 1024))
-
                 memoryObj.put("totalBytes", totalBytes)
                 memoryObj.put("availBytes", availBytes)
                 memoryObj.put("usedBytes", usedBytes)
@@ -3617,7 +3294,6 @@ fun getStorageStats(): JSONObject {
                 memoryObj.put("isLowMemory", memInfo.lowMemory)
             }
             result.put("memory", memoryObj)
-
             // 3. CPU Utilization & Core Architecture
             val cpuObj = JSONObject()
             val cpuPercent = computeCpuUsagePercent()
@@ -3631,7 +3307,6 @@ fun getStorageStats(): JSONObject {
             cpuObj.put("coreCount", coreCount)
             cpuObj.put("architecture", abi)
             result.put("cpu", cpuObj)
-
             // 4. Storage Partition Breakdown (Internal vs External)
             val storageObj = JSONObject()
             try {
@@ -3641,7 +3316,6 @@ fun getStorageStats(): JSONObject {
                 val internalAvail = dataStat.availableBlocksLong * dataStat.blockSizeLong
                 val internalUsed = Math.max(0L, internalTotal - internalAvail)
                 val internalPct = if (internalTotal > 0) Math.round((internalUsed.toDouble() / internalTotal) * 100).toInt() else 0
-
                 storageObj.put("internalTotalBytes", internalTotal)
                 storageObj.put("internalAvailBytes", internalAvail)
                 storageObj.put("internalUsedBytes", internalUsed)
@@ -3651,7 +3325,6 @@ fun getStorageStats(): JSONObject {
                 storageObj.put("internalUsedFormatted", String.format(java.util.Locale.US, "%.1f GB", internalUsed / (1024.0 * 1024 * 1024)))
             } catch (e: Exception) {}
             result.put("storage", storageObj)
-
             // 5. System Health, Power Mode & Uptime
             val sysObj = JSONObject()
             val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
@@ -3666,7 +3339,6 @@ fun getStorageStats(): JSONObject {
             val hours = totalSeconds / 3600
             val minutes = (totalSeconds % 3600) / 60
             val uptimeStr = "${hours}h ${minutes}m"
-
             sysObj.put("isPowerSaveMode", isPowerSaveMode)
             sysObj.put("isInteractive", isInteractive)
             sysObj.put("uptimeFormatted", uptimeStr)
@@ -3674,7 +3346,6 @@ fun getStorageStats(): JSONObject {
             sysObj.put("osVersion", "Android ${Build.VERSION.RELEASE}")
             sysObj.put("deviceModel", "${Build.MANUFACTURER} ${Build.MODEL}")
             result.put("system", sysObj)
-
             result.put("status", "SUCCESS")
             result.put("timestamp", System.currentTimeMillis())
         } catch (e: Exception) {
@@ -3702,16 +3373,12 @@ fun getStorageStats(): JSONObject {
                 val iowait = tokens[5].toLong()
                 val irq = tokens[6].toLong()
                 val softirq = tokens[7].toLong()
-
                 val currentIdle = idle + iowait
                 val currentTotal = user + nice + system + idle + iowait + irq + softirq
-
                 val deltaIdle = currentIdle - lastCpuIdle
                 val deltaTotal = currentTotal - lastCpuTotal
-
                 lastCpuIdle = currentIdle
                 lastCpuTotal = currentTotal
-
                 if (deltaTotal > 0) {
                     val usage = Math.round(((deltaTotal - deltaIdle).toDouble() / deltaTotal) * 100).toInt()
                     Math.max(0, Math.min(100, usage))
@@ -3770,7 +3437,6 @@ fun getStorageStats(): JSONObject {
                             return result
                         }
                     } catch (_: Exception) {}
-
                     // Guidance if neither privilege is active
                     result.put("status", "ERROR")
                     result.put("error", "Please enable 'Remote Control (Accessibility)' or 'Device Administrator' in OpenDroid app on your phone.")
@@ -3815,7 +3481,6 @@ fun getStorageStats(): JSONObject {
                             return result
                         }
                     } catch (_: Exception) {}
-
                     result.put("status", "ERROR")
                     result.put("error", "Please enable 'Remote Control (Accessibility)' or 'Device Administrator' in OpenDroid app on your phone.")
                 }
@@ -3827,7 +3492,6 @@ fun getStorageStats(): JSONObject {
                         result.put("message", "Reboot initiated via root shell")
                         return result
                     } catch (_: Exception) {}
-
                     // Priority 2: PowerManager (If signed as system app)
                     try {
                         val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
@@ -3836,7 +3500,6 @@ fun getStorageStats(): JSONObject {
                         result.put("message", "Reboot initiated via system PowerManager")
                         return result
                     } catch (_: Exception) {}
-
                     // Priority 3: Accessibility Service GLOBAL_ACTION_POWER_DIALOG (Brings up Restart menu on phone screen)
                     val remoteInput = RemoteInputService.instance
                     if (remoteInput != null) {
@@ -3956,13 +3619,11 @@ fun getStorageStats(): JSONObject {
         while (cur < endMs) {
             cal.timeInMillis = cur
             val hour = cal.get(Calendar.HOUR_OF_DAY)
-            
             cal.set(Calendar.MINUTE, 0)
             cal.set(Calendar.SECOND, 0)
             cal.set(Calendar.MILLISECOND, 0)
             cal.add(Calendar.HOUR_OF_DAY, 1)
             val nextHourMs = cal.timeInMillis
-            
             val chunkEnd = Math.min(endMs, nextHourMs)
             val duration = chunkEnd - cur
             if (hour in 0..23 && duration > 0) {
@@ -3994,7 +3655,6 @@ fun getStorageStats(): JSONObject {
             val sdfTime = SimpleDateFormat("hh:mm a", Locale.getDefault())
             val sdfDisplay = SimpleDateFormat("EEEE, MMM d, yyyy", Locale.getDefault())
             val sdfShort = SimpleDateFormat("MMM d", Locale.getDefault())
-
             val isRange = rangeType == "7days" || rangeType == "30days" || daysAgo == 7 || daysAgo == 30
             val rangeDays = when {
                 rangeType == "30days" || daysAgo == 30 -> 30
@@ -4006,7 +3666,6 @@ fun getStorageStats(): JSONObject {
             val endTime: Long
             val displayLabel: String
             val now = System.currentTimeMillis()
-
             if (isRange) {
                 val startCal = Calendar.getInstance()
                 startCal.add(Calendar.DAY_OF_YEAR, -(rangeDays - 1))
@@ -4032,14 +3691,12 @@ fun getStorageStats(): JSONObject {
                 targetCal.set(Calendar.SECOND, 0)
                 targetCal.set(Calendar.MILLISECOND, 0)
                 startTime = targetCal.timeInMillis
-
                 targetCal.set(Calendar.HOUR_OF_DAY, 23)
                 targetCal.set(Calendar.MINUTE, 59)
                 targetCal.set(Calendar.SECOND, 59)
                 targetCal.set(Calendar.MILLISECOND, 999)
                 val dayEnd = targetCal.timeInMillis
                 endTime = if (dayEnd > now) now else dayEnd
-                
                 val calToday = Calendar.getInstance()
                 calToday.set(Calendar.HOUR_OF_DAY, 0)
                 calToday.set(Calendar.MINUTE, 0)
@@ -4047,7 +3704,6 @@ fun getStorageStats(): JSONObject {
                 calToday.set(Calendar.MILLISECOND, 0)
                 val todayStart = calToday.timeInMillis
                 val yesterdayStart = todayStart - (24 * 3600 * 1000L)
-
                 displayLabel = when (startTime) {
                     todayStart -> "Today, ${sdfDisplay.format(Date(startTime))}"
                     yesterdayStart -> "Yesterday, ${sdfDisplay.format(Date(startTime))}"
@@ -4062,7 +3718,6 @@ fun getStorageStats(): JSONObject {
             result.put("rangeDays", rangeDays)
             result.put("startTime", startTime)
             result.put("endTime", endTime)
-
             // 1. Query Usage Events for Locks/Unlocks, Launch Counts & Hourly Activity
             var unlockCount = 0
             var totalLaunches = 0
@@ -4070,19 +3725,15 @@ fun getStorageStats(): JSONObject {
             var lastScreenOff = 0L
             val hourlyBucketsMs = LongArray(24)
             val launchCounts = mutableMapOf<String, Int>()
-
             var currentFgPkg: String? = null
             var currentFgStart = 0L
-
             try {
                 val usageEvents = usageStatsManager.queryEvents(startTime, endTime)
                 val event = UsageEvents.Event()
-
                 while (usageEvents.hasNextEvent()) {
                     usageEvents.getNextEvent(event)
                     val eventTime = event.timeStamp
                     val eventType = event.eventType
-
                     // Unlocks & Screen Pickups
                     if (eventType == UsageEvents.Event.KEYGUARD_HIDDEN || eventType == UsageEvents.Event.SCREEN_INTERACTIVE) {
                         unlockCount++
@@ -4133,7 +3784,6 @@ fun getStorageStats(): JSONObject {
                 var lastTimeUsed: Long = 0L
             )
             val appUsageMap = mutableMapOf<String, RawAppUsage>()
-
             try {
                 val intervalType = if (isRange) UsageStatsManager.INTERVAL_WEEKLY else UsageStatsManager.INTERVAL_DAILY
                 val rawStats = usageStatsManager.queryUsageStats(intervalType, startTime, endTime)
@@ -4142,7 +3792,6 @@ fun getStorageStats(): JSONObject {
                         val pkg = stat.packageName ?: continue
                         val timeInFg = stat.totalTimeInForeground
                         if (timeInFg <= 0L) continue
-
                         val existing = appUsageMap[pkg]
                         if (existing == null) {
                             appUsageMap[pkg] = RawAppUsage(
@@ -4166,22 +3815,18 @@ fun getStorageStats(): JSONObject {
             val pm = context.packageManager
             val appsArray = JSONArray()
             var calculatedTotalScreenTimeMs = 0L
-
             val sortedApps = appUsageMap.values.sortedByDescending { it.totalTimeMs }
             for (rawApp in sortedApps) {
                 val pkg = rawApp.packageName
                 val timeMs = rawApp.totalTimeMs
                 calculatedTotalScreenTimeMs += timeMs
-
                 var appLabel = pkg
                 var isSystem = false
                 var category = "Other"
-
                 try {
                     val appInfo = pm.getApplicationInfo(pkg, 0)
                     appLabel = pm.getApplicationLabel(appInfo).toString()
                     isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         category = when (appInfo.category) {
                             ApplicationInfo.CATEGORY_GAME -> "Games"
@@ -4198,12 +3843,10 @@ fun getStorageStats(): JSONObject {
                         category = if (isSystem) "System & Tools" else "General"
                     }
                 } catch (_: Exception) {}
-
                 val appLimitsObj = getAppLimits()
                 val appLimitMins = appLimitsObj.optInt(pkg, 0)
                 val isLimitExceeded = appLimitMins > 0 && timeMs >= (appLimitMins * 60 * 1000L)
                 val iconB64 = if (appsArray.length() < 35) (getAppIconBase64(pkg) ?: "") else ""
-
                 val appObj = JSONObject().apply {
                     put("packageName", pkg)
                     put("appName", appLabel)
@@ -4244,7 +3887,6 @@ fun getStorageStats(): JSONObject {
             result.put("focusConfig", getFocusModeConfig())
             result.put("dndStatus", getDndStatus())
             result.put("reminderConfig", getScreenTimeReminder())
-
             // Top most used app
             if (appsArray.length() > 0) {
                 result.put("topApp", appsArray.getJSONObject(0))
@@ -4261,11 +3903,9 @@ fun getStorageStats(): JSONObject {
         return result
     }
 
-
     // =========================================================================
     // Phase 18: Google Family Link-Grade App Limits, Bedtime & Controls
     // =========================================================================
-
     private val wellbeingPrefs: SharedPreferences by lazy {
         context.getSharedPreferences("opendroid_wellbeing_prefs", Context.MODE_PRIVATE)
     }
@@ -4349,7 +3989,6 @@ fun getStorageStats(): JSONObject {
                 true
             }
             result.put("hasPolicyAccess", hasPolicyAccess)
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 val filter = nm.currentInterruptionFilter
                 val modeStr = when (filter) {
@@ -4428,7 +4067,6 @@ fun getStorageStats(): JSONObject {
         try {
             val daysArr = JSONArray()
             daysOfWeek.forEach { daysArr.put(it) }
-
             val config = JSONObject().apply {
                 put("enabled", enabled)
                 put("startHour", startHour)
@@ -4442,9 +4080,7 @@ fun getStorageStats(): JSONObject {
                 put("dndEnabled", dndEnabled)
             }
             wellbeingPrefs.edit().putString("bedtime_config", config.toString()).apply()
-
             val isNowActive = isBedtimeActiveNow()
-
             // Bi-directional DND sync: Turn DND ON when Bedtime activates, Turn DND OFF (NORMAL) when Bedtime turns off
             if (dndEnabled) {
                 if (isNowActive) {
@@ -4468,21 +4104,17 @@ fun getStorageStats(): JSONObject {
         val raw = wellbeingPrefs.getString("bedtime_config", null) ?: return false
         return try {
             val obj = JSONObject(raw)
-
             // 1. Manual 1-tap ON takes immediate precedence
             if (obj.optBoolean("manualActive", false)) return true
-
             // 2. Schedule evaluation parameters
             val startH = obj.optInt("startHour", 22)
             val startM = obj.optInt("startMinute", 0)
             val endH = obj.optInt("endHour", 6)
             val endM = obj.optInt("endMinute", 0)
-
             val cal = Calendar.getInstance()
             val curMinutes = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
             val startMinutes = startH * 60 + startM
             val endMinutes = endH * 60 + endM
-
             val isCurrentlyInBedtimeWindow = if (startMinutes <= endMinutes) {
                 curMinutes in startMinutes until endMinutes
             } else {
@@ -4502,7 +4134,6 @@ fun getStorageStats(): JSONObject {
 
             // 4. If schedule is disabled, return false
             if (!obj.optBoolean("enabled", false)) return false
-
             val todayDayOfWeek = cal.get(Calendar.DAY_OF_WEEK) // 1=Sunday..7=Saturday
             val daysArr = obj.optJSONArray("daysOfWeek")
             if (daysArr != null && daysArr.length() > 0) {
@@ -4555,8 +4186,6 @@ fun getStorageStats(): JSONObject {
         }
     }
 
-
-
     fun setFocusModeConfig(
         enabled: Boolean,
         blockedPackages: List<String>,
@@ -4566,11 +4195,9 @@ fun getStorageStats(): JSONObject {
         try {
             val pkgArray = JSONArray()
             blockedPackages.forEach { pkgArray.put(it) }
-
             val expireTime = if (enabled && durationMinutes > 0) {
                 System.currentTimeMillis() + (durationMinutes * 60 * 1000L)
             } else 0L
-
             val config = JSONObject().apply {
                 put("enabled", enabled)
                 put("packages", pkgArray)
@@ -4682,11 +4309,9 @@ fun getStorageStats(): JSONObject {
         }
     }
 
-
     // Real-Time Active Parental Control Evaluator
     fun isPackageCurrentlyBlocked(packageName: String): Pair<Boolean, String> {
         if (packageName.isEmpty()) return Pair(false, "")
-
         // Whitelist critical system packages so phone never bricks
         val criticalWhitelist = setOf(
             context.packageName,
@@ -4736,7 +4361,6 @@ fun getStorageStats(): JSONObject {
                     cal.set(Calendar.MILLISECOND, 0)
                     val startOfDay = cal.timeInMillis
                     val now = System.currentTimeMillis()
-
                     val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startOfDay, now)
                     var todayUsageMs = 0L
                     if (!stats.isNullOrEmpty()) {
@@ -4774,7 +4398,6 @@ fun getStorageStats(): JSONObject {
                         cal.set(Calendar.MILLISECOND, 0)
                         val startOfDay = cal.timeInMillis
                         val now = System.currentTimeMillis()
-
                         val stats = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startOfDay, now)
                         var totalUsageMs = 0L
                         if (!stats.isNullOrEmpty()) {
